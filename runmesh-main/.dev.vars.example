@@ -1,0 +1,5 @@
+JWT_SECRET=replace-in-production
+GITHUB_CLIENT_ID=your-github-client-id
+GITHUB_CLIENT_SECRET=your-github-client-secret
+FRONTEND_URL=http://localhost:5173
+PUBLIC_URL=http://localhost:8787
