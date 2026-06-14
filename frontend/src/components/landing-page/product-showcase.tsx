@@ -1,3 +1,4 @@
+import { sectionPadding } from "./constants"
 import { TriageVisual } from "./visuals/triage-visual"
 import { MiniDashboardVisual } from "./visuals/mini-dashboard-visual"
 import { AgentsVisual } from "./visuals/agents-visual"
@@ -6,7 +7,7 @@ import { motion } from "framer-motion"
 
 export function ProductShowcase() {
 	return (
-		<section id="resources" className="scroll-mt-14 border-b border-[#15181d] py-16">
+		<section id="lifecycle" className={`scroll-mt-14 border-b border-[#15181d] ${sectionPadding}`}>
 			<div className="mx-auto w-[min(1256px,calc(100%_-_48px))]">
 				<motion.h2
 					initial={{ opacity: 0, y: 24 }}

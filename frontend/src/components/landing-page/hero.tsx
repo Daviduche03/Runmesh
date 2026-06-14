@@ -1,11 +1,11 @@
 import { Link } from "react-router-dom"
 import { Button } from "@/components/ui/button"
-import { container } from "./constants"
+import { container, sectionPadding } from "./constants"
 import { RunsPreview } from "./runs-preview"
 
 export function Hero() {
 	return (
-		<section className="relative border-b border-[#1f2227] pt-36">
+		<section className={`relative border-b border-[#1f2227] pt-40 ${sectionPadding}`}>
 			<div className={container}>
 				<div className="grid items-end gap-8 lg:grid-cols-[1fr_360px]">
 					<div>
@@ -16,10 +16,10 @@ export function Hero() {
 							Publish HTTP tasks now, schedule them for later, and let Runmesh dispatch JSON payloads to your endpoints.
 						</p>
 						<div className="mt-8 flex items-center gap-3 opacity-0 animate-fade-in-up-3">
-							<Button asChild className="h-8 bg-[#f2f2f2] text-sm font-medium text-[#08090a] hover:bg-white px-5">
+							<Button asChild className="bg-[#f2f2f2] text-sm font-medium text-bg-primary hover:bg-white px-5">
 								<Link to="/signup">Get started</Link>
 							</Button>
-							<Button asChild variant="outline" className="h-8 border-[#24272d] text-sm font-medium text-[#d8dce3] hover:bg-[#1c1d21] px-5">
+							<Button asChild variant="outline" className="border-[#24272d] text-sm font-medium text-[#d8dce3] hover:bg-[#1c1d21] px-5">
 								<Link to="/login">Log in</Link>
 							</Button>
 						</div>

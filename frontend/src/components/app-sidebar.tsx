@@ -1,7 +1,7 @@
 "use client";
 
 import { cn } from "@/lib/utils";
-import { LogoBadge } from "@/components/logo";
+import { LogoIcon } from "@/components/logo";
 import { Link } from "react-router-dom";
 import {
 	Sidebar,
@@ -24,10 +24,10 @@ export function AppSidebar() {
 			collapsible="icon"
 			variant="sidebar"
 		>
-			<SidebarHeader className="h-14 justify-center border-b border-sidebar-border px-2">
+			<SidebarHeader className="h-12 justify-center gap-0 border-b border-sidebar-border px-2 py-0">
 				<SidebarMenuButton asChild>
 					<Link to="/dashboard" className="flex items-center gap-2">
-						<LogoBadge className="shrink-0" />
+						<LogoIcon className="size-5 shrink-0 text-foreground" />
 						<span className="font-medium text-foreground!">Runmesh</span>
 					</Link>
 				</SidebarMenuButton>

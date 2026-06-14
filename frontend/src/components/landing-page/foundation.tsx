@@ -1,9 +1,10 @@
+import { sectionPadding } from "./constants"
 import { FoundationVisual } from "./visuals/foundation-visual"
 import { motion } from "framer-motion"
 
 export function Foundation() {
 	return (
-		<section id="now" className="scroll-mt-14 border-b border-[#15181d] py-16">
+		<section id="platform" className={`scroll-mt-14 border-b border-[#15181d] ${sectionPadding}`}>
 			<div className="mx-auto w-[min(1256px,calc(100%_-_48px))]">
 				<motion.h2
 					initial={{ opacity: 0, y: 24 }}

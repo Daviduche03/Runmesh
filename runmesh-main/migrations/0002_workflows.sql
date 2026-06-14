@@ -21,5 +21,3 @@ CREATE TABLE IF NOT EXISTS workflow_runs (
     completed_at TEXT,
     user_id TEXT NOT NULL
 );
-
-ALTER TABLE tasks ADD COLUMN step_order INTEGER DEFAULT 0;

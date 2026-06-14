@@ -165,6 +165,20 @@ curl -X POST https://your-domain/api/v1/tasks \
   }'
 ```
 
+Optional Jinja2 templates render at execution time (sandboxed). Provide `url` or `url_template`, and static `payload` and/or `payload_template`:
+
+```json
+{
+  "url_template": "https://api.example.com/orders/{{ payload.order_id }}/notify",
+  "payload_template": "{\"status\": \"{{ task.status }}\", \"order_id\": \"{{ payload.order_id }}\"}",
+  "payload": { "order_id": "ord_1042" }
+}
+```
+
+Template context: `task` (id, status, url, …), `payload` (stored JSON), `now` (ISO UTC).
+
+`payload_template` must render to valid JSON. Syntax errors return `400` at create time.
+
 Response:
 
 ```json
@@ -239,7 +253,25 @@ curl -X POST https://your-domain/api/v1/tasks/schedule \
 
 `GET /api/v1/workflows/{workflow_id}`
 
-Returns workflow metadata and configured task steps in `data`.
+Returns workflow metadata, `tasks`, and `graph` (`nodes` + `edges`) in `data`. Legacy workflows without a stored graph get a linear graph generated from `step_order`.
+
+### Save workflow graph
+
+`PUT /api/v1/workflows/{workflow_id}/graph`
+
+```json
+{
+  "nodes": [
+    { "id": "trigger", "type": "trigger", "position": { "x": 40, "y": 160 }, "data": { "label": "Trigger", "triggerType": "manual" } },
+    { "id": "http-...", "type": "http", "position": { "x": 260, "y": 160 }, "data": { "label": "Step 1", "url": "https://...", "payload": {} } }
+  ],
+  "edges": [
+    { "id": "edge-trigger-http-...", "source": "trigger", "target": "http-..." }
+  ]
+}
+```
+
+Phase A supports a **single linear path** from `trigger` through `http` nodes. Saving syncs HTTP nodes to `tasks` (create/update/delete) and enqueues **new** steps only.
 
 ## Analytics
 
@@ -341,6 +373,16 @@ Deliveries run on the `runmesh-webhooks` queue. A failed delivery (network error
 
 Up to **6** delivery attempts per event (initial try plus 5 retries). The same event `id` in the JSON body is preserved across retries. Each attempt is re-signed with a fresh timestamp. Receivers can read `X-Runmesh-Delivery-Attempt` (1–6).
 
+**Dead letter queue (DLQ)**
+
+After all retries fail, the event is stored in D1 (`webhook_dead_letters`). JWT-only API:
+
+| Route | Action |
+|-------|--------|
+| `GET /api/webhooks/dead-letters` | List undelivered failures (`?include_replayed=1` for history) |
+| `POST /api/webhooks/dead-letters/{id}/replay` | Re-enqueue delivery (attempt 1) |
+| `DELETE /api/webhooks/dead-letters/{id}` | Dismiss without replay |
+
 **Verify signature**
 
 1. Read the raw request body as bytes (do not re-serialize JSON).
@@ -367,12 +409,16 @@ def verify(secret: str, body: bytes, signature_header: str, tolerance: int = 300
 
 | Field | Type | Required | Description |
 |-------|------|----------|-------------|
-| `url` | string | Yes | Target URL for the HTTP POST |
-| `payload` | object | No | JSON body sent to the URL |
+| `url` | string | Yes* | Target URL for the HTTP POST |
+| `url_template` | string | Yes* | Jinja2 URL template (rendered at run time) |
+| `payload` | object | No | Static JSON context / body |
+| `payload_template` | string | No | Jinja2 template that must render to JSON |
 | `type` | string | No | Task type (default: `task`) |
 | `execution_type` | string | No | `queue`, `webhook`, or `schedule` |
 | `workflow_id` | string | No | Associate task with a workflow |
 | `scheduled_at` | string | Schedule only | ISO 8601 UTC datetime |
+
+\* Provide `url` or `url_template` (or both; template wins at execution).
 
 ## Task statuses
 

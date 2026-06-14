@@ -1,11 +1,11 @@
 import { SectionIntro } from "./section-intro"
 import { TaskApiPreview } from "./task-api-preview"
-import { container } from "./constants"
+import { container, sectionPadding } from "./constants"
 import { motion } from "framer-motion"
 
 export function CustomerSection() {
 	return (
-		<section id="task-api" className="scroll-mt-14 border-b border-[#15181d] pt-16 pb-6">
+		<section id="task-api" className={`scroll-mt-14 border-b border-[#15181d] ${sectionPadding}`}>
 			<div className={container}>
 				<motion.div
 					initial={{ opacity: 0, y: 24 }}

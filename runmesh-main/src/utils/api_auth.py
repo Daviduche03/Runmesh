@@ -5,9 +5,11 @@ from datetime import datetime, timezone, timedelta
 from typing import Optional, List
 from fastapi import HTTPException, Depends, Request
 
+from db.orm import ApiKeyModel, UserModel
+
 def generate_api_key() -> str:
-    """Generate a secure API key"""
     return f"rk_{secrets.token_urlsafe(32)}"
+
 
 def hash_api_key(api_key: str) -> str:
     """Hash an API key for secure storage"""
@@ -34,8 +36,6 @@ async def get_api_key_user(
     Raises:
         HTTPException: If authentication fails
     """
-    from db.orm import ApiKeyModel, UserModel
-    
     env = request.scope["env"]
     
     # Get API key from custom header

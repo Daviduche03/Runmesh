@@ -1,11 +1,11 @@
 import { Link } from "react-router-dom"
 import { Button } from "@/components/ui/button"
-import { narrowContainer } from "./constants"
+import { narrowContainer, sectionPadding } from "./constants"
 import { motion } from "framer-motion"
 
 export function PreFooter() {
 	return (
-		<section id="contact" className="scroll-mt-14 py-16 text-center">
+		<section id="contact" className={`scroll-mt-14 ${sectionPadding} text-center`}>
 			<div className={narrowContainer}>
 				<motion.h2
 					initial={{ opacity: 0, y: 24 }}
@@ -22,7 +22,7 @@ export function PreFooter() {
 					viewport={{ once: true, margin: "-80px" }}
 					transition={{ duration: 0.7, ease: [0.21, 0.98, 0.35, 1], delay: 0.15 }}
 				>
-					<Button asChild className="mt-6 h-8 bg-[#f2f2f2] text-sm font-medium text-[#08090a] hover:bg-white">
+					<Button asChild className="mt-6 bg-[#f2f2f2] text-sm font-medium text-[#08090a] hover:bg-white">
 						<Link to="/signup">Start building</Link>
 					</Button>
 				</motion.div>

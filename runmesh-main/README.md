@@ -12,6 +12,8 @@ Backend for [Runmesh](../README.md) — a Cloudflare Worker (FastAPI + D1 + Queu
 - Schedule tasks for a future UTC timestamp
 - Workflows to group related task steps
 - Dashboard with runs, analytics, API keys, and outbound webhooks
+- Outbound webhook retries with dead-letter storage and replay
+- Jinja2 task `url_template` / `payload_template` rendered at execution time
 - Dual auth: JWT (dashboard) or API key (integrations) on the same `/api/v1` routes
 
 ## Prerequisites

@@ -1,5 +1,5 @@
 import { create } from "zustand";
-import { apiGet, apiPost } from "@/lib/api";
+import { apiGet, apiPost, apiDelete } from "@/lib/api";
 
 const STALE_MS = 30_000;
 
@@ -8,6 +8,24 @@ export type WorkflowTask = {
 	url: string;
 	status: string;
 	stepOrder: number;
+};
+
+export type WorkflowGraphNode = {
+	id: string;
+	type: "trigger" | "http";
+	position: { x: number; y: number };
+	data: Record<string, unknown>;
+};
+
+export type WorkflowGraphEdge = {
+	id: string;
+	source: string;
+	target: string;
+};
+
+export type WorkflowGraph = {
+	nodes: WorkflowGraphNode[];
+	edges: WorkflowGraphEdge[];
 };
 
 export type Workflow = {
@@ -21,8 +39,11 @@ export type Workflow = {
 	status: string;
 	lastRun: string;
 	runs: number;
+	stepCount?: number;
 	createdAt: string;
+	updatedAt?: string;
 	tasks: WorkflowTask[];
+	graph?: WorkflowGraph;
 };
 
 type CreateWorkflowPayload = {
@@ -36,15 +57,18 @@ type WorkflowsState = {
 	workflows: Workflow[];
 	loading: boolean;
 	creating: boolean;
+	deleting: boolean;
 	fetchedAt: number | null;
 	fetch: () => Promise<void>;
 	createWorkflow: (data: CreateWorkflowPayload) => Promise<void>;
+	remove: (id: string) => Promise<boolean>;
 };
 
 export const useWorkflowsStore = create<WorkflowsState>((set, get) => ({
 	workflows: [],
 	loading: false,
 	creating: false,
+	deleting: false,
 	fetchedAt: null,
 
 	fetch: async () => {
@@ -74,6 +98,19 @@ export const useWorkflowsStore = create<WorkflowsState>((set, get) => ({
 		} catch (err) {
 			set({ creating: false });
 			throw err;
+		}
+	},
+
+	remove: async (id: string) => {
+		set({ deleting: true });
+		try {
+			await apiDelete(`/api/v1/workflows/${id}`);
+			set({ deleting: false, fetchedAt: null });
+			await get().fetch();
+			return true;
+		} catch {
+			set({ deleting: false });
+			return false;
 		}
 	},
 }));

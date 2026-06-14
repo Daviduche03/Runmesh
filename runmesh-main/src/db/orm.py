@@ -100,6 +100,13 @@ class TaskModel(Model):
 
     async def list_by_workflow_id(self, workflow_id: str) -> List[Dict[str, Any]]:
         return await self.find_many('tasks', 'workflow_id = ? ORDER BY step_order ASC, created_at ASC', workflow_id)
+
+    async def delete_by_workflow_id(self, workflow_id: str) -> int:
+        return await super().delete('tasks', 'workflow_id = ?', workflow_id)
+
+    async def delete_task(self, task_id: str) -> int:
+        return await super().delete('tasks', 'id = ?', task_id)
+
     async def update_status(self, task_id: str, status: str) -> int:
         """Update task status"""
         return await self.update(
@@ -123,6 +130,39 @@ class TaskModel(Model):
         ).run()
         return result.meta.changes or 0
 
+    async def reset_for_workflow_run(self, task_id: str) -> int:
+        now = datetime.now(timezone.utc).isoformat()
+        query = """
+            UPDATE tasks
+            SET status = 'pending', retries = 0, updated_at = ?,
+                response_body = NULL, response_status = NULL
+            WHERE id = ?
+        """
+        result = await self.db.prepare(query).bind(now, task_id).run()
+        return result.meta.changes or 0
+
+    async def complete_execution(
+        self,
+        task_id: str,
+        status: str,
+        response_body: str = "",
+        response_status: int = 0,
+    ) -> int:
+        now = datetime.now(timezone.utc).isoformat()
+        query = """
+            UPDATE tasks
+            SET status = ?, updated_at = ?, response_body = ?, response_status = ?, retries = retries + 1
+            WHERE id = ?
+        """
+        result = await self.db.prepare(query).bind(
+            status,
+            now,
+            response_body,
+            response_status,
+            task_id,
+        ).run()
+        return result.meta.changes or 0
+
 class WorkflowModel(Model):
     def __init__(self, db):
         super().__init__(db)
@@ -130,7 +170,6 @@ class WorkflowModel(Model):
     async def create(self, workflow_data: Dict[str, Any]) -> str:
         """Create a new workflow"""
         if not workflow_data.get('id'):
-            import uuid
             workflow_data['id'] = str(uuid.uuid4())
         
         if not workflow_data.get('created_at'):
@@ -148,6 +187,41 @@ class WorkflowModel(Model):
     async def find_by_id(self, workflow_id: str) -> Optional[Dict[str, Any]]:
         return await self.find_one('workflows', 'id = ?', workflow_id)
 
+    async def list_by_trigger_type(self, trigger_type: str) -> List[Dict[str, Any]]:
+        return await self.find_many('workflows', 'trigger_type = ?', trigger_type)
+
+    async def delete_workflow(self, workflow_id: str) -> int:
+        return await super().delete('workflows', 'id = ?', workflow_id)
+
+class WorkflowRunModel(Model):
+    def __init__(self, db):
+        super().__init__(db)
+
+    async def create(self, run_data: Dict[str, Any]) -> str:
+        if not run_data.get("id"):
+            run_data["id"] = str(uuid.uuid4())
+        return await self.insert("workflow_runs", run_data)
+
+    async def find_by_id(self, run_id: str) -> Optional[Dict[str, Any]]:
+        return await self.find_one("workflow_runs", "id = ?", run_id)
+
+    async def list_by_workflow_id(self, workflow_id: str) -> List[Dict[str, Any]]:
+        return await self.find_many(
+            "workflow_runs",
+            "workflow_id = ? ORDER BY started_at DESC",
+            workflow_id,
+        )
+
+    async def find_active_for_workflow(self, workflow_id: str) -> Optional[Dict[str, Any]]:
+        return await self.find_one(
+            "workflow_runs",
+            "workflow_id = ? AND status = 'running'",
+            workflow_id,
+        )
+
+    async def delete_by_workflow_id(self, workflow_id: str) -> int:
+        return await super().delete("workflow_runs", "workflow_id = ?", workflow_id)
+
 class UserModel(Model):
     def __init__(self, db):
         super().__init__(db)
@@ -155,7 +229,6 @@ class UserModel(Model):
     async def create(self, user_data: Dict[str, Any]) -> str:
         """Create a new user"""
         if not user_data.get('id'):
-            import uuid
             user_data['id'] = str(uuid.uuid4())
         
         if not user_data.get('created_at'):
@@ -186,7 +259,6 @@ class ApiKeyModel(Model):
         """Create a new API key"""
         """Create a new API key"""
         if not api_key_data.get('id'):
-            import uuid
             api_key_data['id'] = str(uuid.uuid4())
         
         if not api_key_data.get('created_at'):
@@ -230,7 +302,6 @@ class WebhookModel(Model):
 
     async def create(self, data: Dict[str, Any]) -> str:
         if not data.get('id'):
-            import uuid
             data['id'] = str(uuid.uuid4())
         if not data.get('created_at'):
             data['created_at'] = datetime.now(timezone.utc).isoformat()
@@ -253,3 +324,43 @@ class WebhookModel(Model):
 
     async def delete(self, webhook_id: str) -> int:
         return await super().delete('webhooks', 'id = ?', webhook_id)
+
+
+class WebhookDeadLetterModel(Model):
+    def __init__(self, db):
+        super().__init__(db)
+
+    async def create(self, data: Dict[str, Any]) -> str:
+        if not data.get("id"):
+            data["id"] = str(uuid.uuid4())
+        if not data.get("created_at"):
+            data["created_at"] = datetime.now(timezone.utc).isoformat()
+        return await self.insert("webhook_dead_letters", data)
+
+    async def find_by_user_id(self, user_id: str, include_replayed: bool = False) -> list:
+        if include_replayed:
+            return await self.find_many(
+                "webhook_dead_letters",
+                "user_id = ? ORDER BY failed_at DESC",
+                user_id,
+            )
+        return await self.find_many(
+            "webhook_dead_letters",
+            "user_id = ? AND replayed_at IS NULL ORDER BY failed_at DESC",
+            user_id,
+        )
+
+    async def find_by_id(self, dead_letter_id: str):
+        return await self.find_one("webhook_dead_letters", "id = ?", dead_letter_id)
+
+    async def mark_replayed(self, dead_letter_id: str) -> int:
+        now = datetime.now(timezone.utc).isoformat()
+        return await self.update(
+            "webhook_dead_letters",
+            "id = ?",
+            {"replayed_at": now},
+            dead_letter_id,
+        )
+
+    async def delete(self, dead_letter_id: str) -> int:
+        return await super().delete("webhook_dead_letters", "id = ?", dead_letter_id)

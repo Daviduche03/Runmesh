@@ -1,9 +1,10 @@
 "use client";
 
-import { useRef } from "react";
+import { useRef, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Building2Icon } from "lucide-react";
+import { DeleteConfirmModal } from "@/components/ui/delete-confirm-modal";
+import { Building2Icon, Trash2Icon } from "lucide-react";
 
 type Props = {
 	saved: boolean;
@@ -12,6 +13,7 @@ type Props = {
 
 export function GeneralTab({ saved, onSave }: Props) {
 	const fileInputRef = useRef<HTMLInputElement>(null);
+	const [showDeleteWorkspace, setShowDeleteWorkspace] = useState(false);
 
 	return (
 		<div className="grid gap-4">
@@ -19,7 +21,7 @@ export function GeneralTab({ saved, onSave }: Props) {
 				<h2 className="text-xs font-semibold tracking-wider text-muted-foreground uppercase">Workspace</h2>
 				<div className="grid gap-4">
 					<div className="flex items-center gap-3">
-						<span className="grid size-10 place-items-center rounded-lg border border-border bg-muted text-foreground">
+						<span className="grid size-10 place-items-center rounded-none border border-border bg-muted text-foreground">
 							<Building2Icon className="size-5" />
 						</span>
 						<div>
@@ -55,7 +57,7 @@ export function GeneralTab({ saved, onSave }: Props) {
 
 			<section className="grid gap-4">
 				<h2 className="text-xs font-semibold tracking-wider text-muted-foreground uppercase">Danger zone</h2>
-				<div className="flex items-center justify-between rounded-lg border border-destructive/20 bg-destructive/5 px-4 py-3">
+				<div className="flex items-center justify-between rounded-none border border-destructive/20 bg-destructive/5 px-4 py-3">
 					<div className="grid gap-0.5">
 						<p className="text-sm font-medium">Delete workspace</p>
 						<p className="text-xs text-muted-foreground">Permanently remove all tasks, runs, and settings.</p>
@@ -63,14 +65,22 @@ export function GeneralTab({ saved, onSave }: Props) {
 					<Button
 						variant="destructive"
 						size="sm"
-						onClick={() => {
-							if (window.confirm("Are you sure you want to delete this workspace? This cannot be undone.")) {}
-						}}
+						onClick={() => setShowDeleteWorkspace(true)}
 					>
+						<Trash2Icon className="size-4 me-1.5" />
 						Delete workspace
 					</Button>
 				</div>
 			</section>
+
+			<DeleteConfirmModal
+				open={showDeleteWorkspace}
+				onClose={() => setShowDeleteWorkspace(false)}
+				title="Delete workspace"
+				itemName="this workspace"
+				description="This cannot be undone. All tasks, runs, and settings will be permanently removed."
+				onConfirm={() => setShowDeleteWorkspace(false)}
+			/>
 		</div>
 	);
 }

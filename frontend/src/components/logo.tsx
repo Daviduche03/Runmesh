@@ -3,17 +3,24 @@ import { cn } from "@/lib/utils"
 
 const LogoMark = () => (
 	<>
+		<circle cx="6" cy="6" r="1.75" fill="currentColor" />
+		<circle cx="18" cy="6" r="1.75" fill="currentColor" />
+		<circle cx="6" cy="18" r="1.75" fill="currentColor" />
+		<circle cx="18" cy="18" r="1.75" fill="currentColor" />
 		<path
-			d="M7 6.2 12.8 10.2M7 12h5.8M7 17.8 12.8 13.8M18.2 12H21M20.2 10.6 21.6 12 20.2 13.4"
+			d="M6 6C10.5 9 13.5 15 18 18"
 			stroke="currentColor"
 			strokeWidth="1.5"
 			strokeLinecap="round"
-			strokeLinejoin="round"
+			fill="none"
 		/>
-		<circle cx="5.5" cy="6" r="1.75" fill="currentColor" />
-		<circle cx="5.5" cy="12" r="1.75" fill="currentColor" />
-		<circle cx="5.5" cy="18" r="1.75" fill="currentColor" />
-		<circle cx="15.5" cy="12" r="2.75" fill="currentColor" />
+		<path
+			d="M6 18C10.5 15 13.5 9 18 6"
+			stroke="currentColor"
+			strokeWidth="1.5"
+			strokeLinecap="round"
+			fill="none"
+		/>
 	</>
 )
 
