@@ -36,7 +36,7 @@ export function ApiKeysTab({ keys, loading, onAdd, onDelete }: Props) {
 					</Button>
 				</div>
 
-				<div className="rounded-lg border border-border">
+				<div className="rounded-none border border-border">
 					<Table>
 						<TableHeader>
 							<TableRow>

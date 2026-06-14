@@ -9,7 +9,7 @@ from urllib.parse import urlparse
 
 from fastapi import HTTPException
 
-from db.orm import WebhookModel
+from db.orm import WebhookModel, WebhookDeadLetterModel
 
 WEBHOOK_QUEUE_NAME = "runmesh-webhooks"
 WEBHOOK_SECRET_PREFIX = "whsec_"
@@ -237,9 +237,9 @@ async def deliver_webhook(
                 ATTEMPT_HEADER: str(delivery_attempt),
                 "user-agent": "Runmesh-Webhook/1.0",
             },
-            body=envelope,
+            body=body_bytes,
         )
-        status_code = response.status_code
+        status_code = response.status
         if status_code >= 400:
             return False, status_code, f"HTTP {status_code}"
         return True, status_code, None
@@ -303,7 +303,35 @@ async def process_webhook_queue_message(
 
     scheduled = await schedule_webhook_retry(queue, webhook_id, event, envelope, delivery_attempt)
     if not scheduled:
+        await record_dead_letter(
+            db,
+            webhook,
+            event,
+            envelope,
+            delivery_attempt,
+            status_code,
+            detail,
+        )
         print(f"Webhook {webhook_id} exhausted retries for event {event} (event id {envelope.get('id')})")
+
+
+def _queue_message_body(message) -> dict:
+    body = message.body if hasattr(message, "body") else message
+    if hasattr(body, "to_py"):
+        body = body.to_py()
+    elif hasattr(body, "as_py"):
+        body = body.as_py()
+    if isinstance(body, str):
+        body = json.loads(body)
+    if not isinstance(body, dict):
+        raise TypeError("queue message body must be a dict")
+    return body
+
+
+def _ack_message(message) -> None:
+    ack = getattr(message, "ack", None)
+    if ack:
+        ack()
 
 
 async def handle_webhook_queue_batch(
@@ -314,15 +342,13 @@ async def handle_webhook_queue_batch(
 ) -> None:
     for message in messages:
         try:
-            body = message.body if hasattr(message, "body") else message
-            if isinstance(body, str):
-                body = json.loads(body)
+            body = _queue_message_body(message)
             await process_webhook_queue_message(db, queue, fetch_fn, body)
-            await message.ack()
+            _ack_message(message)
         except Exception as e:
             print(f"Webhook queue handler error: {e}")
             try:
-                await message.ack()
+                _ack_message(message)
             except Exception:
                 pass
 
@@ -351,3 +377,112 @@ async def dispatch_event(
         queued += 1
 
     return queued
+
+
+def format_dead_letter_row(row: dict[str, Any], webhook_name: str = "") -> dict[str, Any]:
+    body_raw = row.get("body", "{}")
+    try:
+        body = json.loads(body_raw) if isinstance(body_raw, str) else body_raw
+    except json.JSONDecodeError:
+        body = {"raw": body_raw}
+
+    return {
+        "id": row["id"],
+        "webhook_id": row.get("webhook_id", ""),
+        "webhook_name": webhook_name,
+        "event": row.get("event", ""),
+        "event_id": row.get("event_id", ""),
+        "body": body,
+        "last_status_code": row.get("last_status_code"),
+        "last_error": row.get("last_error"),
+        "attempts": row.get("attempts", 0),
+        "failed_at": row.get("failed_at", ""),
+        "replayed_at": row.get("replayed_at"),
+        "created_at": row.get("created_at", ""),
+    }
+
+
+async def record_dead_letter(
+    db,
+    webhook: dict[str, Any],
+    event: str,
+    envelope: dict[str, Any],
+    attempts: int,
+    last_status_code: Optional[int],
+    last_error: str,
+) -> str:
+    model = WebhookDeadLetterModel(db)
+    now = datetime.now(timezone.utc).isoformat()
+    data = {
+        "webhook_id": webhook["id"],
+        "user_id": webhook.get("user_id", ""),
+        "event": event,
+        "event_id": envelope.get("id", ""),
+        "body": json.dumps(envelope, separators=(",", ":")),
+        "last_status_code": last_status_code,
+        "last_error": last_error,
+        "attempts": attempts,
+        "failed_at": now,
+        "created_at": now,
+    }
+    return await model.create(data)
+
+
+async def list_dead_letters(
+    model: WebhookDeadLetterModel,
+    user_id: str,
+    include_replayed: bool = False,
+) -> list[dict[str, Any]]:
+    rows = await model.find_by_user_id(user_id, include_replayed=include_replayed)
+    webhook_model = WebhookModel(model.db)
+    names: dict[str, str] = {}
+    out = []
+    for row in rows:
+        wid = row.get("webhook_id", "")
+        if wid not in names:
+            wh = await webhook_model.find_by_id(wid)
+            names[wid] = wh.get("name", "") if wh else ""
+        out.append(format_dead_letter_row(row, names[wid]))
+    return out
+
+
+async def replay_dead_letter(
+    model: WebhookDeadLetterModel,
+    queue: QueueSendFn,
+    dead_letter_id: str,
+    user_id: str,
+) -> dict[str, Any]:
+    row = await model.find_by_id(dead_letter_id)
+    if not row or row.get("user_id") != user_id:
+        raise HTTPException(status_code=404, detail="Dead letter not found")
+    if row.get("replayed_at"):
+        raise HTTPException(status_code=400, detail="Dead letter already replayed")
+
+    body_raw = row.get("body", "{}")
+    try:
+        envelope = json.loads(body_raw) if isinstance(body_raw, str) else body_raw
+    except json.JSONDecodeError:
+        raise HTTPException(status_code=400, detail="Dead letter body is invalid")
+
+    webhook_id = row.get("webhook_id", "")
+    event = row.get("event", "")
+    await enqueue_webhook_delivery(queue, webhook_id, event, envelope, delivery_attempt=1)
+    await model.mark_replayed(dead_letter_id)
+
+    webhook_model = WebhookModel(model.db)
+    wh = await webhook_model.find_by_id(webhook_id)
+    webhook_name = wh.get("name", "") if wh else ""
+    updated = {**row, "replayed_at": datetime.now(timezone.utc).isoformat()}
+    return format_dead_letter_row(updated, webhook_name)
+
+
+async def dismiss_dead_letter(
+    model: WebhookDeadLetterModel,
+    dead_letter_id: str,
+    user_id: str,
+) -> str:
+    row = await model.find_by_id(dead_letter_id)
+    if not row or row.get("user_id") != user_id:
+        raise HTTPException(status_code=404, detail="Dead letter not found")
+    await model.delete(dead_letter_id)
+    return dead_letter_id

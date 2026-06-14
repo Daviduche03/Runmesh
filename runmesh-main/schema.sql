@@ -25,7 +25,9 @@ CREATE TABLE IF NOT EXISTS tasks (
   created_at TEXT NOT NULL,
   updated_at TEXT NOT NULL,
   user_id TEXT NOT NULL,
-  workflow_id TEXT
+  workflow_id TEXT,
+  payload_template TEXT,
+  url_template TEXT
 );
 
 CREATE TABLE IF NOT EXISTS api_keys (
@@ -52,4 +54,19 @@ CREATE TABLE IF NOT EXISTS webhooks (
   user_id TEXT NOT NULL,
   created_at TEXT NOT NULL,
   updated_at TEXT NOT NULL
+);
+
+CREATE TABLE IF NOT EXISTS webhook_dead_letters (
+  id TEXT PRIMARY KEY,
+  webhook_id TEXT NOT NULL,
+  user_id TEXT NOT NULL,
+  event TEXT NOT NULL,
+  event_id TEXT NOT NULL,
+  body TEXT NOT NULL,
+  last_status_code INTEGER,
+  last_error TEXT,
+  attempts INTEGER NOT NULL,
+  failed_at TEXT NOT NULL,
+  replayed_at TEXT,
+  created_at TEXT NOT NULL
 );

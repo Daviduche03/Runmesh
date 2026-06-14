@@ -10,7 +10,7 @@ const footerSections = [
 
 export function Footer() {
 	return (
-		<footer className="border-t border-[#1f2227] py-12">
+		<footer className="border-t border-[#1f2227] py-16 lg:py-20">
 			<div className={`${narrowContainer} grid gap-10 lg:grid-cols-[1.4fr_repeat(3,1fr)]`}>
 				<div>
 					<Link to="/" className="flex items-center gap-2.5 text-[14px] text-white no-underline">

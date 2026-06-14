@@ -11,20 +11,37 @@ import {
 	TableHeader,
 	TableRow,
 } from "@/components/ui/table";
-import { PlusIcon, Trash2Icon, CopyIcon, CheckIcon, RefreshCwIcon, Loader2Icon } from "lucide-react";
+import { PlusIcon, Trash2Icon, CopyIcon, CheckIcon, RefreshCwIcon, Loader2Icon, RotateCcwIcon } from "lucide-react";
 import { useState } from "react";
-import type { Webhook } from "@/stores/webhooks-store";
+import type { Webhook, WebhookDeadLetter } from "@/stores/webhooks-store";
 
 type Props = {
 	webhooks: Webhook[];
+	deadLetters: WebhookDeadLetter[];
 	loading: boolean;
+	dlqLoading: boolean;
 	rotating: boolean;
+	replaying: string | null;
 	onAdd: () => void;
 	onDelete: (id: string, name: string) => void;
 	onRotate: (id: string) => Promise<string | null>;
+	onReplayDeadLetter: (id: string) => Promise<void>;
+	onDismissDeadLetter: (id: string, name: string) => void;
 };
 
-export function WebhooksTab({ webhooks, loading, rotating, onAdd, onDelete, onRotate }: Props) {
+export function WebhooksTab({
+	webhooks,
+	deadLetters,
+	loading,
+	dlqLoading,
+	rotating,
+	replaying,
+	onAdd,
+	onDelete,
+	onRotate,
+	onReplayDeadLetter,
+	onDismissDeadLetter,
+}: Props) {
 	const [selectedId, setSelectedId] = useState<string | null>(null);
 	const [revealedSecret, setRevealedSecret] = useState<string | null>(null);
 	const [copied, setCopied] = useState(false);
@@ -62,7 +79,7 @@ export function WebhooksTab({ webhooks, loading, rotating, onAdd, onDelete, onRo
 					</Button>
 				</div>
 
-				<div className="rounded-lg border border-border">
+				<div className="rounded-none border border-border">
 					<Table>
 						<TableHeader>
 							<TableRow>
@@ -138,7 +155,7 @@ export function WebhooksTab({ webhooks, loading, rotating, onAdd, onDelete, onRo
 			</section>
 
 			{selected && (
-				<section className="grid gap-4 rounded-lg border border-border p-4">
+				<section className="grid gap-4 rounded-none border border-border p-4">
 					<h2 className="text-sm font-semibold tracking-wider text-muted-foreground uppercase">
 						Signing secret — {selected.name}
 					</h2>
@@ -172,6 +189,85 @@ export function WebhooksTab({ webhooks, loading, rotating, onAdd, onDelete, onRo
 					</div>
 				</section>
 			)}
+
+			<section className="grid gap-4">
+				<div>
+					<h2 className="text-sm font-semibold tracking-wider text-muted-foreground uppercase">Dead letters</h2>
+					<p className="text-xs text-muted-foreground mt-1">
+						Events that failed after all delivery retries. Replay or dismiss.
+					</p>
+				</div>
+				<div className="rounded-none border border-border">
+					<Table>
+						<TableHeader>
+							<TableRow>
+								<TableHead className="ps-6">Webhook</TableHead>
+								<TableHead>Event</TableHead>
+								<TableHead>Error</TableHead>
+								<TableHead>Failed</TableHead>
+								<TableHead className="pe-6 text-right">Actions</TableHead>
+							</TableRow>
+						</TableHeader>
+						<TableBody>
+							{dlqLoading ? (
+								<>
+									{Array.from({ length: 2 }).map((_, i) => (
+										<TableRow className="h-12" key={i}>
+											<TableCell className="ps-6"><Skeleton className="h-4 w-24" /></TableCell>
+											<TableCell><Skeleton className="h-4 w-20" /></TableCell>
+											<TableCell><Skeleton className="h-4 w-32" /></TableCell>
+											<TableCell><Skeleton className="h-4 w-20" /></TableCell>
+											<TableCell className="pe-6"><Skeleton className="h-4 w-16 ms-auto" /></TableCell>
+										</TableRow>
+									))}
+								</>
+							) : deadLetters.length === 0 ? (
+								<TableRow>
+									<TableCell colSpan={5} className="text-center py-8 text-sm text-muted-foreground">
+										No failed deliveries.
+									</TableCell>
+								</TableRow>
+							) : (
+								deadLetters.map((item) => (
+									<TableRow className="h-12" key={item.id}>
+										<TableCell className="ps-6 font-medium">{item.webhook_name || item.webhook_id}</TableCell>
+										<TableCell className="text-sm text-muted-foreground">{item.event}</TableCell>
+										<TableCell className="max-w-48 truncate text-sm text-muted-foreground">
+											{item.last_status_code ? `HTTP ${item.last_status_code}` : item.last_error}
+										</TableCell>
+										<TableCell className="text-sm text-muted-foreground">
+											{new Date(item.failed_at).toLocaleString()}
+										</TableCell>
+										<TableCell className="pe-6 text-right">
+											<div className="flex justify-end gap-1">
+												<Button
+													variant="ghost"
+													size="icon-sm"
+													disabled={replaying === item.id}
+													onClick={() => onReplayDeadLetter(item.id)}
+												>
+													{replaying === item.id ? (
+														<Loader2Icon className="size-4 animate-spin" />
+													) : (
+														<RotateCcwIcon className="size-4 text-muted-foreground" />
+													)}
+												</Button>
+												<Button
+													variant="ghost"
+													size="icon-sm"
+													onClick={() => onDismissDeadLetter(item.id, item.webhook_name || item.webhook_id)}
+												>
+													<Trash2Icon className="size-4 text-muted-foreground" />
+												</Button>
+											</div>
+										</TableCell>
+									</TableRow>
+								))
+							)}
+						</TableBody>
+					</Table>
+				</div>
+			</section>
 		</div>
 	);
 }

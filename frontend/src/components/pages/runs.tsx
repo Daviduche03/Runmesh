@@ -15,12 +15,14 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { Modal } from "@/components/ui/modal";
 import {
 	DropdownMenu,
-	DropdownMenuTrigger,
 	DropdownMenuContent,
+	DropdownMenuItem,
 	DropdownMenuRadioGroup,
 	DropdownMenuRadioItem,
+	DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { SearchIcon, ActivityIcon, Loader2Icon, PlusIcon, FilterIcon } from "lucide-react";
+import { SearchIcon, ActivityIcon, Loader2Icon, PlusIcon, FilterIcon, MoreVerticalIcon, CopyIcon, CheckIcon, Trash2Icon } from "lucide-react";
+import { DeleteConfirmModal } from "@/components/ui/delete-confirm-modal";
 import { useRunsStore, type Task } from "@/stores/runs-store";
 import EmptyState from "@/components/empty-state"
 
@@ -51,6 +53,7 @@ function RunSkeletonRow() {
 			<TableCell><Skeleton className="h-4 w-24" /></TableCell>
 			<TableCell><Skeleton className="h-4 w-12" /></TableCell>
 			<TableCell className="pe-6"><Skeleton className="h-4 w-8 ms-auto" /></TableCell>
+			<TableCell className="pe-6"><Skeleton className="h-4 w-8 ms-auto" /></TableCell>
 		</TableRow>
 	);
 }
@@ -66,12 +69,22 @@ export function RunsPage() {
 	const setPage = useRunsStore((s) => s.setPage);
 	const fetch = useRunsStore((s) => s.fetch);
 	const createTask = useRunsStore((s) => s.createTask);
+	const removeTask = useRunsStore((s) => s.remove);
+	const deleting = useRunsStore((s) => s.deleting);
 
 	const [modalOpen, setModalOpen] = useState(false);
 	const [url, setUrl] = useState("");
 	const [payload, setPayload] = useState("{}");
 	const [trigger, setTrigger] = useState("webhook");
 	const [error, setError] = useState("");
+	const [copied, setCopied] = useState<string | null>(null);
+	const [deleteTarget, setDeleteTarget] = useState<{ id: string; name: string } | null>(null);
+
+	const copyValue = (key: string, value: string) => {
+		navigator.clipboard.writeText(value);
+		setCopied(key);
+		setTimeout(() => setCopied(null), 2000);
+	};
 
 	useEffect(() => {
 		fetch();
@@ -130,7 +143,7 @@ export function RunsPage() {
 
 				<DropdownMenu>
 					<DropdownMenuTrigger asChild>
-						<Button variant="outline" size="sm" className="h-9 gap-2">
+						<Button variant="outline" size="sm" className="gap-2">
 							<FilterIcon className="size-3.5" />
 							{statusFilter ? statuses.find((s) => s.value === statusFilter)?.label ?? "Status" : "Status"}
 						</Button>
@@ -147,7 +160,7 @@ export function RunsPage() {
 				</DropdownMenu>
 			</div>
 
-			<div className="rounded-lg border border-border">
+			<div className="rounded-none border border-border">
 				<Table>
 					<TableHeader>
 						<TableRow>
@@ -156,7 +169,8 @@ export function RunsPage() {
 							<TableHead>Status</TableHead>
 							<TableHead>Scheduled</TableHead>
 							<TableHead>Duration</TableHead>
-							<TableHead className="pe-6 text-right">Retries</TableHead>
+							<TableHead className="text-right tabular-nums">Retries</TableHead>
+							<TableHead className="pe-6 text-right">Actions</TableHead>
 						</TableRow>
 					</TableHeader>
 					<TableBody>
@@ -170,7 +184,7 @@ export function RunsPage() {
 							</>
 						) : tasks.length === 0 ? (
 							<TableRow>
-								<TableCell colSpan={6} className="text-center py-8">
+								<TableCell colSpan={7} className="text-center py-8">
 									<EmptyState
 										title="No runs yet"
 										description="Create your first task or workflow to see runs here."
@@ -199,14 +213,50 @@ export function RunsPage() {
 										<TableCell className="tablular-nums text-muted-foreground text-sm">
 											{run.duration ?? "—"}
 										</TableCell>
-										<TableCell className="pe-6 text-right tabular-nums text-muted-foreground text-sm">
+										<TableCell className="text-right tabular-nums text-muted-foreground text-sm">
 											{run.retries}
+										</TableCell>
+										<TableCell className="pe-6 text-right">
+											<DropdownMenu>
+												<DropdownMenuTrigger asChild>
+													<Button variant="ghost" size="icon-sm">
+														<MoreVerticalIcon className="size-4 text-muted-foreground" />
+													</Button>
+												</DropdownMenuTrigger>
+												<DropdownMenuContent align="end" className="min-w-40">
+													<DropdownMenuItem onClick={() => copyValue(`id-${run.id}`, run.id)}>
+														{copied === `id-${run.id}` ? (
+															<CheckIcon className="size-4 text-emerald-400" />
+														) : (
+															<CopyIcon className="size-4" />
+														)}
+														Copy task ID
+													</DropdownMenuItem>
+													{run.endpoint ? (
+														<DropdownMenuItem onClick={() => copyValue(`endpoint-${run.id}`, run.endpoint)}>
+															{copied === `endpoint-${run.id}` ? (
+																<CheckIcon className="size-4 text-emerald-400" />
+															) : (
+																<CopyIcon className="size-4" />
+															)}
+															Copy endpoint
+														</DropdownMenuItem>
+													) : null}
+													<DropdownMenuItem
+														variant="destructive"
+														onClick={() => setDeleteTarget({ id: run.id, name: run.id.slice(0, 8) })}
+													>
+														<Trash2Icon className="size-4" />
+														Delete run
+													</DropdownMenuItem>
+												</DropdownMenuContent>
+											</DropdownMenu>
 										</TableCell>
 									</TableRow>
 								))}
 								{loading && (
 									<TableRow>
-										<TableCell colSpan={6} className="text-center py-3 text-muted-foreground text-sm">
+										<TableCell colSpan={7} className="text-center py-3 text-muted-foreground text-sm">
 											<Loader2Icon className="size-4 inline animate-spin me-2" />
 											Loading more...
 										</TableCell>
@@ -256,7 +306,7 @@ export function RunsPage() {
 					<div className="grid gap-1.5">
 						<label className="text-sm font-medium">Trigger</label>
 						<select
-							className="flex h-9 w-full rounded-lg border border-input bg-background px-3 py-1 text-sm focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
+							className="flex h-9 w-full rounded-none border border-input bg-background px-3 py-1 text-sm focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
 							value={trigger}
 							onChange={(e) => setTrigger(e.target.value)}
 						>
@@ -269,7 +319,7 @@ export function RunsPage() {
 					<div className="grid gap-1.5">
 						<label className="text-sm font-medium">Payload (JSON)</label>
 						<textarea
-							className="flex min-h-24 w-full rounded-lg border border-input bg-background px-3 py-2 text-sm font-mono focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
+							className="flex min-h-24 w-full rounded-none border border-input bg-background px-3 py-2 text-sm font-mono focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
 							value={payload}
 							onChange={(e) => setPayload(e.target.value)}
 						/>
@@ -290,6 +340,20 @@ export function RunsPage() {
 					</div>
 				</form>
 			</Modal>
+
+			<DeleteConfirmModal
+				open={!!deleteTarget}
+				onClose={() => setDeleteTarget(null)}
+				title="Delete run"
+				itemName={deleteTarget?.name ?? ""}
+				description="This task run will be permanently removed."
+				onConfirm={async () => {
+					if (!deleteTarget) return;
+					const ok = await removeTask(deleteTarget.id);
+					if (ok) setDeleteTarget(null);
+				}}
+				confirming={deleting}
+			/>
 		</div>
 	);
 }

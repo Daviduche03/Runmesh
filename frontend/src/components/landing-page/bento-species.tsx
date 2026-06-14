@@ -1,3 +1,4 @@
+import { sectionPadding } from "./constants"
 import { PurposeVisual } from "./visuals/purpose-visual"
 import { AgentsVisual } from "./visuals/agents-visual"
 import { SpeedVisual } from "./visuals/speed-visual"
@@ -29,7 +30,7 @@ const bentoCards = [
 
 export function BentoSpecies() {
 	return (
-		<section id="features" className="scroll-mt-14 border-b border-[#15181d] py-16">
+		<section id="features" className={`scroll-mt-14 border-b border-[#15181d] ${sectionPadding}`}>
 			<div className="mx-auto w-[min(1256px,calc(100%_-_48px))]">
 				<motion.h2
 					initial={{ opacity: 0, y: 24 }}

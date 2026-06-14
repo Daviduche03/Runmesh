@@ -1,3 +1,4 @@
+import uuid
 from datetime import datetime, timezone
 from typing import List, Dict, Any
 from db.orm import TaskModel
@@ -77,8 +78,6 @@ class TaskScheduler:
         Returns:
             Task ID
         """
-        import uuid
-        
         task_id = str(uuid.uuid4())
         now = datetime.now(timezone.utc).isoformat()
         
@@ -86,7 +85,7 @@ class TaskScheduler:
             "id": task_id,
             "type": task_data.get("type", "task"),
             "payload": task_data.get("payload", {}),
-            "url": task_data["url"],
+            "url": task_data.get("url", ""),
             "status": "queued",
             "retries": 0,
             "max_retries": task_data.get("max_retries", 5),
@@ -96,8 +95,12 @@ class TaskScheduler:
             "created_at": now,
             "updated_at": now,
             "user_id": task_data["user_id"],
-            "workflow_id": task_data.get("workflow_id")
+            "workflow_id": task_data.get("workflow_id"),
         }
+        if task_data.get("payload_template"):
+            full_task_data["payload_template"] = task_data["payload_template"]
+        if task_data.get("url_template"):
+            full_task_data["url_template"] = task_data["url_template"]
         
         await self.task_model.create(full_task_data)
         return task_id

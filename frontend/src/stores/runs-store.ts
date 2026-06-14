@@ -1,5 +1,5 @@
 import { create } from "zustand";
-import { apiGet, apiPost } from "@/lib/api";
+import { apiGet, apiPost, apiDelete } from "@/lib/api";
 
 const STALE_MS = 30_000;
 
@@ -28,6 +28,7 @@ type RunsState = {
 	total: number;
 	loading: boolean;
 	creating: boolean;
+	deleting: boolean;
 	fetchedAt: number | null;
 	statusFilter: string | null;
 	page: number;
@@ -35,6 +36,7 @@ type RunsState = {
 	setPage: (page: number) => void;
 	fetch: () => Promise<void>;
 	createTask: (data: CreateTaskPayload) => Promise<void>;
+	remove: (id: string) => Promise<boolean>;
 	updateTaskStatus: (taskId: string, status: RunnableStatus) => void;
 };
 
@@ -43,6 +45,7 @@ export const useRunsStore = create<RunsState>((set, get) => ({
 	total: 0,
 	loading: false,
 	creating: false,
+	deleting: false,
 	fetchedAt: null,
 	statusFilter: null,
 	page: 1,
@@ -81,6 +84,19 @@ export const useRunsStore = create<RunsState>((set, get) => ({
 		} catch {
 			set({ creating: false });
 			throw new Error("Failed to create task");
+		}
+	},
+
+	remove: async (id: string) => {
+		set({ deleting: true });
+		try {
+			await apiDelete(`/api/v1/tasks/${id}`);
+			set({ deleting: false, fetchedAt: null });
+			await get().fetch();
+			return true;
+		} catch {
+			set({ deleting: false });
+			return false;
 		}
 	},
 

@@ -20,7 +20,11 @@ export function LinearLanding() {
 	}, [hash])
 
 	return (
-		<main className="min-h-screen overflow-x-hidden bg-[#08090a] font-[var(--font-regular)] text-white">
+		<main className="relative min-h-screen overflow-x-hidden bg-[#08090a] font-[var(--font-regular)] text-white">
+			<div
+				aria-hidden
+				className="pointer-events-none absolute left-0 top-0 z-0 h-[520px] w-[720px] bg-[radial-gradient(ellipse_at_top_left,rgba(255,255,255,0.08)_0%,rgba(255,255,255,0.03)_40%,transparent_72%)]"
+			/>
 			<Header />
 			<Hero />
 			<CustomerSection />

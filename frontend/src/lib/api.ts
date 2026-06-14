@@ -78,6 +78,24 @@ export async function apiPost<T = unknown>(path: string, body?: unknown): Promis
 	return handleResponse<T>(res);
 }
 
+export async function apiPatch<T = unknown>(path: string, body?: unknown): Promise<ApiResponse<T>> {
+	const res = await fetch(`${API_BASE}${path}`, {
+		method: "PATCH",
+		headers: getHeaders(),
+		body: body !== undefined ? JSON.stringify(body) : undefined,
+	});
+	return handleResponse<T>(res);
+}
+
+export async function apiPut<T = unknown>(path: string, body?: unknown): Promise<ApiResponse<T>> {
+	const res = await fetch(`${API_BASE}${path}`, {
+		method: "PUT",
+		headers: getHeaders(),
+		body: body !== undefined ? JSON.stringify(body) : undefined,
+	});
+	return handleResponse<T>(res);
+}
+
 export async function apiDelete<T = unknown>(path: string): Promise<ApiResponse<T>> {
 	const res = await fetch(`${API_BASE}${path}`, {
 		method: "DELETE",

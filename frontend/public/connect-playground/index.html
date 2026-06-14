@@ -1,0 +1,202 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Connect Playground · Runmesh</title>
+    <link rel="stylesheet" href="./playground.css" />
+  </head>
+  <body>
+    <div class="page">
+      <header class="page-header">
+        <h1>Connect Playground</h1>
+        <p>Two independent apps, one user — test portable identity, OAuth connect, and grant flows.</p>
+      </header>
+
+      <details>
+        <summary>Test checklist</summary>
+        <div class="details-body">
+          <ol class="checklist">
+            <li>Log into the Runmesh dashboard on this origin, or paste a developer JWT below.</li>
+            <li>Create demo apps (or pick existing ones) and confirm redirect URIs match the callback pages.</li>
+            <li>Authenticate App A with your email and OTP code from wrangler logs (<code>[connect-otp]</code>).</li>
+            <li>Authenticate App B with the same email — confirm the banner shows the same <code>connect_user_id</code>.</li>
+            <li>Run <strong>Connect Google</strong> on App A, finish OAuth, land on callback-a.</li>
+            <li>Run <strong>Grant scopes</strong> on App B — should reuse the Google connection (consent screen).</li>
+            <li>Use <strong>List grants</strong> on each app and verify grants in Settings → Connect.</li>
+          </ol>
+        </div>
+      </details>
+
+      <section class="setup">
+        <div class="setup-row two">
+          <div>
+            <label for="input-api-base">API base URL</label>
+            <input id="input-api-base" type="url" value="http://localhost:8787" />
+          </div>
+          <div>
+            <label for="input-token">Developer JWT (optional if logged into dashboard)</label>
+            <input id="input-token" type="password" placeholder="Uses runmesh-token from dashboard when available" />
+          </div>
+        </div>
+        <div class="btn-row">
+          <button type="button" id="btn-use-dashboard-token">Use dashboard token</button>
+          <button type="button" id="btn-create-apps" class="primary">Create demo apps</button>
+          <button type="button" id="btn-load-apps">Load my connect apps</button>
+          <a href="/dashboard">Open dashboard</a>
+        </div>
+        <p id="setup-status" class="hint"></p>
+        <div class="setup-row two">
+          <div>
+            <label for="select-app-a">Assign App A from existing</label>
+            <select id="select-app-a">
+              <option value="">Select existing app…</option>
+            </select>
+          </div>
+          <div>
+            <label for="select-app-b">Assign App B from existing</label>
+            <select id="select-app-b">
+              <option value="">Select existing app…</option>
+            </select>
+          </div>
+        </div>
+      </section>
+
+      <div id="identity-banner" class="identity-banner pending">
+        Authenticate in both apps with the same email to verify portable identity.
+      </div>
+
+      <div class="apps">
+        <article class="app-panel" data-app="a">
+          <div class="app-panel-header">
+            <h2>App A · TaskFlow</h2>
+            <p>First-party demo app — connect Google here.</p>
+          </div>
+          <div class="app-panel-body">
+            <div>
+              <p class="section-title">Configuration</p>
+              <label for="input-app-a">App ID</label>
+              <input id="input-app-a" type="text" placeholder="Connect app UUID" />
+              <label for="input-external-a">External user ID</label>
+              <input id="input-external-a" type="text" />
+              <label for="input-email-a">Email</label>
+              <input id="input-email-a" type="email" placeholder="you@example.com" />
+              <label for="input-scopes-a">Google scopes (comma-separated)</label>
+              <input id="input-scopes-a" type="text" value="gmail.readonly, drive.readonly" />
+            </div>
+
+            <div>
+              <p class="section-title">Status</p>
+              <div class="status-grid">
+                <div><span>App ID</span><span id="status-app-a" class="empty">—</span></div>
+                <div><span>External user</span><span id="status-external-a">—</span></div>
+                <div><span>connect_user_id</span><span id="status-user-a">—</span></div>
+                <div><span>Challenge</span><span id="status-challenge-a">—</span></div>
+                <div><span>Redirect URI</span><span id="status-redirect-a">—</span></div>
+                <div><span>Registered URIs</span><span id="status-allowed-a">—</span></div>
+              </div>
+              <p id="redirect-warn-a" class="redirect-warn" hidden></p>
+            </div>
+
+            <div>
+              <p class="section-title">1 · Authenticate (OTP)</p>
+              <div class="btn-row">
+                <button type="button" id="btn-otp-a" class="primary">Send OTP</button>
+                <button type="button" id="btn-resend-a">Resend</button>
+              </div>
+              <label for="input-otp-a">OTP code</label>
+              <input id="input-otp-a" type="text" inputmode="numeric" placeholder="6-digit code" />
+              <div class="btn-row">
+                <button type="button" id="btn-verify-a">Verify OTP</button>
+              </div>
+              <p class="hint">In local dev, OTP is logged in wrangler as <code>[connect-otp]</code>.</p>
+            </div>
+
+            <div>
+              <p class="section-title">2 · Provider access</p>
+              <div class="btn-row">
+                <button type="button" id="btn-connect-a">Connect Google</button>
+                <button type="button" id="btn-grant-a">Grant scopes</button>
+                <button type="button" id="btn-grants-a">List grants</button>
+              </div>
+            </div>
+
+            <div>
+              <p class="section-title">Log</p>
+              <pre id="log-a" class="log"></pre>
+              <div class="btn-row">
+                <button type="button" id="btn-clear-a" class="destructive">Reset App A state</button>
+              </div>
+            </div>
+          </div>
+        </article>
+
+        <article class="app-panel" data-app="b">
+          <div class="app-panel-header">
+            <h2>App B · NotePad</h2>
+            <p>Second demo app — grant scopes after App A connects Google.</p>
+          </div>
+          <div class="app-panel-body">
+            <div>
+              <p class="section-title">Configuration</p>
+              <label for="input-app-b">App ID</label>
+              <input id="input-app-b" type="text" placeholder="Connect app UUID" />
+              <label for="input-external-b">External user ID</label>
+              <input id="input-external-b" type="text" />
+              <label for="input-email-b">Email</label>
+              <input id="input-email-b" type="email" placeholder="Same email as App A" />
+              <label for="input-scopes-b">Google scopes (comma-separated)</label>
+              <input id="input-scopes-b" type="text" value="gmail.readonly, drive.readonly" />
+            </div>
+
+            <div>
+              <p class="section-title">Status</p>
+              <div class="status-grid">
+                <div><span>App ID</span><span id="status-app-b" class="empty">—</span></div>
+                <div><span>External user</span><span id="status-external-b">—</span></div>
+                <div><span>connect_user_id</span><span id="status-user-b">—</span></div>
+                <div><span>Challenge</span><span id="status-challenge-b">—</span></div>
+                <div><span>Redirect URI</span><span id="status-redirect-b">—</span></div>
+                <div><span>Registered URIs</span><span id="status-allowed-b">—</span></div>
+              </div>
+              <p id="redirect-warn-b" class="redirect-warn" hidden></p>
+            </div>
+
+            <div>
+              <p class="section-title">1 · Authenticate (OTP)</p>
+              <div class="btn-row">
+                <button type="button" id="btn-otp-b" class="primary">Send OTP</button>
+                <button type="button" id="btn-resend-b">Resend</button>
+              </div>
+              <label for="input-otp-b">OTP code</label>
+              <input id="input-otp-b" type="text" inputmode="numeric" placeholder="6-digit code" />
+              <div class="btn-row">
+                <button type="button" id="btn-verify-b">Verify OTP</button>
+              </div>
+            </div>
+
+            <div>
+              <p class="section-title">2 · Provider access</p>
+              <div class="btn-row">
+                <button type="button" id="btn-connect-b">Connect Google</button>
+                <button type="button" id="btn-grant-b">Grant scopes</button>
+                <button type="button" id="btn-grants-b">List grants</button>
+              </div>
+            </div>
+
+            <div>
+              <p class="section-title">Log</p>
+              <pre id="log-b" class="log"></pre>
+              <div class="btn-row">
+                <button type="button" id="btn-clear-b" class="destructive">Reset App B state</button>
+              </div>
+            </div>
+          </div>
+        </article>
+      </div>
+    </div>
+
+    <script src="./playground.js"></script>
+    <script src="./index.js"></script>
+  </body>
+</html>
