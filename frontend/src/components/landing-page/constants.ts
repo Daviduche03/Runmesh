@@ -5,7 +5,7 @@ export const sectionPadding = "py-24 lg:py-32"
 export const headerNavLinks = [
 	{ label: "Task API", id: "task-api" },
 	{ label: "Features", id: "features" },
-	{ label: "Lifecycle", id: "lifecycle" },
+	{ label: "Workflows", id: "lifecycle" },
 	{ label: "Platform", id: "platform" },
 	{ label: "Contact", id: "contact" },
 ] as const

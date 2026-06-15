@@ -60,6 +60,35 @@ async def _set_workflow_status(workflow_model: WorkflowModel, workflow_id: str, 
     )
 
 
+async def recover_stale_workflow_runs(env) -> int:
+    task_model = TaskModel(env.DB)
+    run_model = WorkflowRunModel(env.DB)
+    workflow_model = WorkflowModel(env.DB)
+    runs = await run_model.list_running()
+    recovered = 0
+    now = datetime.now(timezone.utc).isoformat()
+
+    for run in runs:
+        workflow_id = str(run["workflow_id"])
+        tasks = await task_model.list_by_workflow_id(workflow_id)
+        in_flight = any(
+            (t.get("status") or "").lower() in ("queued", "running", "dispatched")
+            for t in tasks
+        )
+        if in_flight:
+            continue
+        await run_model.update(
+            "workflow_runs",
+            "id = ?",
+            {"status": "failed", "completed_at": now},
+            str(run["id"]),
+        )
+        await _set_workflow_status(workflow_model, workflow_id, "failed")
+        recovered += 1
+
+    return recovered
+
+
 async def list_workflow_runs(env, user_id: str, workflow_id: str) -> list[dict[str, Any]]:
     workflow_model = WorkflowModel(env.DB)
     workflow = await workflow_model.find_by_id(workflow_id)

@@ -98,6 +98,9 @@ class TaskModel(Model):
         """Find task by ID"""
         return await self.find_one('tasks', 'id = ?', task_id)
 
+    async def find_by_idempotency_key(self, user_id: str, idempotency_key: str) -> Optional[Dict[str, Any]]:
+        return await self.find_one('tasks', 'user_id = ? AND idempotency_key = ?', user_id, idempotency_key)
+
     async def list_by_workflow_id(self, workflow_id: str) -> List[Dict[str, Any]]:
         return await self.find_many('tasks', 'workflow_id = ? ORDER BY step_order ASC, created_at ASC', workflow_id)
 
@@ -151,7 +154,8 @@ class TaskModel(Model):
         now = datetime.now(timezone.utc).isoformat()
         query = """
             UPDATE tasks
-            SET status = ?, updated_at = ?, response_body = ?, response_status = ?, retries = retries + 1
+            SET status = ?, updated_at = ?, response_body = ?, response_status = ?,
+                retries = retries + CASE WHEN ? = 'failed' THEN 1 ELSE 0 END
             WHERE id = ?
         """
         result = await self.db.prepare(query).bind(
@@ -159,6 +163,7 @@ class TaskModel(Model):
             now,
             response_body,
             response_status,
+            status,
             task_id,
         ).run()
         return result.meta.changes or 0
@@ -218,6 +223,9 @@ class WorkflowRunModel(Model):
             "workflow_id = ? AND status = 'running'",
             workflow_id,
         )
+
+    async def list_running(self) -> List[Dict[str, Any]]:
+        return await self.find_many("workflow_runs", "status = 'running'")
 
     async def delete_by_workflow_id(self, workflow_id: str) -> int:
         return await super().delete("workflow_runs", "workflow_id = ?", workflow_id)

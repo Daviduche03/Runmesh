@@ -45,17 +45,26 @@ async def create_task(task: TaskPublish, env, user_id: str) -> dict:
     task_model = TaskModel(env.DB)
     if not task.url and not task.url_template:
         raise HTTPException(status_code=400, detail="url or url_template is required")
+
+    idempotency_key = (task.idempotency_key or "").strip()
+    if idempotency_key:
+        existing = await task_model.find_by_idempotency_key(user_id, idempotency_key)
+        if existing:
+            return success({"task_id": existing["id"]}, message="Task already queued")
+
     task_data = {
         "type": task.type,
         "payload": json.dumps(task.payload),
         "url": task.url or "",
         "status": "queued",
         "retries": 0,
-        "max_retries": 5,
+        "max_retries": task.max_retries,
         "scheduled_at": task.scheduled_at if task.scheduled_at else datetime.now(timezone.utc).isoformat(),
         "execution_type": task.execution_type,
         "user_id": user_id,
     }
+    if idempotency_key:
+        task_data["idempotency_key"] = idempotency_key
     apply_task_templates(task_data, task.payload_template, task.url_template)
     if task.workflow_id:
         workflow_model = WorkflowModel(env.DB)
@@ -79,6 +88,8 @@ async def create_workflow(workflow: WorkflowCreate, env, user_id: str) -> dict:
     workflow_model = WorkflowModel(env.DB)
     task_model = TaskModel(env.DB)
     tasks = workflow.tasks or []
+    if not tasks:
+        raise HTTPException(status_code=400, detail="Workflow must include at least one task")
 
     trigger_config_raw = workflow.trigger_config
     if trigger_config_raw is not None and not isinstance(trigger_config_raw, str):
@@ -99,24 +110,29 @@ async def create_workflow(workflow: WorkflowCreate, env, user_id: str) -> dict:
     }
     workflow_id = await workflow_model.create(workflow_data)
 
-    for index, task in enumerate(tasks):
-        if not task.url and not task.url_template:
-            raise HTTPException(status_code=400, detail="Each workflow task needs url or url_template")
-        task_data = {
-            "type": task.type,
-            "payload": json.dumps(task.payload),
-            "url": task.url or "",
-            "status": "pending",
-            "retries": 0,
-            "max_retries": 5,
-            "scheduled_at": task.scheduled_at if task.scheduled_at else datetime.now(timezone.utc).isoformat(),
-            "execution_type": task.execution_type,
-            "user_id": user_id,
-            "workflow_id": workflow_id,
-            "step_order": index,
-        }
-        apply_task_templates(task_data, task.payload_template, task.url_template)
-        await task_model.create(task_data)
+    try:
+        for index, task in enumerate(tasks):
+            if not task.url and not task.url_template:
+                raise HTTPException(status_code=400, detail="Each workflow task needs url or url_template")
+            task_data = {
+                "type": task.type,
+                "payload": json.dumps(task.payload),
+                "url": task.url or "",
+                "status": "pending",
+                "retries": 0,
+                "max_retries": 5,
+                "scheduled_at": task.scheduled_at if task.scheduled_at else datetime.now(timezone.utc).isoformat(),
+                "execution_type": task.execution_type,
+                "user_id": user_id,
+                "workflow_id": workflow_id,
+                "step_order": index,
+            }
+            apply_task_templates(task_data, task.payload_template, task.url_template)
+            await task_model.create(task_data)
+    except HTTPException:
+        await task_model.delete_by_workflow_id(workflow_id)
+        await workflow_model.delete_workflow(workflow_id)
+        raise
 
     return success({"workflow_id": workflow_id}, message="Workflow created")
 
@@ -204,6 +220,17 @@ async def delete_workflow(env, user_id: str, workflow_id: str) -> dict:
     workflow = await workflow_model.find_by_id(workflow_id)
     if not workflow or workflow.get("user_id") != user_id:
         raise HTTPException(status_code=404, detail="Workflow not found")
+
+    active = await run_model.find_active_for_workflow(workflow_id)
+    if active:
+        tasks = await task_model.list_by_workflow_id(workflow_id)
+        in_flight = any(
+            (t.get("status") or "").lower() in ("queued", "running", "dispatched")
+            for t in tasks
+        )
+        if in_flight:
+            raise HTTPException(status_code=409, detail="Cannot delete workflow while a run is in progress")
+
     await task_model.delete_by_workflow_id(workflow_id)
     await run_model.delete_by_workflow_id(workflow_id)
     deleted = await workflow_model.delete_workflow(workflow_id)
@@ -217,6 +244,19 @@ async def delete_task(env, user_id: str, task_id: str) -> dict:
     task = await task_model.find_by_id(task_id)
     if not task or task.get("user_id") != user_id:
         raise HTTPException(status_code=404, detail="Task not found")
+
+    workflow_id = task.get("workflow_id")
+    if workflow_id:
+        run_model = WorkflowRunModel(env.DB)
+        active = await run_model.find_active_for_workflow(str(workflow_id))
+        if active:
+            status = (task.get("status") or "").lower()
+            if status in ("queued", "running", "dispatched"):
+                raise HTTPException(
+                    status_code=409,
+                    detail="Cannot delete task while workflow run is in progress",
+                )
+
     deleted = await task_model.delete_task(task_id)
     if deleted == 0:
         raise HTTPException(status_code=404, detail="Task not found")

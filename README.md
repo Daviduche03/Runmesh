@@ -1,6 +1,6 @@
 # Runmesh
 
-Task execution platform for webhooks, queues, and scheduled jobs. Publish HTTP tasks, schedule them for later, group them into workflows, and inspect every run from the dashboard or your own integrations.
+Platform for async infrastructure — task execution, workflow automation, and Connect identity. Queue webhooks, schedule jobs, orchestrate multi-step workflows, and give users portable identity across your apps from one dashboard and API.
 
 Built on [Cloudflare Workers](https://developers.cloudflare.com/workers/) (Python) with [D1](https://developers.cloudflare.com/d1/) for storage and [Queues](https://developers.cloudflare.com/queues/) for task and webhook dispatch.
 
@@ -14,11 +14,12 @@ Runmesh/
 
 ## Features
 
-- Queue and dispatch HTTP tasks to any webhook URL
-- Schedule tasks for a future UTC timestamp
-- Workflows to group related task steps
-- Dashboard with runs, analytics, API keys, and outbound webhooks
-- Dual auth: JWT (dashboard) or API key (integrations) on the same `/api/v1` routes
+- **Task API** — queue and dispatch HTTP tasks to any webhook URL, with UTC scheduling and idempotency
+- **Workflows** — visual graph editor, webhook/cron triggers, linear step chains, and Jinja templates between steps
+- **Runmesh Connect** — portable user identity for third-party apps via OTP login, OAuth providers, and scoped grants
+- Dashboard with runs, workflow execution, analytics, API keys, and outbound webhooks
+- Outbound webhook retries with dead-letter storage and replay
+- Dual auth: JWT (dashboard) or API key (integrations) on `/api/v1` routes
 
 ## Prerequisites
 
@@ -109,6 +110,14 @@ All JSON endpoints share a [consistent response envelope](./runmesh-main/TASK_AP
 | `POST /api/v1/tasks/schedule` | JWT or API key | Schedule a future task |
 | `GET/POST /api/v1/workflows` | JWT or API key | List / create workflows |
 | `GET /api/v1/workflows/{id}` | JWT or API key | Workflow detail |
+| `PUT /api/v1/workflows/{id}/graph` | JWT or API key | Save workflow graph |
+| `POST /api/v1/workflows/{id}/trigger` | JWT or API key | Trigger a workflow run |
+| `GET /api/v1/workflows/{id}/runs` | JWT or API key | List workflow runs |
+| `POST /api/v1/connect/apps` | JWT only | Register a Connect app |
+| `POST /api/v1/connect/sessions` | Public (app credentials) | Start Connect user session |
+| `POST /api/v1/connect/otp/verify` | Public | Verify OTP and authenticate |
+| `GET /connect/authorize` | Public | OAuth authorization redirect |
+| `POST /api/v1/connect/token` | Public | Exchange Connect authorization code |
 | `GET /api/analytics` | JWT only | Dashboard metrics |
 | `GET/POST /api/webhooks` | JWT only | Outbound webhook config |
 | `GET/POST /api-keys` | JWT only | API key management |

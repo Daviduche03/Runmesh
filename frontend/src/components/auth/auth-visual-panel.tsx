@@ -9,7 +9,7 @@ export function AuthVisualPanel() {
 					Queue webhooks. Schedule tasks. Inspect every run.
 				</h2>
 				<p className="mt-4 max-w-sm text-[15px] leading-6 tracking-[-0.01em] text-[#8f949e]">
-					Publish HTTP tasks, dispatch JSON payloads, and follow execution from a single dashboard.
+					Tasks, workflows, and Connect identity — publish HTTP work, automate steps, and manage everything from one dashboard.
 				</p>
 
 				<div className="mt-12 overflow-hidden rounded-lg border border-[#202329] bg-[#0a0b0d] px-6 pt-6 pb-8">

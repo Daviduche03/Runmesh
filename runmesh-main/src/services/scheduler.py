@@ -1,4 +1,5 @@
 import uuid
+import json
 from datetime import datetime, timezone
 from typing import List, Dict, Any
 from db.orm import TaskModel
@@ -80,11 +81,15 @@ class TaskScheduler:
         """
         task_id = str(uuid.uuid4())
         now = datetime.now(timezone.utc).isoformat()
-        
+
+        payload = task_data.get("payload", "{}")
+        if not isinstance(payload, str):
+            payload = json.dumps(payload)
+
         full_task_data = {
             "id": task_id,
             "type": task_data.get("type", "task"),
-            "payload": task_data.get("payload", {}),
+            "payload": payload,
             "url": task_data.get("url", ""),
             "status": "queued",
             "retries": 0,
@@ -95,13 +100,17 @@ class TaskScheduler:
             "created_at": now,
             "updated_at": now,
             "user_id": task_data["user_id"],
-            "workflow_id": task_data.get("workflow_id"),
         }
+        workflow_id = task_data.get("workflow_id")
+        if workflow_id:
+            full_task_data["workflow_id"] = workflow_id
         if task_data.get("payload_template"):
             full_task_data["payload_template"] = task_data["payload_template"]
         if task_data.get("url_template"):
             full_task_data["url_template"] = task_data["url_template"]
-        
+        if task_data.get("idempotency_key"):
+            full_task_data["idempotency_key"] = task_data["idempotency_key"]
+
         await self.task_model.create(full_task_data)
         return task_id
     

@@ -36,7 +36,7 @@ export function RunsPreview() {
 			<div className="flex items-center justify-between">
 				<div>
 					<h2 className="text-[15px] font-[590] text-[#d9dce3]">Latest runs</h2>
-					<p className="text-[13px] text-[#6d727d] mt-0.5">Real-time task execution log.</p>
+					<p className="text-[13px] text-[#6d727d] mt-0.5">Tasks and workflow runs across your account.</p>
 				</div>
 				<div className="relative w-56">
 					<SearchIcon className="absolute left-3 top-1/2 size-3.5 -translate-y-1/2 text-[#6d727d]" />
