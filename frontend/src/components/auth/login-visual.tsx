@@ -12,10 +12,10 @@ export function LoginVisual() {
 		>
 			<line x1="16" y1="44" x2="344" y2="44" stroke="#202329" />
 			<text x="16" y="28" fill="#d8dce3" fontFamily="ui-monospace, monospace" fontSize="11">
-				task lifecycle
+				platform
 			</text>
 			<text x="344" y="28" fill="#6b7280" fontFamily="ui-monospace, monospace" fontSize="10" textAnchor="end">
-				publish → queue → dispatch
+				tasks → workflows → connect
 			</text>
 
 			<rect x="16" y="60" width="96" height="120" rx="6" fill="#08090a" stroke="#363a42" />
@@ -80,15 +80,15 @@ export function LoginVisual() {
 			<line x1="16" y1="204" x2="344" y2="204" stroke="#202329" />
 			<circle cx="24" cy="228" r="3" fill="#4c525c" />
 			<text x="36" y="232" fill="#8f949e" fontFamily="ui-monospace, monospace" fontSize="10">
-				HTTP tasks
+				Task API
 			</text>
 			<circle cx="156" cy="228" r="3" fill="#e5a54b" />
 			<text x="168" y="232" fill="#8f949e" fontFamily="ui-monospace, monospace" fontSize="10">
-				UTC scheduling
+				Workflows
 			</text>
 			<circle cx="268" cy="228" r="3" fill="#4cb782" />
 			<text x="280" y="232" fill="#8f949e" fontFamily="ui-monospace, monospace" fontSize="10">
-				webhook POSTs
+				Connect
 			</text>
 		</svg>
 	)

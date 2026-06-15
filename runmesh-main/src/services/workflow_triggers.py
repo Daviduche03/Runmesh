@@ -46,7 +46,9 @@ async def run_due_scheduled_workflows(env) -> int:
             )
             started += 1
         except HTTPException as e:
-            if e.status_code != 409:
+            if e.status_code == 409:
+                print(f"Scheduled workflow {workflow['id']} skipped: run already in progress")
+            else:
                 print(f"Scheduled workflow {workflow['id']} failed: {e.detail}")
         except Exception as e:
             print(f"Scheduled workflow {workflow['id']} error: {e}")

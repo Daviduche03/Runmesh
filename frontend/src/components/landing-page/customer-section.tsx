@@ -13,8 +13,8 @@ export function CustomerSection() {
 					viewport={{ once: true, margin: "-80px" }}
 					transition={{ duration: 0.7, ease: [0.21, 0.98, 0.35, 1] }}
 				>
-					<SectionIntro badge="Task API" title="Create, schedule, and move webhook work">
-						<span className="text-white">Built around one job: reliable HTTP execution.</span> Publish tasks for immediate queueing,
+					<SectionIntro badge="Task API" title="Create, schedule, and dispatch HTTP work">
+						<span className="text-white">The foundation for everything else.</span> Publish tasks for immediate queueing,
 						schedule future calls, reschedule queued work, or cancel it before dispatch.
 					</SectionIntro>
 				</motion.div>

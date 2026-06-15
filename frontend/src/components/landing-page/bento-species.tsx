@@ -1,30 +1,27 @@
 import { sectionPadding } from "./constants"
 import { PurposeVisual } from "./visuals/purpose-visual"
 import { AgentsVisual } from "./visuals/agents-visual"
-import { SpeedVisual } from "./visuals/speed-visual"
+import { TriageVisual } from "./visuals/triage-visual"
 import { motion } from "framer-motion"
 
 const bentoCards = [
 	{
 		fig: "FIG 0.2",
-		title: "Built for HTTP tasks",
-		copy: "Send Runmesh a URL and JSON payload. It creates a durable task and handles execution for you.",
+		title: "Task execution",
+		copy: "Send Runmesh a URL and JSON payload. It creates a durable task, queues it, and dispatches the webhook for you.",
 		visual: <PurposeVisual />,
-		delay: 0,
 	},
 	{
 		fig: "FIG 0.3",
-		title: "Queue now or later",
-		copy: "Publish tasks immediately or schedule them for a precise future UTC timestamp.",
+		title: "Workflow automation",
+		copy: "Chain HTTP steps, trigger runs from webhooks or cron, and pass data between steps with Jinja templates.",
 		visual: <AgentsVisual />,
-		delay: 0.15,
 	},
 	{
 		fig: "FIG 0.4",
-		title: "Webhook execution",
-		copy: "The worker POSTs your payload to the target endpoint and records the result.",
-		visual: <SpeedVisual />,
-		delay: 0.3,
+		title: "Runmesh Connect",
+		copy: "Give users one portable identity across your apps with OTP login, OAuth connections, and scoped grants.",
+		visual: <TriageVisual />,
 	},
 ]
 
@@ -39,10 +36,9 @@ export function BentoSpecies() {
 					transition={{ duration: 0.7, ease: [0.21, 0.98, 0.35, 1] }}
 					className="max-w-[940px] text-balance text-[clamp(40px,4.2vw,52px)] font-[590] leading-[1.08] tracking-[-0.045em] text-white"
 				>
-					Three primitives that cover the task lifecycle.{" "}
+					Three products on one platform.{" "}
 					<span className="text-[#8f949e]">
-						Runmesh handles scheduling, dispatch, and result recording so you can focus on what
-						matters.
+						Run tasks, automate workflows, and connect user identity without stitching together separate tools.
 					</span>
 				</motion.h2>
 

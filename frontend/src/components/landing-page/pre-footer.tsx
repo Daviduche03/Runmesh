@@ -14,7 +14,7 @@ export function PreFooter() {
 					transition={{ duration: 0.7, ease: [0.21, 0.98, 0.35, 1] }}
 					className="mx-auto max-w-[760px] text-balance text-[clamp(32px,5vw,56px)] font-[590] leading-[1.02] tracking-[-0.055em] text-white"
 				>
-					Queue and schedule webhook tasks with Runmesh
+					Build on Runmesh — tasks, workflows, and Connect
 				</motion.h2>
 				<motion.div
 					initial={{ opacity: 0, y: 24 }}

@@ -15,6 +15,8 @@ class TaskPublish(BaseModel):
     workflow_id: Optional[str] = None
     execution_type: str = "queue"
     scheduled_at: Optional[str] = None
+    max_retries: int = 5
+    idempotency_key: Optional[str] = None
 
 class WorkflowCreate(BaseModel):
     name: str
@@ -32,6 +34,7 @@ class ScheduledTaskRequest(BaseModel):
     workflow_id: Optional[str] = None
     scheduled_at: str
     max_retries: int = 5
+    idempotency_key: Optional[str] = None
 
 class TaskRescheduleRequest(BaseModel):
     scheduled_at: str  # ISO datetime string

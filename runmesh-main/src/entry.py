@@ -8,21 +8,21 @@ from fastapi.exceptions import RequestValidationError
 from starlette.responses import RedirectResponse
 from starlette.middleware.cors import CORSMiddleware
 from db.orm import TaskModel, ApiKeyModel, WebhookModel, WebhookDeadLetterModel
-from services.templating import resolve_task_request, apply_task_templates, read_fetch_response_body
+from services.templating import apply_task_templates
 from services.scheduler import TaskScheduler
 from services.main import create_task, list_tasks, list_workflows, get_workflow, get_analytics, create_workflow, update_workflow, delete_workflow, delete_task
 from services.workflow_graph import save_workflow_graph
 from services.workflow_runner import (
     start_workflow_run,
     list_workflow_runs,
-    handle_workflow_task_completion,
-    build_step_chain_context,
+    recover_stale_workflow_runs,
 )
 from services.workflow_triggers import trigger_workflow_for_user, run_due_scheduled_workflows
 from services.github import exchange_code_for_token, fetch_github_user, fetch_primary_email, find_or_create_user
 from services import api_keys as api_keys_service
 from services import connect as connect_service
 from services import webhooks as webhooks_service
+from services.task_queue import process_task_message
 from db.connect_orm import (
     ConnectAppModel,
     ConnectAppUserModel,
@@ -34,7 +34,6 @@ from db.connect_orm import (
     ConnectSessionModel,
     ConnectUserModel,
 )
-from services.webhooks import _ack_message, _queue_message_body
 from utils.types import (
     TaskPublish,
     ScheduledTaskRequest, TaskRescheduleRequest,
@@ -183,13 +182,22 @@ async def delete_webhook(webhook_id: str, request: Request, current_user: dict =
 # API v1 — tasks & workflows (JWT or API key)
 @app.get("/api/v1/tasks")
 async def api_list_tasks(request: Request, user: dict = Depends(require_auth("read"))):
+    try:
+        page = int(request.query_params.get("page", 1))
+        limit = int(request.query_params.get("limit", 50))
+    except ValueError:
+        raise HTTPException(status_code=400, detail="page and limit must be integers")
+    if page < 1:
+        raise HTTPException(status_code=400, detail="page must be at least 1")
+    if limit < 1 or limit > 200:
+        raise HTTPException(status_code=400, detail="limit must be between 1 and 200")
     return await list_tasks(
         request.scope["env"].DB,
         user["id"],
         status=request.query_params.get("status"),
         workflow_id=request.query_params.get("workflow_id"),
-        page=int(request.query_params.get("page", 1)),
-        limit=int(request.query_params.get("limit", 50)),
+        page=page,
+        limit=limit,
     )
 
 
@@ -218,6 +226,15 @@ async def api_schedule_task(task: ScheduledTaskRequest, request: Request, user: 
     except ValueError:
         raise HTTPException(status_code=400, detail="Invalid scheduled_at format. Use ISO datetime.")
 
+    idempotency_key = (task.idempotency_key or "").strip()
+    if idempotency_key:
+        existing = await TaskModel(env.DB).find_by_idempotency_key(user["id"], idempotency_key)
+        if existing:
+            return success(
+                {"task_id": existing["id"], "scheduled_at": existing.get("scheduled_at")},
+                message="Task already scheduled",
+            )
+
     task_data = {
         "url": task.url or "",
         "payload": json.dumps(task.payload),
@@ -226,6 +243,8 @@ async def api_schedule_task(task: ScheduledTaskRequest, request: Request, user: 
         "user_id": user["id"],
         "workflow_id": task.workflow_id,
     }
+    if idempotency_key:
+        task_data["idempotency_key"] = idempotency_key
     apply_task_templates(task_data, task.payload_template, task.url_template)
 
     task_id = await scheduler.schedule_task(task_data, scheduled_time)
@@ -253,8 +272,8 @@ async def api_cancel_scheduled_task(task_id: str, request: Request, user: dict =
     if not task or task.get("user_id") != user["id"]:
         raise HTTPException(status_code=404, detail="Task not found")
 
-    success = await scheduler.cancel_scheduled_task(task_id)
-    if not success:
+    cancelled = await scheduler.cancel_scheduled_task(task_id)
+    if not cancelled:
         raise HTTPException(status_code=400, detail="Task cannot be cancelled (may already be executed)")
 
     return success({"task_id": task_id}, message="Task cancelled")
@@ -276,8 +295,8 @@ async def api_reschedule_task(task_id: str, reschedule_data: TaskRescheduleReque
     except ValueError:
         raise HTTPException(status_code=400, detail="Invalid scheduled_at format. Use ISO datetime.")
 
-    success = await scheduler.reschedule_task(task_id, scheduled_time)
-    if not success:
+    rescheduled = await scheduler.reschedule_task(task_id, scheduled_time)
+    if not rescheduled:
         raise HTTPException(status_code=400, detail="Task cannot be rescheduled")
 
     return success(
@@ -650,8 +669,10 @@ async def github_login(request: Request):
     env = request.scope["env"]
     base = getattr(env, "PUBLIC_URL", str(request.base_url).rstrip("/"))
     redirect_uri = f"{base}/auth/github/callback"
+    from urllib.parse import quote
+    encoded_redirect = quote(redirect_uri, safe="")
     return success({
-        "url": f"https://github.com/login/oauth/authorize?client_id={env.GITHUB_CLIENT_ID}&redirect_uri={redirect_uri}&scope=user:email"
+        "url": f"https://github.com/login/oauth/authorize?client_id={env.GITHUB_CLIENT_ID}&redirect_uri={encoded_redirect}&scope=user:email"
     })
 
 
@@ -704,6 +725,9 @@ class Default(WorkerEntrypoint):
             workflow_count = await run_due_scheduled_workflows(self.env)
             if workflow_count > 0:
                 print(f"Started {workflow_count} scheduled workflow runs")
+            recovered = await recover_stale_workflow_runs(self.env)
+            if recovered > 0:
+                print(f"Recovered {recovered} stale workflow run(s)")
         except Exception as e:
             print(f"Scheduler error: {e}")
             raise
@@ -719,97 +743,5 @@ class Default(WorkerEntrypoint):
             )
             return
 
-        task_model = TaskModel(self.env.DB)
-
         for message in batch.messages:
-            task_id = None
-            task_row = None
-            workflow_run_id = None
-            final_status = "failed"
-            target_status_code = None
-            response_body = ""
-            try:
-                payload = _queue_message_body(message)
-                task_id = payload.get("task_id")
-                workflow_run_id = payload.get("workflow_run_id")
-                if not task_id:
-                    _ack_message(message)
-                    continue
-
-                task_row = await task_model.find_by_id(task_id)
-                if not task_row:
-                    _ack_message(message)
-                    continue
-
-                await task_model.update_status(task_id, "running")
-                user_id = task_row.get("user_id")
-                if user_id:
-                    running_task = {**task_row, "status": "running"}
-                    await webhooks_service.dispatch_event(
-                        self.env.DB,
-                        self.env.WEBHOOK_QUEUE,
-                        user_id,
-                        "task.running",
-                        running_task,
-                    )
-
-                try:
-                    chain_context = {}
-                    if workflow_run_id:
-                        chain_context = await build_step_chain_context(self.env, task_row)
-                    target_url, task_payload = resolve_task_request(task_row, chain_context)
-                except HTTPException as e:
-                    print(f"Task template error for {task_id}: {e.detail}")
-                    raise ValueError(str(e.detail)) from e
-
-                fetch_body = (
-                    json.dumps(task_payload)
-                    if isinstance(task_payload, (dict, list))
-                    else task_payload
-                )
-                res = await fetch(
-                    target_url,
-                    method="POST",
-                    headers={"content-type": "application/json"},
-                    body=fetch_body,
-                )
-                target_status_code = res.status
-                response_body = await read_fetch_response_body(res)
-                final_status = "completed" if res.status < 400 else "failed"
-            except Exception as e:
-                print(f"Task execution error: {e}")
-                final_status = "failed"
-
-            try:
-                if task_id:
-                    await task_model.complete_execution(
-                        task_id,
-                        final_status,
-                        response_body=response_body or "",
-                        response_status=target_status_code or 0,
-                    )
-                    if task_row and task_row.get("user_id"):
-                        event = "task.completed" if final_status == "completed" else "task.failed"
-                        terminal_task = {
-                            **task_row,
-                            "status": final_status,
-                            "retries": (task_row.get("retries") or 0),
-                        }
-                        await webhooks_service.dispatch_event(
-                            self.env.DB,
-                            self.env.WEBHOOK_QUEUE,
-                            task_row["user_id"],
-                            event,
-                            terminal_task,
-                            {"target_status_code": target_status_code},
-                        )
-                    if workflow_run_id:
-                        await handle_workflow_task_completion(
-                            self.env,
-                            task_id,
-                            workflow_run_id,
-                            final_status,
-                        )
-                _ack_message(message)
-            except Exception as e:
-                print(f"Task completion handler error: {e}")
+            await process_task_message(self.env, message, fetch)
