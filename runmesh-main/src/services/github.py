@@ -4,7 +4,12 @@ from workers import fetch
 from db.orm import UserModel
 
 
-async def exchange_code_for_token(env, code: str) -> str:
+def github_callback_redirect_uri(env, request_base_url: str) -> str:
+    base = getattr(env, "PUBLIC_URL", request_base_url.rstrip("/"))
+    return f"{base}/auth/github/callback"
+
+
+async def exchange_code_for_token(env, code: str, redirect_uri: str) -> str:
     token_resp = await fetch(
         "https://github.com/login/oauth/access_token",
         method="POST",
@@ -13,6 +18,7 @@ async def exchange_code_for_token(env, code: str) -> str:
             "client_id": env.GITHUB_CLIENT_ID,
             "client_secret": env.GITHUB_CLIENT_SECRET,
             "code": code,
+            "redirect_uri": redirect_uri,
         }),
     )
     token_text = await token_resp.text()
@@ -34,9 +40,12 @@ async def fetch_github_user(access_token: str) -> dict:
     )
     user_text = await user_resp.text()
     try:
-        return json.loads(user_text)
+        user_data = json.loads(user_text)
     except Exception:
         raise ValueError("Failed to fetch GitHub user info")
+    if not isinstance(user_data, dict) or "id" not in user_data:
+        raise ValueError("Failed to fetch GitHub user info")
+    return user_data
 
 
 async def fetch_primary_email(access_token: str) -> str:
@@ -49,10 +58,21 @@ async def fetch_primary_email(access_token: str) -> str:
         emails = json.loads(emails_text)
     except Exception:
         return ""
-    for e in emails:
-        if e.get("primary") and e.get("verified"):
-            return e["email"]
-    return emails[0]["email"] if emails else ""
+    if not isinstance(emails, list):
+        return ""
+    for entry in emails:
+        if not isinstance(entry, dict):
+            continue
+        if entry.get("primary") and entry.get("verified"):
+            email = entry.get("email")
+            if email:
+                return email
+    for entry in emails:
+        if isinstance(entry, dict):
+            email = entry.get("email")
+            if email:
+                return email
+    return ""
 
 
 async def find_or_create_user(db, github_id: str, name: str, avatar_url: str, github_email: str, login: str) -> str:
@@ -69,6 +89,20 @@ async def find_or_create_user(db, github_id: str, name: str, avatar_url: str, gi
 
     if not github_email:
         github_email = f"{github_id}+{login}@users.noreply.github.com"
+
+    by_email = await user_model.find_by_email(github_email)
+    if by_email:
+        await user_model.update(
+            "users", "id = ?",
+            {
+                "name": name,
+                "avatar_url": avatar_url,
+                "github_id": github_id,
+                "updated_at": datetime.now(timezone.utc).isoformat(),
+            },
+            by_email["id"]
+        )
+        return by_email["id"]
 
     user_data = {
         "name": name,
