@@ -18,7 +18,13 @@ from services.workflow_runner import (
     recover_stale_workflow_runs,
 )
 from services.workflow_triggers import trigger_workflow_for_user, run_due_scheduled_workflows
-from services.github import exchange_code_for_token, fetch_github_user, fetch_primary_email, find_or_create_user
+from services.github import (
+    exchange_code_for_token,
+    fetch_github_user,
+    fetch_primary_email,
+    find_or_create_user,
+    github_callback_redirect_uri,
+)
 from services import api_keys as api_keys_service
 from services import connect as connect_service
 from services import webhooks as webhooks_service
@@ -668,8 +674,7 @@ async def api_list_connect_app_grants(
 @app.get("/auth/github/login")
 async def github_login(request: Request):
     env = request.scope["env"]
-    base = getattr(env, "PUBLIC_URL", str(request.base_url).rstrip("/"))
-    redirect_uri = f"{base}/auth/github/callback"
+    redirect_uri = github_callback_redirect_uri(env, str(request.base_url))
     from urllib.parse import quote
     encoded_redirect = quote(redirect_uri, safe="")
     return success({
@@ -680,9 +685,10 @@ async def github_login(request: Request):
 @app.get("/auth/github/callback")
 async def github_callback(code: str, request: Request):
     env = request.scope["env"]
+    redirect_uri = github_callback_redirect_uri(env, str(request.base_url))
 
     try:
-        access_token = await exchange_code_for_token(env, code)
+        access_token = await exchange_code_for_token(env, code, redirect_uri)
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e))
 
@@ -691,19 +697,24 @@ async def github_callback(code: str, request: Request):
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e))
 
-    github_id = str(github_user["id"])
-    name = github_user.get("name") or github_user["login"]
-    avatar_url = github_user.get("avatar_url", "")
-    github_email = github_user.get("email", "")
+    try:
+        github_id = str(github_user["id"])
+        name = github_user.get("name") or github_user["login"]
+        avatar_url = github_user.get("avatar_url", "")
+        github_email = github_user.get("email") or ""
 
-    if not github_email:
-        github_email = await fetch_primary_email(access_token)
+        if not github_email:
+            github_email = await fetch_primary_email(access_token)
 
-    user_id = await find_or_create_user(env.DB, github_id, name, avatar_url, github_email, github_user["login"])
-
-    token = encode_token({"id": user_id, "email": github_email, "name": name}, env.JWT_SECRET)
-    frontend_url = getattr(env, "FRONTEND_URL", str(request.base_url).replace("/auth/github/callback", ""))
-    return RedirectResponse(url=f"{frontend_url}/auth/callback?token={token}")
+        user_id = await find_or_create_user(env.DB, github_id, name, avatar_url, github_email, github_user["login"])
+        token = encode_token({"id": user_id, "email": github_email, "name": name}, env.JWT_SECRET)
+        frontend_url = getattr(env, "FRONTEND_URL", str(request.base_url).replace("/auth/github/callback", ""))
+        return RedirectResponse(url=f"{frontend_url}/auth/callback?token={token}")
+    except HTTPException:
+        raise
+    except Exception as e:
+        print(f"GitHub callback error: {e}")
+        raise HTTPException(status_code=500, detail="Failed to complete GitHub login")
 
 
 # Dashboard-only (JWT)
