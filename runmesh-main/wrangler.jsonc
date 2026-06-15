@@ -24,8 +24,8 @@
 		"GITHUB_CLIENT_SECRET": "294961c85d022669c03c4f39d462ba743d392e8c",
 		"GOOGLE_CONNECT_CLIENT_ID": "your-google-connect-client-id",
 		"GOOGLE_CONNECT_CLIENT_SECRET": "your-google-connect-client-secret",
-		"FRONTEND_URL": "http://localhost:5173",
-		"PUBLIC_URL": "http://localhost:8787"
+		"FRONTEND_URL": "https://runmesh.vercel.app",
+		"PUBLIC_URL": "https://runmesh.daviduche176.workers.dev"
 	},
 	"d1_databases": [
 		{
