@@ -1,6 +1,7 @@
 import { Routes, Route, Navigate } from "react-router-dom"
 import { LinearLanding } from "@/components/landing-page"
 import { WorkspaceLanding } from "@/components/workspace-landing"
+import { CliVerify } from "@/components/cli-verify"
 import { Login } from "@/components/auth/login"
 import { Signup } from "@/components/auth/signup"
 import { Callback } from "@/components/auth/callback"
@@ -26,6 +27,7 @@ export function App() {
 		<Routes>
 			<Route path="/" element={<LinearLanding />} />
 			<Route path="/workspace" element={<WorkspaceLanding />} />
+			<Route path="/cli/verify" element={<CliVerify />} />
 			<Route path="/login" element={<Login />} />
 			<Route path="/signup" element={<Signup />} />
 			<Route path="/auth/callback" element={<Callback />} />

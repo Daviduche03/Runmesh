@@ -12,12 +12,14 @@ import (
 )
 
 type RemoteConfig struct {
-	Provider      string `json:"provider"`
-	Endpoint      string `json:"endpoint"`
-	Region        string `json:"region"`
-	AccessKey     string `json:"access_key"`
-	SecretKey     string `json:"secret_key"`
-	DefaultBucket string `json:"default_bucket"`
+	Provider      string `json:"provider,omitempty"`
+	Endpoint      string `json:"endpoint,omitempty"`
+	Region        string `json:"region,omitempty"`
+	AccessKey     string `json:"access_key,omitempty"`
+	SecretKey     string `json:"secret_key,omitempty"`
+	DefaultBucket string `json:"default_bucket,omitempty"`
+	Token         string `json:"token,omitempty"`
+	APIBase       string `json:"api_base,omitempty"`
 }
 
 type ProjectConfig struct {

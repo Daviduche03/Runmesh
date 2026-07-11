@@ -1,12 +1,16 @@
 package main
 
 import (
+	"bytes"
+	"encoding/json"
 	"errors"
 	"flag"
 	"fmt"
+	"net/http"
 	"os"
 	"os/exec"
 	"path/filepath"
+	"time"
 
 	"runmesh/workspace/internal/config"
 	"runmesh/workspace/internal/fuse"
@@ -58,6 +62,10 @@ func main() {
 			fatal("Error: %v", err)
 		}
 		cmdWatch(projectDir)
+	case "login":
+		cmdLogin()
+	case "whoami":
+		cmdWhoami()
 	case "mount":
 		cmdMount(os.Args[2:])
 	case "umount":
@@ -79,6 +87,8 @@ func usage() {
 Usage:
   continuumm config set    Save cloud storage credentials globally
   continuumm link          Link this directory to a cloud prefix
+  continuumm login         Authenticate CLI with Runmesh
+  continuumm whoami        Show current authenticated user
   continuumm up            Push local changes to cloud
   continuumm down          Pull cloud changes to local
   continuumm list          List files on remote
@@ -116,6 +126,7 @@ func cmdConfig(args []string) {
 	accessKey := fs.String("access-key", "", "Access key ID")
 	secretKey := fs.String("secret-key", "", "Secret access key")
 	bucket := fs.String("bucket", "", "Default R2/S3 bucket name")
+	apiBase := fs.String("api-base", "", "Runmesh API base URL")
 	fs.Parse(args[1:])
 
 	if *endpoint == "" || *accessKey == "" || *secretKey == "" || *bucket == "" {
@@ -129,6 +140,7 @@ func cmdConfig(args []string) {
 		AccessKey:     *accessKey,
 		SecretKey:     *secretKey,
 		DefaultBucket: *bucket,
+		APIBase:       *apiBase,
 	}
 	if err := config.SaveGlobal(cfg); err != nil {
 		fatal("Error saving credentials: %v", err)
@@ -296,4 +308,207 @@ func cmdUmount(args []string) {
 		fatal("Unmount failed: %v", err)
 	}
 	fmt.Fprintf(os.Stderr, "Unmounted %s\n", args[0])
+}
+
+const defaultAPIBase = "https://runmesh.daviduche176.workers.dev"
+
+type cliStartResponse struct {
+	Ok   bool `json:"ok"`
+	Data *struct {
+		DeviceCode      string `json:"device_code"`
+		UserCode        string `json:"user_code"`
+		VerificationURI string `json:"verification_uri"`
+		ExpiresIn       int    `json:"expires_in"`
+	} `json:"data"`
+	Error *struct {
+		Code    string `json:"code"`
+		Message string `json:"message"`
+	} `json:"error"`
+}
+
+type cliPollResponse struct {
+	Ok   bool `json:"ok"`
+	Data *struct {
+		Status string `json:"status"`
+		Token  string `json:"token,omitempty"`
+		User   *struct {
+			ID    string `json:"id"`
+			Email string `json:"email"`
+			Name  string `json:"name"`
+		} `json:"user,omitempty"`
+	} `json:"data"`
+	Error *struct {
+		Code    string `json:"code"`
+		Message string `json:"message"`
+	} `json:"error"`
+}
+
+func cmdLogin() {
+	rc, _ := config.LoadGlobal()
+	apiBase := defaultAPIBase
+	if rc != nil && rc.APIBase != "" {
+		apiBase = rc.APIBase
+	}
+
+	if rc != nil && rc.Token != "" {
+		fmt.Fprintf(os.Stderr, "Already logged in. Use 'continuumm whoami' to check your session.\n")
+		fmt.Fprintf(os.Stderr, "To re-authenticate, run: continuumm config set --token \"\" first.\n")
+		return
+	}
+
+	// Start device auth
+	resp, err := http.PostForm(apiBase+"/auth/cli/start", nil)
+	if err != nil {
+		fatal("Error starting login: %v", err)
+	}
+	var startRes cliStartResponse
+	if err := json.NewDecoder(resp.Body).Decode(&startRes); err != nil {
+		resp.Body.Close()
+		fatal("Error parsing response: %v", err)
+	}
+	resp.Body.Close()
+
+	if !startRes.Ok || startRes.Data == nil {
+		msg := "unknown error"
+		if startRes.Error != nil {
+			msg = startRes.Error.Message
+		}
+		fatal("Login failed: %s", msg)
+	}
+
+	deviceCode := startRes.Data.DeviceCode
+	userCode := startRes.Data.UserCode
+	verificationURI := startRes.Data.VerificationURI
+	expiresIn := startRes.Data.ExpiresIn
+
+	fmt.Fprintf(os.Stderr, "\n")
+	fmt.Fprintf(os.Stderr, "  First, copy your code: %s\n", userCode)
+	fmt.Fprintf(os.Stderr, "\n")
+	fmt.Fprintf(os.Stderr, "  Then open in your browser:\n")
+	fmt.Fprintf(os.Stderr, "  %s\n", verificationURI)
+	fmt.Fprintf(os.Stderr, "\n")
+
+	// Try to open the browser
+	if err := openBrowser(verificationURI); err == nil {
+		fmt.Fprintf(os.Stderr, "  Browser opened automatically.\n")
+	} else {
+		fmt.Fprintf(os.Stderr, "  (If the browser didn't open, paste the URL manually.)\n")
+	}
+
+	fmt.Fprintf(os.Stderr, "\n")
+	fmt.Fprintf(os.Stderr, "  Waiting for you to confirm in the browser...\n")
+
+	// Poll for completion
+	pollInterval := 2 * time.Second
+	deadline := time.Now().Add(time.Duration(expiresIn) * time.Second)
+
+	for time.Now().Before(deadline) {
+		time.Sleep(pollInterval)
+
+		body, _ := json.Marshal(map[string]string{"device_code": deviceCode})
+		pollResp, err := http.Post(apiBase+"/auth/cli/poll", "application/json", bytes.NewReader(body))
+		if err != nil {
+			fmt.Fprintf(os.Stderr, "  Poll error: %v\n", err)
+			continue
+		}
+
+		var pollRes cliPollResponse
+		if err := json.NewDecoder(pollResp.Body).Decode(&pollRes); err != nil {
+			pollResp.Body.Close()
+			fmt.Fprintf(os.Stderr, "  Parse error: %v\n", err)
+			continue
+		}
+		pollResp.Body.Close()
+
+		if !pollRes.Ok || pollRes.Data == nil {
+			continue
+		}
+
+		switch pollRes.Data.Status {
+		case "pending":
+			fmt.Fprintf(os.Stderr, "  still waiting...\r")
+		case "confirmed":
+			token := pollRes.Data.Token
+			user := pollRes.Data.User
+
+			// Save token to config
+			if rc == nil {
+				rc = &config.RemoteConfig{}
+			}
+			rc.Token = token
+			rc.APIBase = apiBase
+			if err := config.SaveGlobal(rc); err != nil {
+				fatal("Error saving token: %v", err)
+			}
+
+			fmt.Fprintf(os.Stderr, "\n  ✓ Logged in as %s (%s)\n", user.Name, user.Email)
+			return
+		case "expired":
+			fatal("Login code expired. Run 'continuumm login' again.")
+		}
+	}
+
+	fatal("Login timed out. Run 'continuumm login' again.")
+}
+
+func cmdWhoami() {
+	rc, err := config.LoadGlobal()
+	if err != nil || rc == nil || rc.Token == "" {
+		fatal("Not logged in. Run 'continuumm login' first.")
+	}
+
+	apiBase := defaultAPIBase
+	if rc.APIBase != "" {
+		apiBase = rc.APIBase
+	}
+
+	req, _ := http.NewRequest("GET", apiBase+"/api/me", nil)
+	req.Header.Set("Authorization", "Bearer "+rc.Token)
+
+	resp, err := http.DefaultClient.Do(req)
+	if err != nil {
+		fatal("Error fetching user info: %v", err)
+	}
+	defer resp.Body.Close()
+
+	var result struct {
+		Ok   bool `json:"ok"`
+		Data *struct {
+			ID    string `json:"id"`
+			Name  string `json:"name"`
+			Email string `json:"email"`
+		} `json:"data"`
+		Error *struct {
+			Message string `json:"message"`
+		} `json:"error"`
+	}
+
+	if err := json.NewDecoder(resp.Body).Decode(&result); err != nil {
+		fatal("Error parsing response: %v", err)
+	}
+
+	if !result.Ok || result.Data == nil {
+		msg := "not authenticated"
+		if result.Error != nil {
+			msg = result.Error.Message
+		}
+		fatal("Error: %s", msg)
+	}
+
+	fmt.Fprintf(os.Stderr, "Logged in as:\n")
+	fmt.Fprintf(os.Stderr, "  Name:  %s\n", result.Data.Name)
+	fmt.Fprintf(os.Stderr, "  Email: %s\n", result.Data.Email)
+	fmt.Fprintf(os.Stderr, "  ID:    %s\n", result.Data.ID)
+}
+
+func openBrowser(url string) error {
+	switch {
+	case exec.Command("open", url).Run() == nil:
+		return nil
+	case exec.Command("xdg-open", url).Run() == nil:
+		return nil
+	case exec.Command("cmd", "/c", "start", url).Run() == nil:
+		return nil
+	}
+	return fmt.Errorf("no browser opener found")
 }

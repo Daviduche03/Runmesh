@@ -703,13 +703,23 @@ async def cli_auth_start(request: Request):
         INSERT INTO cli_auth_codes (id, device_code, user_code, status, expires_at, created_at)
         VALUES (?, ?, ?, 'pending', ?, ?)
     """).bind(code_id, device_code, user_code, expires_at.isoformat(), now).run()
-    base_url = getattr(env, "PUBLIC_URL", str(request.base_url).rstrip("/"))
+    frontend_url = getattr(env, "FRONTEND_URL", str(request.base_url).rstrip("/"))
     return success({
         "device_code": device_code,
         "user_code": user_code,
-        "verification_uri": f"{base_url}/cli/verify?code={user_code}",
+        "verification_uri": f"{frontend_url}/cli/verify?code={user_code}",
         "expires_in": 600,
     })
+
+
+def _to_dict(row):
+    if hasattr(row, 'as_py'):
+        return row.as_py()
+    if hasattr(row, 'to_py'):
+        return row.to_py()
+    if isinstance(row, dict):
+        return row
+    return dict(row)
 
 
 @app.post("/auth/cli/confirm")
@@ -722,7 +732,8 @@ async def cli_auth_confirm(request: Request, current_user: dict = Depends(get_jw
     """).bind(user_code).first()
     if not row:
         raise HTTPException(status_code=404, detail="Invalid or expired code")
-    expires_at = datetime.fromisoformat(row["expires_at"].replace("Z", "+00:00"))
+    r = _to_dict(row)
+    expires_at = datetime.fromisoformat(r["expires_at"].replace("Z", "+00:00"))
     if expires_at <= datetime.now(timezone.utc):
         raise HTTPException(status_code=400, detail="Code expired")
     now = datetime.now(timezone.utc).isoformat()
@@ -743,14 +754,15 @@ async def cli_auth_poll(request: Request):
     """).bind(device_code).first()
     if not row:
         raise HTTPException(status_code=404, detail="Invalid device code")
-    if row["status"] == "pending":
-        expires_at = datetime.fromisoformat(row["expires_at"].replace("Z", "+00:00"))
+    r = _to_dict(row)
+    if r["status"] == "pending":
+        expires_at = datetime.fromisoformat(r["expires_at"].replace("Z", "+00:00"))
         if expires_at <= datetime.now(timezone.utc):
             return success({"status": "expired"})
         return success({"status": "pending"})
-    if row["status"] == "confirmed":
+    if r["status"] == "confirmed":
         user_model = UserModel(env.DB)
-        user = await user_model.find_by_id(row["user_id"])
+        user = await user_model.find_by_id(r["user_id"])
         token = encode_token({"id": user["id"], "email": user["email"], "name": user["name"]}, env.JWT_SECRET)
         await env.DB.prepare("DELETE FROM cli_auth_codes WHERE device_code = ?").bind(device_code).run()
         return success({
@@ -772,6 +784,7 @@ async def cli_verify_page(code: str, request: Request):
 <html lang="en"><head><meta charset="utf-8"/><meta name="viewport" content="width=device-width,initial-scale=1"/>
 <title>Invalid Code — Runmesh</title><style>body{font-family:ui-sans-serif,system-ui,sans-serif;margin:0;background:#08090a;color:#fff;display:flex;justify-content:center;align-items:center;min-height:100vh}main{max-width:440px;padding:40px;text-align:center}h1{font-size:24px}p{color:#969799}</style>
 </head><body><main><h1>Code invalid or expired</h1><p>This verification code was not found or has expired. Please run <code>continuumm login</code> again.</p></main></body></html>""")
+    r = _to_dict(row)
     base_url = str(request.base_url).rstrip("/")
     html = f"""<!DOCTYPE html>
 <html lang="en">
@@ -793,7 +806,7 @@ async def cli_verify_page(code: str, request: Request):
   <main>
     <h1>Confirm CLI Login</h1>
     <p>A CLI session is requesting access to your Runmesh account.</p>
-    <div class="code">{row["user_code"]}</div>
+    <div class="code">{r["user_code"]}</div>
     <p style="font-size:13px;color:#595a5c">If this code matches your terminal, click Confirm.</p>
     <div id="auth-section">
       <a href="{base_url}/auth/github/login?redirect_to=/cli/verify%3Fcode%3D{code}" class="btn" id="login-btn">Sign in with GitHub</a>
