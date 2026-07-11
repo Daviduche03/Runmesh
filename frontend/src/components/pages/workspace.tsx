@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react"
 import { Link } from "react-router-dom"
 import { Button } from "@/components/ui/button"
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { apiGet } from "@/lib/api"
 import { FolderOpenIcon, TerminalIcon, RefreshCwIcon, PlusIcon, ExternalLinkIcon } from "lucide-react"
 
