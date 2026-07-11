@@ -16,8 +16,9 @@ export function Callback() {
 		}
 
 		setToken(token);
+		const redirectTo = params.get("redirect_to") || "/dashboard";
 		fetchUser().then(() => {
-			navigate("/dashboard", { replace: true });
+			navigate(redirectTo, { replace: true });
 		});
 		// eslint-disable-next-line react-hooks/exhaustive-deps
 	}, []);

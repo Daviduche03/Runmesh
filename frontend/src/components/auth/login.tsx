@@ -1,4 +1,4 @@
-import { Link } from "react-router-dom"
+import { Link, useSearchParams } from "react-router-dom"
 import { LogoIcon } from "@/components/logo"
 import { Button } from "@/components/ui/button"
 import { AuthVisualPanel } from "@/components/auth/auth-visual-panel"
@@ -7,12 +7,17 @@ import { useState } from "react"
 const API_BASE = import.meta.env.VITE_API_URL ?? ""
 
 export function Login() {
+	const [params] = useSearchParams()
 	const [loading, setLoading] = useState(false)
+	const redirectTo = params.get("redirect_to") || ""
 
 	const handleGitHubLogin = async () => {
 		setLoading(true)
 		try {
-			const res = await fetch(`${API_BASE}/auth/github/login`)
+			const url = redirectTo
+				? `${API_BASE}/auth/github/login?redirect_to=${encodeURIComponent(redirectTo)}`
+				: `${API_BASE}/auth/github/login`
+			const res = await fetch(url)
 			const body = await res.json()
 			if (body.ok && body.data?.url) {
 				window.location.href = body.data.url

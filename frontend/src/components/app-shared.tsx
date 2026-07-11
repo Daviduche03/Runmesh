@@ -1,5 +1,5 @@
 import type { ReactNode } from "react";
-import { LayoutGridIcon, ActivityIcon, WorkflowIcon, SettingsIcon, HelpCircleIcon, BookOpenIcon } from "lucide-react";
+import { LayoutGridIcon, ActivityIcon, WorkflowIcon, SettingsIcon, HelpCircleIcon, BookOpenIcon, CloudIcon } from "lucide-react";
 
 export type SidebarNavItem = {
 	title: string;
@@ -23,6 +23,14 @@ export const navGroups: SidebarNavGroup[] = [
 				path: "/dashboard",
 				icon: (
 					<LayoutGridIcon
+					/>
+				),
+			},
+			{
+				title: "Workspace",
+				path: "/app/workspace",
+				icon: (
+					<CloudIcon
 					/>
 				),
 			},

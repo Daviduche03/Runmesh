@@ -1,10 +1,12 @@
 import { Routes, Route, Navigate } from "react-router-dom"
 import { LinearLanding } from "@/components/landing-page"
+import { WorkspaceLanding } from "@/components/workspace-landing"
 import { Login } from "@/components/auth/login"
 import { Signup } from "@/components/auth/signup"
 import { Callback } from "@/components/auth/callback"
 import { AppShell } from "@/components/app-shell"
 import { Dashboard } from "@/components/pages/dashboard"
+import { WorkspacePage } from "@/components/pages/workspace"
 import { RunsPage } from "@/components/pages/runs"
 import { WorkflowsPage } from "@/components/pages/workflows"
 import { WorkflowDetailPage } from "@/components/pages/workflow-detail"
@@ -23,6 +25,7 @@ export function App() {
 	return (
 		<Routes>
 			<Route path="/" element={<LinearLanding />} />
+			<Route path="/workspace" element={<WorkspaceLanding />} />
 			<Route path="/login" element={<Login />} />
 			<Route path="/signup" element={<Signup />} />
 			<Route path="/auth/callback" element={<Callback />} />
@@ -32,6 +35,16 @@ export function App() {
 					<ProtectedRoute>
 						<AppShell>
 							<Dashboard />
+						</AppShell>
+					</ProtectedRoute>
+				}
+			/>
+			<Route
+				path="/app/workspace"
+				element={
+					<ProtectedRoute>
+						<AppShell>
+							<WorkspacePage />
 						</AppShell>
 					</ProtectedRoute>
 				}

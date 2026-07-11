@@ -11,23 +11,23 @@ export function Header() {
 		<header className="fixed inset-x-0 top-0 z-20 bg-transparent backdrop-blur-xl supports-backdrop-filter:bg-[#08090a]/20">
 			<nav className={`${container} flex h-14 items-center justify-between`}>
 				<Link
-					to="/"
+					to="/workspace"
 					className="flex items-center gap-2.5 text-lg font-semibold tracking-tight text-white no-underline"
-					aria-label="Runmesh home"
+					aria-label="Runmesh Workspace home"
 				>
 					<LogoIcon className="size-6" />
-					<span>Runmesh</span>
+					<span>Workspace</span>
 				</Link>
 
 				<div className="hidden items-center gap-6 text-sm text-[#9a9da4] lg:flex">
 					{headerNavLinks.map(({ label, id }) => (
 						<Link
-							to={`/#${id}`}
+							to={`/workspace#${id}`}
 							onClick={(e) => {
-								if (pathname === "/") {
+								if (pathname === "/workspace") {
 									e.preventDefault()
 									scrollToSection(id)
-									window.history.replaceState(null, "", `/#${id}`)
+									window.history.replaceState(null, "", `/workspace#${id}`)
 								}
 							}}
 							className="text-inherit no-underline transition-colors hover:text-white"
@@ -37,10 +37,10 @@ export function Header() {
 						</Link>
 					))}
 					<Link
-						to="/workspace"
+						to="/"
 						className="text-inherit no-underline transition-colors hover:text-white"
 					>
-						Workspace
+						Runmesh
 					</Link>
 				</div>
 
