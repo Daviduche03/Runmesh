@@ -30,3 +30,6 @@ __pycache__/
 
 # Runmesh Workspace CLI local state
 .runmesh/
+
+# CLI binary (build with: go build ./cmd/runmesh)
+runmesh-main/workspace/runmesh
