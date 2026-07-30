@@ -114,7 +114,7 @@ export function RunsPage() {
 			setUrl("");
 			setPayload("{}");
 		} catch {
-			setError("Failed to create task");
+			setError("Failed to create action");
 		}
 	};
 
@@ -126,12 +126,12 @@ export function RunsPage() {
 				<div>
 					<h1 className="text-xl font-semibold tracking-tight">Runs</h1>
 					<p className="text-sm text-muted-foreground mt-1">
-						View and manage all task executions across your workspace.
+						View durable agent actions, retries, and workflow executions across your workspace.
 					</p>
 				</div>
 				<Button onClick={() => setModalOpen(true)}>
 					<PlusIcon className="size-4 me-1.5" />
-					New task
+					New action
 				</Button>
 			</div>
 
@@ -164,7 +164,7 @@ export function RunsPage() {
 				<Table>
 					<TableHeader>
 						<TableRow>
-							<TableHead className="ps-6">Task ID</TableHead>
+							<TableHead className="ps-6">Action ID</TableHead>
 							<TableHead>Endpoint</TableHead>
 							<TableHead>Status</TableHead>
 							<TableHead>Scheduled</TableHead>
@@ -187,7 +187,7 @@ export function RunsPage() {
 								<TableCell colSpan={7} className="text-center py-8">
 									<EmptyState
 										title="No runs yet"
-										description="Create your first task or workflow to see runs here."
+										description="Create your first durable action or workflow to see runs here."
 										icon={<ActivityIcon className="size-6 text-muted-foreground" />}
 									/>
 								</TableCell>
@@ -230,7 +230,7 @@ export function RunsPage() {
 														) : (
 															<CopyIcon className="size-4" />
 														)}
-														Copy task ID
+														Copy action ID
 													</DropdownMenuItem>
 													{run.endpoint ? (
 														<DropdownMenuItem onClick={() => copyValue(`endpoint-${run.id}`, run.endpoint)}>
@@ -292,12 +292,12 @@ export function RunsPage() {
 				</div>
 			)}
 
-			<Modal open={modalOpen} onClose={() => { setModalOpen(false); setError(""); }} title="New task">
+			<Modal open={modalOpen} onClose={() => { setModalOpen(false); setError(""); }} title="New action">
 				<form onSubmit={handleSubmit} className="grid gap-4">
 					<div className="grid gap-1.5">
 						<label className="text-sm font-medium">URL</label>
 						<Input
-							placeholder="https://example.com/webhook"
+							placeholder="https://app.example.com/api/agent/tool"
 							value={url}
 							onChange={(e) => setUrl(e.target.value)}
 						/>
@@ -335,7 +335,7 @@ export function RunsPage() {
 						</Button>
 						<Button type="submit" disabled={creating}>
 							{creating && <Loader2Icon className="size-4 animate-spin me-1.5" />}
-							Create task
+							Create action
 						</Button>
 					</div>
 				</form>
@@ -346,7 +346,7 @@ export function RunsPage() {
 				onClose={() => setDeleteTarget(null)}
 				title="Delete run"
 				itemName={deleteTarget?.name ?? ""}
-				description="This task run will be permanently removed."
+				description="This action run will be permanently removed."
 				onConfirm={async () => {
 					if (!deleteTarget) return;
 					const ok = await removeTask(deleteTarget.id);

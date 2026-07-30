@@ -7,22 +7,22 @@ const steps = [
 	{
 		icon: Download,
 		title: "Install the CLI",
-		desc: "go install github.com/daviduche03/Continuumm/cmd/continuumm@latest",
+		desc: "npm install -g runmesh",
 	},
 	{
 		icon: Key,
 		title: "Configure credentials",
-		desc: "continuumm config set --bucket my-bucket --endpoint https://... --access-key ... --secret-key ...",
+		desc: "runmesh workspace config set --bucket my-bucket --endpoint https://... --access-key ... --secret-key ...",
 	},
 	{
 		icon: Terminal,
 		title: "Link your project",
-		desc: "cd ~/code/my-project && continuumm link my-project",
+		desc: "cd ~/code/my-project && runmesh workspace link my-project",
 	},
 	{
 		icon: BookOpen,
 		title: "Sync or mount",
-		desc: "continuumm watch    # auto-sync daemon\ncontinuumm mount ~/code  # FUSE filesystem",
+		desc: "runmesh workspace watch\nrunmesh workspace mount ~/code",
 	},
 ]
 
@@ -38,11 +38,11 @@ export function CliSection() {
 				>
 					<Badge>CLI</Badge>
 					<h2 className="max-w-[640px] text-balance text-[clamp(34px,4vw,56px)] font-[590] leading-[1.04] tracking-[-0.05em] text-white">
-						One binary, four commands
+						One command surface for portable project context
 					</h2>
 					<p className="mt-4 max-w-[560px] text-[17px] leading-7 tracking-[-0.015em] text-[#8f949e]">
-						The <code className="rounded bg-[#161616] px-1.5 py-0.5 text-[15px] text-[#d8dce3]">continuumm</code> CLI is a single Go binary —
-						no runtime, no dependencies. Install it once, use it everywhere.
+						The <code className="rounded bg-[#161616] px-1.5 py-0.5 text-[15px] text-[#d8dce3]">runmesh workspace</code> CLI connects local development,
+						cloud workspaces, and agent execution around the same project files.
 					</p>
 				</motion.div>
 

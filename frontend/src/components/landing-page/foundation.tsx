@@ -13,9 +13,10 @@ export function Foundation() {
 					transition={{ duration: 0.7, ease: [0.21, 0.98, 0.35, 1] }}
 					className="max-w-[940px] text-balance text-[clamp(40px,4.2vw,52px)] font-[590] leading-[1.08] tracking-[-0.045em] text-white"
 				>
-					One platform, durable execution.{" "}
+					One control plane for agents that act.{" "}
 					<span className="text-[#8f949e]">
-						Runmesh runs on queue primitives with a focused API surface: tasks, workflows, Connect, and observability.
+						Runmesh gives production agents the operational layer around model calls: durable actions, workflows,
+						scoped access, workspace context, and observability.
 					</span>
 				</motion.h2>
 
@@ -32,9 +33,9 @@ export function Foundation() {
 							<FoundationVisual />
 						</div>
 						<div className="pb-1">
-							<h3 className="mb-3 text-[16px] font-[590] tracking-[-0.01em] text-[#d8dce3]">Built on queue primitives</h3>
+							<h3 className="mb-3 text-[16px] font-[590] tracking-[-0.01em] text-[#d8dce3]">Built on durable primitives</h3>
 							<p className="max-w-[520px] text-[16px] leading-6 text-[#8f949e]">
-								Tasks and workflow steps share the same dispatch pipeline — stored, scheduled on a cron cadence, and sent through worker queues.
+								Agent actions and workflow steps share the same dispatch pipeline: stored, scheduled, retried, and sent through worker queues.
 							</p>
 						</div>
 					</article>
@@ -42,7 +43,7 @@ export function Foundation() {
 					<article className="min-h-[470px] px-8">
 						<div className="font-mono text-[12px] tracking-[0.16em] text-[#383c44]">FIG 3.2</div>
 						<div className="mt-20 grid gap-0 border-y border-[#202329]">
-							{["Task API", "Workflow graphs", "Connect OTP", "Queue dispatch"].map((item) => (
+							{["Durable actions", "Agent workflows", "Scoped access", "Workspace context"].map((item) => (
 								<div className="flex items-center justify-between border-b border-[#202329] py-5 last:border-b-0" key={item}>
 									<span className="text-[16px] font-[590] tracking-[-0.01em] text-[#d8dce3]">{item}</span>
 									<span className="font-mono text-[12px] text-[#383c44]">0{item.length % 7 + 1}</span>
@@ -50,7 +51,7 @@ export function Foundation() {
 							))}
 						</div>
 						<p className="mt-16 max-w-[330px] text-[16px] leading-6 text-[#8f949e]">
-							From standalone tasks to multi-step workflows and Connect identity — all backed by the same infrastructure.
+							From standalone actions to multi-step runs, delegated credentials, and synced files - all backed by the same platform.
 						</p>
 					</article>
 				</motion.div>

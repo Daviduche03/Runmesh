@@ -13,9 +13,9 @@ export function CustomerSection() {
 					viewport={{ once: true, margin: "-80px" }}
 					transition={{ duration: 0.7, ease: [0.21, 0.98, 0.35, 1] }}
 				>
-					<SectionIntro badge="Task API" title="Create, schedule, and dispatch HTTP work">
-						<span className="text-white">The foundation for everything else.</span> Publish tasks for immediate queueing,
-						schedule future calls, reschedule queued work, or cancel it before dispatch.
+					<SectionIntro badge="Agent actions" title="Turn every tool call into durable work">
+						<span className="text-white">The foundation for production agents.</span> Queue actions, schedule follow-ups,
+						retry failed calls, cancel work, and keep a record of what each agent attempted.
 					</SectionIntro>
 				</motion.div>
 

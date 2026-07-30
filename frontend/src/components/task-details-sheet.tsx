@@ -69,7 +69,7 @@ export function TaskDetailsSheet({ open, onClose, task }: Props) {
 				<div className="grid gap-5 py-5">
 					<DetailRow
 						icon={<HashIcon className="size-4" />}
-						label="Task ID"
+						label="Action ID"
 						value={task.id}
 					/>
 					<DetailRow

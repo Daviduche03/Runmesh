@@ -10,10 +10,11 @@ export function Hero() {
 				<div className="grid items-end gap-8 lg:grid-cols-[1fr_360px]">
 					<div>
 						<h1 className="max-w-[800px] text-balance text-[clamp(40px,5vw,60px)] font-[510] leading-[1.08] tracking-[-0.055em] text-white opacity-0 animate-fade-in-up">
-							Tasks, workflows, and Connect — one async platform
+							Durable infrastructure for agentic apps
 						</h1>
 						<p className="mt-6 max-w-[720px] text-base leading-6 tracking-[-0.01em] text-[#94979f] opacity-0 animate-fade-in-up-2">
-							Queue webhooks, orchestrate multi-step workflows, and ship portable user identity across your apps — all from one dashboard and API.
+							Run agents that can act, wait, retry, and prove what happened. Runmesh unifies durable tasks,
+							agent workflows, delegated access, and workspace context behind one dashboard and API.
 						</p>
 						<div className="mt-8 flex items-center gap-3 opacity-0 animate-fade-in-up-3">
 							<Button asChild className="bg-[#f2f2f2] text-sm font-medium text-bg-primary hover:bg-white px-5">
@@ -30,9 +31,9 @@ export function Hero() {
 							<span className="grid size-4 shrink-0 place-items-center rounded-md bg-[#202654]">
 								<span className="size-1.5 rounded-sm bg-[#6f7cff]" />
 							</span>
-							<span>Workflow triggers without cron glue</span>
+							<span>Agent actions that survive the request</span>
 						</span>
-						<span className="font-normal text-[#747883]">POST /api/v1/workflows/{`{id}`}/trigger →</span>
+						<span className="font-normal text-[#747883]">POST /api/v1/tasks -&gt; queued, retried, audited</span>
 					</div>
 				</div>
 

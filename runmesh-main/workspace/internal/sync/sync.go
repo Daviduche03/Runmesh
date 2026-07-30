@@ -20,6 +20,7 @@ import (
 	_ "github.com/rclone/rclone/backend/all"
 
 	"runmesh/workspace/internal/config"
+	"runmesh/workspace/internal/envcrypt"
 	"runmesh/workspace/internal/ignore"
 )
 
@@ -42,6 +43,25 @@ func setupCtx(projectDir string) (context.Context, error) {
 	ctx, fi := filter.AddConfig(ctx)
 	if err := ignore.ApplyFiltersToFilter(fi, patterns); err != nil {
 		return nil, fmt.Errorf("applying filters: %w", err)
+	}
+	// Built-in rules (last match wins over .devignore): local state never
+	// syncs, and env files NEVER travel as plaintext — they only move via the
+	// encrypted channel (PushEnv/PullEnv). Templates stay plaintext.
+	hardRules := []struct {
+		include bool
+		pattern string
+	}{
+		{false, ".git/**"},
+		{false, ".runmesh/**"},
+		{false, ".env"},
+		{false, ".env.*"},
+		{true, ".env.example"},
+		{true, ".env.sample"},
+	}
+	for _, hr := range hardRules {
+		if err := fi.Add(hr.include, hr.pattern); err != nil {
+			return nil, fmt.Errorf("applying built-in filters: %w", err)
+		}
 	}
 
 	accounting.Start(ctx)
@@ -68,6 +88,14 @@ func Up(projectDir string, r *config.RemoteConfig, p *config.ProjectConfig) erro
 	if err := rclonesync.CopyDir(ctx, dst, src, false); err != nil {
 		return fmt.Errorf("sync up: %w", err)
 	}
+	key, err := envcrypt.ResolveKey(r.EnvKey)
+	if err != nil {
+		return err
+	}
+	matcher, _ := ignore.NewMatcher(projectDir)
+	if err := PushEnv(ctx, projectDir, dst, key, matcher); err != nil {
+		return fmt.Errorf("env push: %w", err)
+	}
 	fmt.Fprintf(os.Stderr, "Done.\n")
 	return nil
 }
@@ -91,6 +119,13 @@ func Down(projectDir string, r *config.RemoteConfig, p *config.ProjectConfig) er
 	fmt.Fprintf(os.Stderr, "Pulling cloud (%s) → %s...\n", p.CloudPath(r), projectDir)
 	if err := rclonesync.CopyDir(ctx, dst, src, false); err != nil {
 		return fmt.Errorf("sync down: %w", err)
+	}
+	key, err := envcrypt.ResolveKey(r.EnvKey)
+	if err != nil {
+		return err
+	}
+	if err := PullEnv(ctx, projectDir, src, key); err != nil {
+		return fmt.Errorf("env pull: %w", err)
 	}
 	fmt.Fprintf(os.Stderr, "Done.\n")
 	return nil
@@ -189,6 +224,9 @@ func Status(projectDir string, r *config.RemoteConfig, p *config.ProjectConfig) 
 			pull = append(pull, p)
 		}
 	}
+
+	// Env files live outside the bulk diff (they travel encrypted as ".enc")
+	envPush, envPull := envDiff(ctx, projectDir, r, rfs)
 	sort.Strings(push)
 	sort.Strings(pull)
 
@@ -211,10 +249,75 @@ func Status(projectDir string, r *config.RemoteConfig, p *config.ProjectConfig) 
 			fmt.Fprintf(os.Stderr, "  + %s\n", p)
 		}
 	}
-	if len(push) == 0 && len(pull) == 0 {
+	if len(envPush) > 0 {
+		fmt.Fprintf(os.Stderr, "\nWould push encrypted (local → cloud):\n")
+		for _, p := range envPush {
+			fmt.Fprintf(os.Stderr, "  🔒 %s\n", p)
+		}
+	}
+	if len(envPull) > 0 {
+		fmt.Fprintf(os.Stderr, "\nWould pull encrypted (cloud → local):\n")
+		for _, p := range envPull {
+			fmt.Fprintf(os.Stderr, "  🔒 %s\n", p)
+		}
+	}
+	if len(push) == 0 && len(pull) == 0 && len(envPush) == 0 && len(envPull) == 0 {
 		fmt.Fprintln(os.Stderr, "Synced.")
 	}
 	return nil
+}
+
+// envDiff reports which env files would be pushed (local new/changed) or
+// pulled (cloud new/changed), based on the authenticated plaintext tags.
+func envDiff(ctx context.Context, projectDir string, r *config.RemoteConfig, rfs fs.Fs) (push, pull []string) {
+	key, err := envcrypt.ResolveKey(r.EnvKey)
+	if err != nil || len(key) == 0 {
+		return nil, nil
+	}
+	matcher, _ := ignore.NewMatcher(projectDir)
+	locals, err := localEnvFiles(projectDir, matcher)
+	if err != nil {
+		return nil, nil
+	}
+	remotes, err := remoteEnvFiles(ctx, rfs)
+	if err != nil {
+		return nil, nil
+	}
+	tags := map[string][]byte{}
+	for name, obj := range remotes {
+		if blob, err := readObject(ctx, obj); err == nil {
+			if tag, err := envcrypt.ReadTag(blob); err == nil {
+				tags[name] = tag
+			}
+		}
+	}
+	for _, rel := range locals {
+		data, err := os.ReadFile(filepath.Join(projectDir, filepath.FromSlash(rel)))
+		if err != nil {
+			continue
+		}
+		tag, ok := tags[envcrypt.EncryptedName(rel)]
+		if !ok || !envcrypt.TagEquals(key, data, tag) {
+			push = append(push, rel)
+		}
+	}
+	for name := range remotes {
+		rel := envcrypt.DecryptedName(name)
+		data, err := os.ReadFile(filepath.Join(projectDir, filepath.FromSlash(rel)))
+		if os.IsNotExist(err) {
+			pull = append(pull, rel)
+			continue
+		}
+		if err != nil {
+			continue
+		}
+		if tag, ok := tags[name]; ok && !envcrypt.TagEquals(key, data, tag) {
+			pull = append(pull, rel)
+		}
+	}
+	sort.Strings(push)
+	sort.Strings(pull)
+	return push, pull
 }
 
 func Watch(projectDir string, r *config.RemoteConfig, p *config.ProjectConfig) error {
@@ -223,10 +326,17 @@ func Watch(projectDir string, r *config.RemoteConfig, p *config.ProjectConfig) e
 		return fmt.Errorf("loading .devignore: %w", err)
 	}
 
-	ctx := context.Background()
-	ctx, ci := fs.AddConfig(ctx)
-	ci.Checkers = 8
-	ci.Transfers = 4
+	// setupCtx (not a bare ctx) so the CopyDir passes below are filtered —
+	// otherwise watch would push .git, node_modules and plaintext .env files.
+	ctx, err := setupCtx(projectDir)
+	if err != nil {
+		return err
+	}
+
+	key, err := envcrypt.ResolveKey(r.EnvKey)
+	if err != nil {
+		return err
+	}
 
 	lfs, err := fs.NewFs(ctx, projectDir)
 	if err != nil {
@@ -242,9 +352,15 @@ func Watch(projectDir string, r *config.RemoteConfig, p *config.ProjectConfig) e
 	if err := rclonesync.CopyDir(ctx, rfs, lfs, false); err != nil {
 		return fmt.Errorf("initial push: %w", err)
 	}
+	if err := PushEnv(ctx, projectDir, rfs, key, matcher); err != nil {
+		return fmt.Errorf("initial env push: %w", err)
+	}
 	fmt.Fprintf(os.Stderr, "Pushed local → cloud.\n")
 	if err := rclonesync.CopyDir(ctx, lfs, rfs, false); err != nil {
 		return fmt.Errorf("initial pull: %w", err)
+	}
+	if err := PullEnv(ctx, projectDir, rfs, key); err != nil {
+		return fmt.Errorf("initial env pull: %w", err)
 	}
 	fmt.Fprintf(os.Stderr, "Pulled cloud → local.\n")
 
@@ -283,8 +399,12 @@ func Watch(projectDir string, r *config.RemoteConfig, p *config.ProjectConfig) e
 	for {
 		select {
 		case event := <-watcher.Events:
-			if matcher != nil {
-				rel, _ := filepath.Rel(projectDir, event.Name)
+			rel, _ := filepath.Rel(projectDir, event.Name)
+			// Env files are ignored by .devignore on purpose (plaintext must
+			// never bulk-sync), but their changes must still trigger the
+			// encrypted push — so they bypass the matcher check.
+			isEnv := envcrypt.IsEnvFile(filepath.ToSlash(rel))
+			if matcher != nil && !isEnv {
 				if rel != "" && matcher.MatchesPath(rel) {
 					continue
 				}
@@ -312,10 +432,16 @@ func Watch(projectDir string, r *config.RemoteConfig, p *config.ProjectConfig) e
 			if err := rclonesync.CopyDir(ctx, rfs, lfs, false); err != nil {
 				fmt.Fprintf(os.Stderr, "push error: %v\n", err)
 			}
+			if err := PushEnv(ctx, projectDir, rfs, key, matcher); err != nil {
+				fmt.Fprintf(os.Stderr, "env push error: %v\n", err)
+			}
 
 		case <-pullTick.C:
 			if err := rclonesync.CopyDir(ctx, lfs, rfs, false); err != nil {
 				fmt.Fprintf(os.Stderr, "pull error: %v\n", err)
+			}
+			if err := PullEnv(ctx, projectDir, rfs, key); err != nil {
+				fmt.Fprintf(os.Stderr, "env pull error: %v\n", err)
 			}
 
 		case err := <-watcher.Errors:

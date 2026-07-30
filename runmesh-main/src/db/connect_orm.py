@@ -165,6 +165,21 @@ class ConnectOtpChallengeModel(Model):
         payload = dict(data)
         return await self.update("connect_otp_challenges", "id = ?", payload, challenge_id)
 
+    async def count_recent_for_email(self, email: str, since_iso: str) -> int:
+        """Count challenges created for an email since a timestamp (OTP throttling)."""
+        result = await self.db.prepare(
+            "SELECT COUNT(*) AS cnt FROM connect_otp_challenges WHERE email = ? AND created_at >= ?"
+        ).bind(email, since_iso).first()
+        if result is None:
+            return 0
+        if hasattr(result, "as_py"):
+            result = result.as_py()
+        elif hasattr(result, "to_py"):
+            result = result.to_py()
+        elif not isinstance(result, dict):
+            result = dict(result)
+        return int(result.get("cnt", 0))
+
 
 class ConnectIdentityModel(Model):
     async def create(self, payload: ConnectIdentityCreate) -> ConnectIdentityRow:
@@ -485,4 +500,94 @@ class ConnectAuditEventModel(Model):
     async def find_by_id(self, event_id: str) -> ConnectAuditEventRow | None:
         raw = await self.find_one("connect_audit_events", "id = ?", event_id)
         return ConnectAuditEventRow.from_row(raw)
+
+    async def find_token_exchanges(
+        self,
+        app_ids: list[str] | None = None,
+        task_id: str | None = None,
+        workflow_run_id: str | None = None,
+        workspace_project_id: str | None = None,
+        limit: int = 50,
+    ) -> list[ConnectAuditEventRow]:
+        if app_ids is not None and not app_ids:
+            return []  # caller owns no apps — nothing is in scope
+        conditions = ["event_type = 'connect.token.exchanged'"]
+        params: list[str] = []
+        if app_ids is not None:
+            placeholders = ", ".join("?" for _ in app_ids)
+            conditions.append(f"connect_app_id IN ({placeholders})")
+            params.extend(app_ids)
+        if task_id is not None:
+            conditions.append("json_extract(metadata, '$.task_id') = ?")
+            params.append(task_id)
+        if workflow_run_id is not None:
+            conditions.append("json_extract(metadata, '$.workflow_run_id') = ?")
+            params.append(workflow_run_id)
+        if workspace_project_id is not None:
+            conditions.append("json_extract(metadata, '$.workspace_project_id') = ?")
+            params.append(workspace_project_id)
+        where = " AND ".join(conditions)
+        raw_rows = await self.find_many("connect_audit_events", where, *params, limit=limit)
+        return [ConnectAuditEventRow.from_row(r) for r in raw_rows if r]
+
+    async def list_all(
+        self,
+        app_ids: list[str] | None = None,
+        event_type: str | None = None,
+        app_id: str | None = None,
+        connect_user_id: str | None = None,
+        search: str | None = None,
+        limit: int = 50,
+        offset: int = 0,
+    ) -> tuple[list[ConnectAuditEventRow], int]:
+        if app_ids is not None and not app_ids:
+            return [], 0  # caller owns no apps — nothing is in scope
+        conditions: list[str] = []
+        params: list[str] = []
+        if app_ids is not None:
+            placeholders = ", ".join("?" for _ in app_ids)
+            conditions.append(f"connect_app_id IN ({placeholders})")
+            params.extend(app_ids)
+        if event_type is not None:
+            conditions.append("event_type = ?")
+            params.append(event_type)
+        if app_id is not None:
+            conditions.append("connect_app_id = ?")
+            params.append(app_id)
+        if connect_user_id is not None:
+            conditions.append("connect_user_id = ?")
+            params.append(connect_user_id)
+        if search is not None:
+            conditions.append("(event_type LIKE ? OR actor_id LIKE ? OR resource_id LIKE ? OR connect_app_id LIKE ?)")
+            like = f"%{search}%"
+            params.extend([like, like, like, like])
+        where = " AND ".join(conditions) if conditions else "1=1"
+
+        count_result = await self.db.prepare(
+            f"SELECT COUNT(*) as cnt FROM connect_audit_events WHERE {where}"
+        ).bind(*params).all()
+        if count_result:
+            raw_list = count_result.results if hasattr(count_result, 'results') else list(count_result) if count_result else []
+            if raw_list:
+                first = raw_list[0]
+                if hasattr(first, 'as_py'):
+                    total = first.as_py().get("cnt", 0)
+                elif hasattr(first, 'to_py'):
+                    total = first.to_py().get("cnt", 0)
+                elif isinstance(first, dict):
+                    total = first.get("cnt", 0)
+                else:
+                    total = dict(first).get("cnt", 0)
+            else:
+                total = 0
+        else:
+            total = 0
+
+        raw_rows = await self.find_many(
+            "connect_audit_events",
+            f"{where} ORDER BY created_at DESC LIMIT ? OFFSET ?",
+            *params, str(limit), str(offset),
+        )
+        rows = [ConnectAuditEventRow.from_row(r) for r in raw_rows if r]
+        return rows, total
 

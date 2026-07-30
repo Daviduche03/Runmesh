@@ -9,12 +9,11 @@ export function Hero() {
 				<div className="grid items-end gap-8 lg:grid-cols-[1fr_360px]">
 					<div>
 						<h1 className="max-w-[800px] text-balance text-[clamp(40px,5vw,60px)] font-[510] leading-[1.08] tracking-[-0.055em] text-white opacity-0 animate-fade-in-up">
-							Your workspace — in the cloud, on every device
+							Workspace context for humans and coding agents
 						</h1>
 						<p className="mt-6 max-w-[720px] text-base leading-6 tracking-[-0.01em] text-[#94979f] opacity-0 animate-fade-in-up-2">
-							Runmesh Workspace syncs your project files to S3-compatible storage,
-							mounts them as a local filesystem via FUSE, and keeps every device in sync —
-							so your code is always where you are.
+							Runmesh Workspace syncs project files to S3-compatible storage, mounts them locally with FUSE,
+							and gives developers, devices, and agent sandboxes the same source of truth.
 						</p>
 						<div className="mt-8 flex items-center gap-3 opacity-0 animate-fade-in-up-3">
 							<Button asChild className="bg-[#f2f2f2] text-sm font-medium text-bg-primary hover:bg-white px-5">
@@ -31,29 +30,29 @@ export function Hero() {
 							<span className="grid size-4 shrink-0 place-items-center rounded-md bg-[#1a3424]">
 								<span className="size-1.5 rounded-sm bg-[#4cb782]" />
 							</span>
-							<span>Auto-sync to any S3 bucket</span>
+							<span>Shared context for agent execution</span>
 						</span>
-						<span className="font-normal text-[#747883]">continuumm watch</span>
+						<span className="font-normal text-[#747883]">runmesh workspace watch</span>
 						<span className="mt-2 flex items-center gap-3">
 							<span className="grid size-4 shrink-0 place-items-center rounded-md bg-[#24204a]">
 								<span className="size-1.5 rounded-sm bg-[#6f7cff]" />
 							</span>
-							<span>FUSE mount your bucket</span>
+							<span>Mount files where work happens</span>
 						</span>
-						<span className="font-normal text-[#747883]">continuumm mount ~/code</span>
+						<span className="font-normal text-[#747883]">runmesh workspace mount ~/code</span>
 					</div>
 				</div>
 
 				<div className="relative mt-12 overflow-hidden rounded-t-lg border border-b-0 border-[#2b2e35] bg-[#101113] opacity-0 animate-fade-in-up-4">
 					<div className="p-4">
 						<pre className="overflow-x-auto text-[13px] leading-6 text-[#c9cdd4]">
-							<code>{`$ continuumm link midday
+							<code>{`$ runmesh workspace link midday
 Linked /Users/me/code/midday → cloud: matriq/midday
 
-$ continuumm watch
+$ runmesh workspace watch
 Watching /Users/me/code/midday (push on change, pull every 8s)...
 
-$ continuumm mount ~/code --prefix midday
+$ runmesh workspace mount ~/code --prefix midday
 Mounted matriq/midday at /Users/me/code
 
 $ ls ~/code/midday/

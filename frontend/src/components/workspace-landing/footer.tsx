@@ -15,8 +15,7 @@ export function Footer() {
 				<div>
 					<Link to="/workspace" className="flex items-center gap-2.5 text-[14px] text-white no-underline">
 						<LogoIcon className="size-6" />
-						<span>Workspace</span>
-						<em className="hidden text-[#747883] not-italic sm:inline">- by Runmesh</em>
+						<span>Runmesh Workspace</span>
 					</Link>
 					<div className="mt-6 flex gap-4 text-[13px] text-[#8f949e]">
 						<span>X</span>

@@ -62,10 +62,8 @@ async def list_api_keys(api_key_model: ApiKeyModel, user_id: str) -> dict:
 
 
 async def delete_api_key(api_key_model: ApiKeyModel, key_id: str, user_id: str) -> dict:
-    api_keys = await api_key_model.find_by_user_id(user_id, limit=100)
-    user_key_ids = [key["id"] for key in api_keys]
-
-    if key_id not in user_key_ids:
+    api_key = await api_key_model.find_by_id(key_id)
+    if not api_key or api_key.get("user_id") != user_id:
         raise HTTPException(status_code=404, detail="API key not found")
 
     success = await api_key_model.deactivate(key_id)

@@ -63,7 +63,7 @@ export function ConnectAppsTab({
 				<div>
 					<h2 className="text-sm font-semibold tracking-wider text-muted-foreground uppercase">Connect apps</h2>
 					<p className="text-xs text-muted-foreground mt-1">
-						Register apps that use Runmesh Connect for portable integrations and grants.
+						Register apps that issue scoped, auditable access for agents acting on behalf of users.
 					</p>
 				</div>
 				<Button onClick={onAdd}>
@@ -99,7 +99,7 @@ export function ConnectAppsTab({
 						) : apps.length === 0 ? (
 							<TableRow>
 								<TableCell colSpan={6} className="text-center py-8 text-sm text-muted-foreground">
-									No Connect apps yet. Create one to start a session flow.
+									No Connect apps yet. Create one to start delegated access flows.
 								</TableCell>
 							</TableRow>
 						) : (

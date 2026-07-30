@@ -4,7 +4,7 @@ import { useEffect, useState, useCallback, useRef, useMemo } from "react";
 import { Link, useParams } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
-import { ArrowLeftIcon, GitBranchIcon, Loader2Icon, PlayIcon, PlusIcon, SaveIcon } from "lucide-react";
+import { ArrowLeftIcon, GitBranchIcon, Loader2Icon, PlayIcon, PlusIcon, SaveIcon, StopCircleIcon, ListIcon, KeyRoundIcon } from "lucide-react";
 import { apiGet, apiPost, ApiError } from "@/lib/api";
 import type { Workflow } from "@/stores/workflows-store";
 import EmptyState from "@/components/empty-state";
@@ -21,6 +21,16 @@ import {
 	type WorkflowGraph,
 } from "@/lib/workflow-graph";
 import { workflowHeaderSubtitle, workflowHeaderTitle } from "@/lib/workflow-header";
+
+type WorkflowRun = {
+	id: string;
+	status: string;
+	triggeredBy: string;
+	currentStep: number;
+	startedAt: string;
+	completedAt: string;
+	duration: string | null;
+};
 
 const RUN_POLL_MS = 2000;
 
@@ -57,9 +67,13 @@ export function WorkflowDetailPage() {
 	const [loadingWorkflow, setLoadingWorkflow] = useState(true);
 	const [saving, setSaving] = useState(false);
 	const [running, setRunning] = useState(false);
+	const [cancelling, setCancelling] = useState(false);
 	const [saveMessage, setSaveMessage] = useState("");
 	const [runMessage, setRunMessage] = useState("");
 	const [error, setError] = useState("");
+	const [runs, setRuns] = useState<WorkflowRun[]>([]);
+	const [loadingRuns, setLoadingRuns] = useState(false);
+	const [runsTokenMap, setRunsTokenMap] = useState<Record<string, number>>({});
 
 	const fetchWorkflow = useCallback(async (silent = false) => {
 		if (!workflowId) return;
@@ -80,6 +94,38 @@ export function WorkflowDetailPage() {
 		fetchWorkflow();
 	}, [fetchWorkflow]);
 
+	const fetchRuns = useCallback(async () => {
+		if (!workflowId) return;
+		setLoadingRuns(true);
+		try {
+			const { data } = await apiGet<WorkflowRun[]>(`/api/v1/workflows/${workflowId}/runs`);
+			setRuns(data);
+
+			const runIds = (data ?? []).map((r) => r.id).filter(Boolean);
+			if (runIds.length > 0) {
+				const tokenPromises = runIds.map((rid) =>
+					apiGet<{ id: string; metadata: Record<string, unknown> }[]>(
+						`/api/v1/connect/tokens?workflow_run_id=${rid}`,
+					).catch(() => ({ data: [] })),
+				);
+				const tokenResults = await Promise.all(tokenPromises);
+				const map: Record<string, number> = {};
+				tokenResults.forEach((res, i) => {
+					if (res.data?.length) map[runIds[i]] = res.data.length;
+				});
+				setRunsTokenMap(map);
+			}
+		} catch {
+			// ignore
+		} finally {
+			setLoadingRuns(false);
+		}
+	}, [workflowId]);
+
+	useEffect(() => {
+		void fetchRuns();
+	}, [fetchRuns]);
+
 	const runActive = workflow ? workflowRunIsActive(workflow) : false;
 
 	useEffect(() => {
@@ -87,10 +133,11 @@ export function WorkflowDetailPage() {
 
 		const interval = window.setInterval(() => {
 			void fetchWorkflow(true);
+			void fetchRuns();
 		}, RUN_POLL_MS);
 
 		return () => window.clearInterval(interval);
-	}, [workflowId, workflow?.status, workflow ? taskStatusKey(workflow) : "", runActive, fetchWorkflow]);
+	}, [workflowId, workflow?.status, workflow ? taskStatusKey(workflow) : "", runActive, fetchWorkflow, fetchRuns]);
 
 	useEffect(() => {
 		if (!workflow) return;
@@ -125,12 +172,28 @@ export function WorkflowDetailPage() {
 			await apiPost(`/api/v1/workflows/${workflowId}/run`);
 			setRunMessage("Run started");
 			await fetchWorkflow(true);
+			await fetchRuns();
 		} catch (err) {
 			setRunMessage(err instanceof ApiError ? err.message : "Failed to start run");
 		} finally {
 			setRunning(false);
 		}
-	}, [workflowId, fetchWorkflow]);
+	}, [workflowId, fetchWorkflow, fetchRuns]);
+
+	const handleCancelWorkflow = useCallback(async () => {
+		if (!workflowId) return;
+		setCancelling(true);
+		try {
+			await apiPost(`/api/v1/workflows/${workflowId}/cancel`);
+			setRunMessage("Cancelled");
+			await fetchWorkflow(true);
+			await fetchRuns();
+		} catch (err) {
+			setRunMessage(err instanceof ApiError ? err.message : "Failed to cancel");
+		} finally {
+			setCancelling(false);
+		}
+	}, [workflowId, fetchWorkflow, fetchRuns]);
 
 	const handleGraphSaved = useCallback(
 		(savedGraph: WorkflowGraph) => {
@@ -180,8 +243,11 @@ export function WorkflowDetailPage() {
 
 	const saveIsSaving = saveMessage === "Saving...";
 	const saveIsError = saveMessage.length > 0 && saveMessage !== "Saved" && !saveIsSaving;
-	const runIsSuccess = runMessage === "Run started" || runMessage === "Running..." || runMessage === "Completed";
-	const runIsError = runMessage.length > 0 && !runIsSuccess;
+
+	const runStatusClass =
+		runMessage === "Run started" || runMessage === "Running..." || runMessage === "Completed"
+			? "text-sm text-emerald-400"
+			: "text-sm text-red-400";
 
 	return (
 		<div className="grid gap-4">
@@ -194,13 +260,7 @@ export function WorkflowDetailPage() {
 				</div>
 				<div className="flex items-center gap-2">
 					{runMessage && (
-						<span
-							className={
-								runIsError ? "text-sm text-red-400" : "text-sm text-emerald-400"
-							}
-						>
-							{runMessage}
-						</span>
+						<span className={runStatusClass}>{runMessage}</span>
 					)}
 					{saveMessage && (
 						<span
@@ -215,6 +275,21 @@ export function WorkflowDetailPage() {
 							{saveMessage}
 						</span>
 					)}
+					{runActive ? (
+						<Button
+							variant="outline"
+							onClick={() => void handleCancelWorkflow()}
+							disabled={cancelling}
+							className="border-red-500/30 text-red-400 hover:bg-red-500/10"
+						>
+							{cancelling ? (
+								<Loader2Icon className="size-4 me-1.5 animate-spin" />
+							) : (
+								<StopCircleIcon className="size-4 me-1.5" />
+							)}
+							Cancel
+						</Button>
+					) : null}
 					<Button
 						variant="outline"
 						onClick={() => void handleRunWorkflow()}
@@ -258,6 +333,52 @@ export function WorkflowDetailPage() {
 				onSavingChange={setSaving}
 				onSaveMessage={setSaveMessage}
 			/>
+
+			<div className="rounded-lg border border-border">
+				<div className="flex items-center justify-between border-b border-border px-4 py-3">
+					<div className="flex items-center gap-2">
+						<ListIcon className="size-4 text-muted-foreground" />
+						<h2 className="text-sm font-semibold">Run history</h2>
+					</div>
+					{loadingRuns && <Loader2Icon className="size-4 animate-spin text-muted-foreground" />}
+				</div>
+				{runs.length === 0 && !loadingRuns ? (
+					<div className="px-4 py-8 text-center text-sm text-muted-foreground">
+						No runs yet. Press Run to start one.
+					</div>
+				) : (
+					<div className="divide-y divide-border">
+						{runs.map((run) => (
+							<div key={run.id} className="flex items-center justify-between px-4 py-3">
+								<div className="flex items-center gap-3">
+									<span className={`inline-flex items-center rounded-md border px-2 py-0.5 text-xs font-medium ${
+										run.status === "Running" ? "bg-sky-500/10 text-sky-400 border-sky-500/20" :
+										run.status === "Completed" ? "bg-emerald-500/10 text-emerald-400 border-emerald-500/20" :
+										run.status === "Failed" ? "bg-red-500/10 text-red-400 border-red-500/20" :
+										run.status === "Cancelled" ? "bg-amber-500/10 text-amber-400 border-amber-500/20" :
+										"bg-muted text-muted-foreground border-border"
+									}`}>
+										{run.status}
+									</span>
+									<span className="text-sm text-muted-foreground">
+										{run.triggeredBy}
+									</span>
+								</div>
+								<div className="flex items-center gap-4 text-sm text-muted-foreground">
+									{runsTokenMap[run.id] ? (
+										<span className="inline-flex items-center gap-1 text-muted-foreground" title="Connect tokens issued">
+											<KeyRoundIcon className="size-3" />
+											{runsTokenMap[run.id]}
+										</span>
+									) : null}
+									{run.duration && <span>{run.duration}</span>}
+									<span>{new Date(run.startedAt).toLocaleString()}</span>
+								</div>
+							</div>
+						))}
+					</div>
+				)}
+			</div>
 		</div>
 	);
 }

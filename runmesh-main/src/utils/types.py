@@ -12,6 +12,20 @@ class TaskPublish(BaseModel):
     payload_template: Optional[str] = None
     url_template: Optional[str] = None
     type: str = "task"
+    action_kind: str = "http"
+    action_name: Optional[str] = None
+    agent_id: Optional[str] = None
+    agent_session_id: Optional[str] = None
+    thread_id: Optional[str] = None
+    tool_name: Optional[str] = None
+    actor_user_id: Optional[str] = None
+    approval_status: str = "not_required"
+    approval_id: Optional[str] = None
+    connect_app_id: Optional[str] = None
+    connect_grant_id: Optional[str] = None
+    connect_session_id: Optional[str] = None
+    workspace_project_id: Optional[str] = None
+    metadata: Dict[str, Any] = Field(default_factory=dict)
     workflow_id: Optional[str] = None
     execution_type: str = "queue"
     scheduled_at: Optional[str] = None
@@ -23,6 +37,11 @@ class WorkflowCreate(BaseModel):
     description: Optional[str] = None
     trigger_type: str = "manual"
     trigger_config: Optional[str] = None
+    agent_id: Optional[str] = None
+    thread_id: Optional[str] = None
+    workspace_project_id: Optional[str] = None
+    connect_app_id: Optional[str] = None
+    metadata: Dict[str, Any] = Field(default_factory=dict)
     tasks: List[TaskPublish] = []
 
 class ScheduledTaskRequest(BaseModel):
@@ -31,6 +50,20 @@ class ScheduledTaskRequest(BaseModel):
     payload_template: Optional[str] = None
     url_template: Optional[str] = None
     type: str = "task"
+    action_kind: str = "http"
+    action_name: Optional[str] = None
+    agent_id: Optional[str] = None
+    agent_session_id: Optional[str] = None
+    thread_id: Optional[str] = None
+    tool_name: Optional[str] = None
+    actor_user_id: Optional[str] = None
+    approval_status: str = "not_required"
+    approval_id: Optional[str] = None
+    connect_app_id: Optional[str] = None
+    connect_grant_id: Optional[str] = None
+    connect_session_id: Optional[str] = None
+    workspace_project_id: Optional[str] = None
+    metadata: Dict[str, Any] = Field(default_factory=dict)
     workflow_id: Optional[str] = None
     scheduled_at: str
     max_retries: int = 5
@@ -54,7 +87,10 @@ class WorkflowGraphUpdate(BaseModel):
     edges: List[dict]
 
 class WorkflowUpdate(BaseModel):
-    description: str
+    description: Optional[str] = None
+    name: Optional[str] = None
+    trigger_type: Optional[str] = None
+    trigger_config: Optional[str] = None
 
 
 class ConnectAppCreateRequest(BaseModel):
@@ -93,8 +129,11 @@ class ConnectTokenRequest(BaseModel):
     app_id: str
     code: Optional[str] = None
     grant_id: Optional[str] = None
+    task_id: Optional[str] = None
+    workflow_run_id: Optional[str] = None
+    workspace_project_id: Optional[str] = None
 
-    @field_validator("code", "grant_id", mode="before")
+    @field_validator("code", "grant_id", "task_id", "workflow_run_id", "workspace_project_id", mode="before")
     @classmethod
     def _strip_optional(cls, value: Any) -> Optional[str]:
         if value is None:
@@ -205,6 +244,7 @@ class ConnectAuditEventType(str, Enum):
     CONNECTION_CREATED = "connect.connection.created"
     GRANT_APPROVED = "connect.grant.approved"
     GRANT_DENIED = "connect.grant.denied"
+    TOKEN_EXCHANGED = "connect.token.exchanged"
 
 
 class ConnectResourceType(str, Enum):
@@ -212,6 +252,7 @@ class ConnectResourceType(str, Enum):
     CONNECT_SESSION = "connect_session"
     CONNECT_CONNECTION = "connect_connection"
     CONNECT_GRANT = "connect_grant"
+    CONNECT_TOKEN = "connect_token"
 
 
 class ConnectIdentityProvider(str, Enum):
@@ -571,4 +612,3 @@ class ConnectAuditEventCreate(BaseModel):
     resource_type: Optional[str] = None
     resource_id: Optional[str] = None
     metadata: Dict[str, Any] = Field(default_factory=dict)
-

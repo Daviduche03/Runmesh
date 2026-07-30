@@ -1,9 +1,9 @@
-import { useState, useEffect } from "react"
-import { Link } from "react-router-dom"
+import { useState, useEffect, useCallback } from "react"
 import { Button } from "@/components/ui/button"
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
-import { apiGet } from "@/lib/api"
-import { FolderOpenIcon, TerminalIcon, RefreshCwIcon, PlusIcon, ExternalLinkIcon } from "lucide-react"
+import { Input } from "@/components/ui/input"
+import { Modal } from "@/components/ui/modal"
+import { apiGet, apiPost, apiDelete } from "@/lib/api"
+import { FolderOpenIcon, TerminalIcon, RefreshCwIcon, PlusIcon, Trash2Icon, HardDriveIcon, CloudIcon, CheckCircle2Icon, Loader2Icon, TimerIcon } from "lucide-react"
 
 type Project = {
 	id: string
@@ -11,128 +11,299 @@ type Project = {
 	bucket: string
 	local_path: string | null
 	last_synced_at: string | null
+	created_at: string
+	updated_at: string
+}
+
+type StorageOverview = {
+	totalProjects: number
+	totalFiles: number
+	totalBytes: number
 }
 
 export function WorkspacePage() {
 	const [projects, setProjects] = useState<Project[]>([])
 	const [loading, setLoading] = useState(true)
+	const [showLinkModal, setShowLinkModal] = useState(false)
+	const [linkPrefix, setLinkPrefix] = useState("")
+	const [linkBucket, setLinkBucket] = useState("")
+	const [linkPath, setLinkPath] = useState("")
+	const [linkError, setLinkError] = useState("")
+	const [linking, setLinking] = useState(false)
+	const [deleteTarget, setDeleteTarget] = useState<Project | null>(null)
+	const [deleting, setDeleting] = useState(false)
+	const [storage, setStorage] = useState<StorageOverview>({ totalProjects: 0, totalFiles: 0, totalBytes: 0 })
 
-	useEffect(() => {
-		apiGet<Project[]>("/api/workspace/projects")
-			.then((res) => setProjects(res.data ?? []))
-			.catch(() => setProjects([]))
-			.finally(() => setLoading(false))
+	const fetchProjects = useCallback(async () => {
+		setLoading(true)
+		try {
+			const { data } = await apiGet<Project[]>("/api/workspace/projects")
+			setProjects(data ?? [])
+			setStorage(prev => ({ ...prev, totalProjects: data?.length ?? 0 }))
+		} catch {
+			setProjects([])
+		} finally {
+			setLoading(false)
+		}
 	}, [])
 
+	useEffect(() => {
+		void fetchProjects()
+	}, [fetchProjects])
+
+	const handleLinkProject = async (e: React.FormEvent) => {
+		e.preventDefault()
+		setLinkError("")
+		if (!linkPrefix.trim()) {
+			setLinkError("Prefix is required")
+			return
+		}
+		if (!linkBucket.trim()) {
+			setLinkError("Bucket is required")
+			return
+		}
+		setLinking(true)
+		try {
+			await apiPost("/api/workspace/projects", {
+				prefix: linkPrefix.trim(),
+				bucket: linkBucket.trim(),
+				local_path: linkPath.trim() || null,
+			})
+			setShowLinkModal(false)
+			setLinkPrefix("")
+			setLinkBucket("")
+			setLinkPath("")
+			await fetchProjects()
+		} catch {
+			setLinkError("Failed to link project")
+		} finally {
+			setLinking(false)
+		}
+	}
+
+	const handleDeleteProject = async () => {
+		if (!deleteTarget) return
+		setDeleting(true)
+		try {
+			await apiDelete(`/api/workspace/projects/${deleteTarget.id}`)
+			setDeleteTarget(null)
+			await fetchProjects()
+		} catch {
+			// ignore
+		} finally {
+			setDeleting(false)
+		}
+	}
+
+	const formatBytes = (bytes: number) => {
+		if (bytes === 0) return "0 B"
+		const k = 1024
+		const sizes = ["B", "KB", "MB", "GB"]
+		const i = Math.floor(Math.log(bytes) / Math.log(k))
+		return `${(bytes / Math.pow(k, i)).toFixed(1)} ${sizes[i]}`
+	}
+
+	const formatDate = (dateStr: string | null) => {
+		if (!dateStr) return "Never"
+		try {
+			return new Date(dateStr).toLocaleString()
+		} catch {
+			return dateStr
+		}
+	}
+
 	return (
-		<div className="flex flex-col gap-6">
+		<div className="grid gap-8">
 			<div className="flex items-center justify-between">
 				<div>
-					<h1 className="text-[24px] font-[590] tracking-[-0.03em] text-foreground">Workspace</h1>
-					<p className="mt-1 text-[14px] text-muted-foreground">
-						Manage your cloud-synced projects
+					<h1 className="text-2xl font-semibold tracking-tight">Workspace</h1>
+					<p className="text-sm text-muted-foreground mt-1">
+						Sync project files across devices and agents.
 					</p>
 				</div>
-				<Button asChild className="gap-2">
-					<Link to="/workspace">
-						<PlusIcon className="size-4" />
-						Link project
-					</Link>
+				<Button onClick={() => setShowLinkModal(true)}>
+					<PlusIcon className="size-4 me-1.5" />
+					Link project
 				</Button>
 			</div>
 
-			<div className="grid gap-4 md:grid-cols-3">
-				<Card>
-					<CardHeader className="pb-2">
-						<CardTitle className="text-[13px] font-medium text-muted-foreground">Linked projects</CardTitle>
-					</CardHeader>
-					<CardContent>
-						<p className="text-[28px] font-[590] tabular-nums">{loading ? "..." : projects.length}</p>
-					</CardContent>
-				</Card>
-				<Card>
-					<CardHeader className="pb-2">
-						<CardTitle className="text-[13px] font-medium text-muted-foreground">CLI status</CardTitle>
-					</CardHeader>
-					<CardContent className="flex items-center gap-2">
-						<span className="size-2 rounded-full bg-[#4cb782]" />
-						<span className="text-[14px] text-foreground">Authenticated</span>
-					</CardContent>
-				</Card>
-				<Card>
-					<CardHeader className="pb-2">
-						<CardTitle className="text-[13px] font-medium text-muted-foreground">Quick start</CardTitle>
-					</CardHeader>
-					<CardContent>
-						<Button variant="outline" size="sm" className="gap-2 text-[13px]" asChild>
-							<a href="https://github.com/daviduche03/Continuumm" target="_blank" rel="noreferrer">
-								<ExternalLinkIcon className="size-3.5" />
-								Install CLI
-							</a>
-						</Button>
-					</CardContent>
-				</Card>
+			<div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+				<div className="rounded-none border border-border bg-background px-5 py-5 flex flex-col justify-center min-h-[88px]">
+					<div className="flex items-center justify-between">
+						<p className="text-2xl font-semibold tabular-nums">{loading ? "..." : storage.totalProjects}</p>
+						<FolderOpenIcon className="size-4 text-muted-foreground" />
+					</div>
+					<p className="text-sm text-muted-foreground mt-1">Linked projects</p>
+				</div>
+				<div className="rounded-none border border-border bg-background px-5 py-5 flex flex-col justify-center min-h-[88px]">
+					<div className="flex items-center justify-between">
+						<div className="flex items-center gap-2">
+							<span className="size-2 rounded-full bg-emerald-400" />
+							<span className="text-sm font-medium text-foreground">Authenticated</span>
+						</div>
+						<TerminalIcon className="size-4 text-muted-foreground" />
+					</div>
+					<p className="text-sm text-muted-foreground mt-1">CLI status</p>
+				</div>
+				<div className="rounded-none border border-border bg-background px-5 py-5 flex flex-col justify-center min-h-[88px]">
+					<div className="flex items-center justify-between">
+						<p className="text-2xl font-semibold tabular-nums">{formatBytes(storage.totalBytes)}</p>
+						<HardDriveIcon className="size-4 text-muted-foreground" />
+					</div>
+					<p className="text-sm text-muted-foreground mt-1">Storage used</p>
+				</div>
+				<div className="rounded-none border border-border bg-background px-5 py-5 flex flex-col justify-center min-h-[88px]">
+					<div className="flex items-center justify-between">
+						<div className="flex items-center gap-2">
+							<span className="size-2 rounded-full bg-emerald-400" />
+							<span className="text-sm font-medium text-foreground">Up to date</span>
+						</div>
+						<CheckCircle2Icon className="size-4 text-muted-foreground" />
+					</div>
+					<p className="text-sm text-muted-foreground mt-1">Sync status</p>
+				</div>
 			</div>
 
-			<div className="rounded-lg border border-border">
-				<div className="flex items-center justify-between border-b border-border px-6 py-3">
-					<h2 className="text-[15px] font-medium text-foreground">Linked projects</h2>
+			<div className="grid gap-6">
+				<div className="flex items-center justify-between">
+					<h2 className="text-sm font-semibold tracking-wider text-muted-foreground uppercase">Projects</h2>
 					{projects.length > 0 && (
-						<Button variant="ghost" size="sm" className="gap-2 text-[13px] text-muted-foreground">
+						<Button variant="ghost" size="sm" className="gap-2 text-xs text-muted-foreground">
 							<RefreshCwIcon className="size-3.5" />
 							Sync all
 						</Button>
 					)}
 				</div>
+
 				{loading ? (
-					<div className="flex items-center justify-center py-16">
-						<div className="text-[14px] text-muted-foreground">Loading...</div>
+					<div className="grid gap-3 md:grid-cols-2 lg:grid-cols-3">
+						{[1, 2, 3].map((i) => (
+							<div key={i} className="rounded-lg border border-border p-5 animate-pulse">
+								<div className="h-4 w-24 bg-muted rounded mb-3" />
+								<div className="h-3 w-40 bg-muted rounded mb-2" />
+								<div className="h-3 w-32 bg-muted rounded" />
+							</div>
+						))}
 					</div>
 				) : projects.length === 0 ? (
-					<div className="flex flex-col items-center gap-3 py-16">
-						<TerminalIcon className="size-10 text-muted-foreground" />
-						<p className="text-[14px] text-muted-foreground">No projects linked yet</p>
-						<p className="max-w-[480px] text-center text-[13px] text-muted-foreground">
-							Install the CLI, configure your credentials, and run{" "}
-							<code className="rounded bg-muted px-1.5 py-0.5 text-[13px]">continuumm link</code>{" "}
-							in a project directory.
-						</p>
-						<Button variant="outline" size="sm" className="mt-2 gap-2">
-							<ExternalLinkIcon className="size-3.5" />
-							View documentation
+					<div className="flex flex-col items-center gap-4 py-16 rounded-lg border border-border">
+						<CloudIcon className="size-12 text-muted-foreground" />
+						<div className="text-center">
+							<p className="text-sm font-medium text-foreground">No projects linked</p>
+							<p className="text-xs text-muted-foreground mt-1 max-w-sm">
+								Install the CLI, configure your bucket, and run{" "}
+								<code className="rounded bg-muted px-1.5 py-0.5 text-xs">runmesh workspace link</code>{" "}
+								in a project directory. Or link one here.
+							</p>
+						</div>
+						<Button variant="outline" size="sm" onClick={() => setShowLinkModal(true)}>
+							<PlusIcon className="size-3.5 me-1.5" />
+							Link project
 						</Button>
 					</div>
 				) : (
-					<div className="divide-y divide-border">
+					<div className="grid gap-3 md:grid-cols-2 lg:grid-cols-3">
 						{projects.map((p) => (
-							<div key={p.id} className="flex items-center justify-between px-6 py-4">
-								<div className="flex items-center gap-4">
-									<div className="grid size-9 place-items-center rounded-lg border border-border bg-muted">
-										<FolderOpenIcon className="size-4 text-muted-foreground" />
+							<div key={p.id} className="rounded-lg border border-border p-5 hover:border-muted-foreground/30 transition-colors">
+								<div className="flex items-start justify-between mb-3">
+									<div className="flex items-center gap-3">
+										<div className="grid size-9 place-items-center rounded-lg border border-border bg-muted">
+											<FolderOpenIcon className="size-4 text-muted-foreground" />
+										</div>
+										<div>
+											<p className="text-sm font-medium">{p.prefix}</p>
+											<p className="text-xs text-muted-foreground">{p.bucket}</p>
+										</div>
 									</div>
-									<div>
-										<p className="text-[14px] font-medium text-foreground">{p.prefix}</p>
-										<p className="text-[12px] text-muted-foreground">
-											{p.bucket}/{p.prefix}
-											{p.local_path && <> &middot; {p.local_path}</>}
-										</p>
-									</div>
-								</div>
-								<div className="flex items-center gap-2">
-									{p.last_synced_at && (
-										<span className="text-[12px] text-muted-foreground">
-											{p.last_synced_at}
-										</span>
-									)}
-									<Button variant="ghost" size="icon" className="size-8">
-										<RefreshCwIcon className="size-3.5" />
+									<Button
+										variant="ghost"
+										size="icon-sm"
+										className="-mr-2 -mt-1 text-muted-foreground hover:text-red-400"
+										onClick={() => setDeleteTarget(p)}
+									>
+										<Trash2Icon className="size-3.5" />
 									</Button>
+								</div>
+								<div className="grid gap-1.5 text-xs text-muted-foreground">
+									{p.local_path && (
+										<div className="flex items-center gap-1.5">
+											<TerminalIcon className="size-3" />
+											<span className="truncate">{p.local_path}</span>
+										</div>
+									)}
+									<div className="flex items-center gap-1.5">
+										<TimerIcon className="size-3" />
+										<span>Last synced: {formatDate(p.last_synced_at)}</span>
+									</div>
 								</div>
 							</div>
 						))}
 					</div>
 				)}
 			</div>
+
+			<div className="rounded-lg border border-border">
+				<div className="px-5 py-4 border-b border-border">
+					<h2 className="text-sm font-semibold tracking-wider text-muted-foreground uppercase">CLI & Config</h2>
+				</div>
+				<div className="p-5 grid gap-4 md:grid-cols-2">
+					<div>
+						<h3 className="text-sm font-medium mb-2">Installation</h3>
+						<div className="rounded-md bg-muted p-3">
+							<code className="text-xs font-mono">go install github.com/Daviduche03/Runmesh/runmesh-main/workspace/cmd/runmesh@latest</code>
+						</div>
+					</div>
+					<div>
+						<h3 className="text-sm font-medium mb-2">Quick start</h3>
+						<div className="rounded-md bg-muted p-3 grid gap-1">
+							<code className="text-xs font-mono">runmesh config set --bucket my-bucket --endpoint https://...</code>
+							<code className="text-xs font-mono">cd ~/code/my-project && runmesh workspace link</code>
+							<code className="text-xs font-mono">runmesh workspace watch</code>
+						</div>
+					</div>
+				</div>
+			</div>
+
+			<Modal open={showLinkModal} onClose={() => { setShowLinkModal(false); setLinkError(""); }} title="Link project">
+				<form onSubmit={handleLinkProject} className="grid gap-5">
+					<div className="grid gap-1.5">
+						<label className="text-sm font-medium">Project prefix</label>
+						<Input placeholder="e.g. my-project" value={linkPrefix} onChange={(e) => setLinkPrefix(e.target.value)} />
+					</div>
+					<div className="grid gap-1.5">
+						<label className="text-sm font-medium">Bucket name</label>
+						<Input placeholder="e.g. my-bucket" value={linkBucket} onChange={(e) => setLinkBucket(e.target.value)} />
+					</div>
+					<div className="grid gap-1.5">
+						<label className="text-sm font-medium">Local path (optional)</label>
+						<Input placeholder="e.g. /home/user/projects/my-project" value={linkPath} onChange={(e) => setLinkPath(e.target.value)} />
+					</div>
+					{linkError && <p className="text-sm text-red-400">{linkError}</p>}
+					<div className="flex justify-end gap-3 pt-2 border-t border-border">
+						<Button type="button" variant="outline" onClick={() => { setShowLinkModal(false); setLinkError(""); }}>Cancel</Button>
+						<Button type="submit" disabled={linking}>
+							{linking && <Loader2Icon className="size-4 animate-spin me-1.5" />}
+							Link project
+						</Button>
+					</div>
+				</form>
+			</Modal>
+
+			<Modal open={!!deleteTarget} onClose={() => setDeleteTarget(null)} title="Unlink project">
+				<div className="grid gap-5">
+					<p className="text-sm text-muted-foreground">
+						Are you sure you want to unlink <span className="font-medium text-foreground">{deleteTarget?.prefix}</span>?
+						Files in the cloud bucket will not be deleted, but the link will be removed.
+					</p>
+					<div className="flex justify-end gap-3 pt-2 border-t border-border">
+						<Button variant="outline" onClick={() => setDeleteTarget(null)}>Cancel</Button>
+						<Button variant="destructive" onClick={handleDeleteProject} disabled={deleting}>
+							{deleting && <Loader2Icon className="size-4 animate-spin me-1.5" />}
+							Unlink
+						</Button>
+					</div>
+				</div>
+			</Modal>
 		</div>
 	)
 }

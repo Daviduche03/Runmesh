@@ -7,22 +7,22 @@ const features = [
 	{
 		icon: ArrowUpFromLine,
 		title: "Push to cloud",
-		desc: "One-command upload: continuumm up copies your project to S3/R2, respecting .devignore patterns.",
+		desc: "One-command upload: runmesh workspace up copies project context to S3/R2, respecting .devignore patterns.",
 	},
 	{
 		icon: ArrowDownFromLine,
 		title: "Pull from cloud",
-		desc: "continuumm down fetches the latest cloud state to any machine — clone your workspace anywhere.",
+		desc: "runmesh workspace down fetches the latest cloud state to any machine or execution environment.",
 	},
 	{
 		icon: Eye,
 		title: "List & status",
-		desc: "continuumm list shows all remote files; continuumm status diffs local vs cloud file sets.",
+		desc: "runmesh workspace list shows remote files; runmesh workspace status diffs local vs cloud file sets.",
 	},
 	{
 		icon: RefreshCw,
 		title: "Auto-sync daemon",
-		desc: "continuumm watch runs a bidirectional sync loop: pushes local changes instantly, polls cloud changes every 8s.",
+		desc: "runmesh workspace watch keeps local and cloud context aligned while developers and agents move between machines.",
 	},
 ]
 
@@ -38,11 +38,11 @@ export function SyncSection() {
 				>
 					<Badge>Sync</Badge>
 					<h2 className="max-w-[640px] text-balance text-[clamp(34px,4vw,56px)] font-[590] leading-[1.04] tracking-[-0.05em] text-white">
-						Files sync like magic — no git necessary
+						Keep project context ready for every actor
 					</h2>
 					<p className="mt-4 max-w-[560px] text-[17px] leading-7 tracking-[-0.015em] text-[#8f949e]">
-						Your project files live in an S3-compatible bucket — Cloudflare R2, AWS S3, Minio, or any provider.
-						<span className="text-white"> Sync is unidirectional and idempotent.</span>
+						Your project files live in an S3-compatible bucket: Cloudflare R2, AWS S3, Minio, or any provider.
+						<span className="text-white"> Developers and agents can pick up the same workspace without forcing every handoff through git.</span>
 					</p>
 				</motion.div>
 

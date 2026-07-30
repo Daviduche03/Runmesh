@@ -294,7 +294,7 @@ func Mount(mountpoint string, rc *config.RemoteConfig, prefix string) (*fuse.Ser
 		AttrTimeout:  &sec,
 		MountOptions: fuse.MountOptions{
 			FsName: rc.DefaultBucket + "/" + prefix,
-			Name:   "continuumm",
+			Name:   "runmesh",
 		},
 	}
 

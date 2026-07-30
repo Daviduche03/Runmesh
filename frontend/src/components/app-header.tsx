@@ -5,10 +5,17 @@ import { AppBreadcrumbs } from "@/components/app-breadcrumbs";
 import { navLinks } from "@/components/app-shared";
 import { CustomSidebarTrigger } from "@/components/custom-sidebar-trigger";
 import { NavUser } from "@/components/nav-user";
-
-const activeItem = navLinks.find((item) => item.isActive);
+import { useLocation } from "react-router-dom";
 
 export function AppHeader() {
+	const { pathname, search } = useLocation();
+	const activeItem = navLinks.find((item) => {
+		if (item.path === "/workflows" && pathname.startsWith("/workflows/")) return true;
+		if (item.path?.startsWith("/settings?tab=")) return `${pathname}${search}` === item.path;
+		if (item.path === "/settings") return pathname === "/settings" && !search;
+		return item.path === pathname;
+	});
+
 	return (
 		<header
 			className={cn(

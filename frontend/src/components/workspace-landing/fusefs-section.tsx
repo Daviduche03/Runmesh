@@ -7,7 +7,7 @@ const benefits = [
 	{
 		icon: HardDrive,
 		title: "Mount as local filesystem",
-		desc: "continuumm mount exposes your entire bucket as a FUSE filesystem — every file available on-demand, no sync required.",
+		desc: "runmesh workspace mount exposes your workspace as a FUSE filesystem with files available on demand.",
 	},
 	{
 		icon: Zap,
@@ -38,11 +38,11 @@ export function FusefsSection() {
 				>
 					<Badge>FUSE</Badge>
 					<h2 className="max-w-[640px] text-balance text-[clamp(34px,4vw,56px)] font-[590] leading-[1.04] tracking-[-0.05em] text-white">
-						Mount your bucket — files without friction
+						Mount the same workspace anywhere work runs
 					</h2>
 					<p className="mt-4 max-w-[560px] text-[17px] leading-7 tracking-[-0.015em] text-[#8f949e]">
 						The FUSE filesystem makes cloud storage behave like a local drive.
-						<span className="text-white"> No syncing, no waiting, no duplicates.</span>
+						<span className="text-white"> That same mount becomes the bridge from laptop to cloud workspace to agent sandbox.</span>
 					</p>
 				</motion.div>
 

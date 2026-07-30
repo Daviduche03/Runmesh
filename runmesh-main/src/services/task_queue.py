@@ -6,6 +6,7 @@ from db.orm import TaskModel, WorkflowRunModel
 from services.templating import resolve_task_request, read_fetch_response_body
 from services.webhooks import dispatch_event, _ack_message, _queue_message_body
 from services.workflow_runner import handle_workflow_task_completion
+from utils.url_security import is_outbound_url_allowed
 
 TERMINAL_STATUSES = frozenset({"completed", "failed", "cancelled"})
 
@@ -110,6 +111,14 @@ async def process_task_message(env, message, fetch_fn) -> None:
         except HTTPException as exc:
             print(f"Task template error for {task_id}: {exc.detail}")
             raise ValueError(str(exc.detail)) from exc
+
+        # SSRF guard: re-validate the (possibly template-rendered) target URL.
+        # Blocked URLs are a permanent failure — retrying would never succeed.
+        if not is_outbound_url_allowed(target_url):
+            print(f"Task {task_id} blocked: target URL failed SSRF checks")
+            await _finalize_task(env, task_id, task_row, workflow_run_id, "failed", "", None)
+            _ack_message(message)
+            return
 
         fetch_body = (
             json.dumps(task_payload)

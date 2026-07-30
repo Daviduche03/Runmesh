@@ -7,19 +7,19 @@ export function TaskApiPreview() {
 					<div><span className="text-[#6b7280]">POST</span> <span className="text-[#d8dce3]">/api/v1/tasks</span></div>
 					<div className="mt-4 text-[#6b7280]">Authorization: <span className="text-[#d8dce3]">Bearer ••••</span> or X-API-Key</div>
 					<div className="mt-4 text-[#6b7280]">{"{"}</div>
-					<div className="pl-4">"url": <span className="text-[#d8dce3]">"https://api.store.dev/webhook"</span>,</div>
-					<div className="pl-4">"payload": <span className="text-[#d8dce3]">{"{ \"order_id\": \"ord_1042\" }"}</span></div>
+					<div className="pl-4">"url": <span className="text-[#d8dce3]">"https://app.vercel.app/api/agent/github"</span>,</div>
+					<div className="pl-4">"payload": <span className="text-[#d8dce3]">{"{ \"tool\": \"create_issue\", \"thread_id\": \"th_1042\" }"}</span></div>
 					<div className="text-[#6b7280]">{"}"}</div>
 				</div>
 			</div>
 			<div className="p-8">
-				<div className="font-mono text-[12px] tracking-[0.16em] text-[#383c44]">TASK LIFECYCLE</div>
+				<div className="font-mono text-[12px] tracking-[0.16em] text-[#383c44]">AGENT ACTION LIFECYCLE</div>
 				<div className="mt-10 grid gap-0 border-y border-[#24272d]">
 					{[
-						["queued", "Task stored with generated idempotency key"],
-						["running", "Worker POSTs payload to target URL"],
-						["completed", "2xx response marks execution complete"],
-						["failed", "Non-2xx response increments retries"],
+						["queued", "Action stored with an idempotency key"],
+						["running", "Worker calls your route or tool endpoint"],
+						["completed", "Response and status are recorded"],
+						["failed", "Retry policy decides what happens next"],
 					].map(([state, copy], index) => (
 						<div className="grid grid-cols-[120px_1fr] border-b border-[#24272d] py-5 last:border-b-0" key={state}>
 							<div className="flex items-center gap-3">

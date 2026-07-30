@@ -33,7 +33,7 @@ class TaskScheduler:
         result = await self.db.prepare(query).bind(current_time).all()
         
         if result and hasattr(result, 'results'):
-            return [task.as_py() if hasattr(task, 'as_py') else task for task in result.results]
+            return [task.to_py() if hasattr(task, 'to_py') else task for task in result.results]
         elif result:
             return [result]
         else:
@@ -210,7 +210,7 @@ class TaskScheduler:
         result = await self.db.prepare(query).bind(*params).all()
         
         if result and hasattr(result, 'results'):
-            return [task.as_py() if hasattr(task, 'as_py') else task for task in result.results]
+            return [task.to_py() if hasattr(task, 'to_py') else task for task in result.results]
         elif result:
             return [result]
         else:

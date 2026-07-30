@@ -262,7 +262,11 @@ class UserModel(Model):
 class ApiKeyModel(Model):
     def __init__(self, db):
         super().__init__(db)
-    
+
+    async def find_by_id(self, key_id: str) -> Optional[Dict[str, Any]]:
+        """Find a single API key by ID"""
+        return await self.find_one('api_keys', 'id = ?', key_id)
+
     async def create(self, api_key_data: Dict[str, Any]) -> str:
         """Create a new API key"""
         """Create a new API key"""

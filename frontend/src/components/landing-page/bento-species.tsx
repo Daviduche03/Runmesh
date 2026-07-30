@@ -2,26 +2,33 @@ import { sectionPadding } from "./constants"
 import { PurposeVisual } from "./visuals/purpose-visual"
 import { AgentsVisual } from "./visuals/agents-visual"
 import { TriageVisual } from "./visuals/triage-visual"
+import { SpeedVisual } from "./visuals/speed-visual"
 import { motion } from "framer-motion"
 
 const bentoCards = [
 	{
 		fig: "FIG 0.2",
-		title: "Task execution",
-		copy: "Send Runmesh a URL and JSON payload. It creates a durable task, queues it, and dispatches the webhook for you.",
+		title: "Durable actions",
+		copy: "Turn agent tool calls into queued tasks with retries, idempotency, cancellation, and stored outcomes.",
 		visual: <PurposeVisual />,
 	},
 	{
 		fig: "FIG 0.3",
-		title: "Workflow automation",
-		copy: "Chain HTTP steps, trigger runs from webhooks or cron, and pass data between steps with Jinja templates.",
+		title: "Agent workflows",
+		copy: "Chain steps, trigger runs from webhooks or schedules, and pass results forward as the agent waits and resumes.",
 		visual: <AgentsVisual />,
 	},
 	{
 		fig: "FIG 0.4",
-		title: "Runmesh Connect",
-		copy: "Give users one portable identity across your apps with OTP login, OAuth connections, and scoped grants.",
+		title: "Delegated access",
+		copy: "Issue scoped, auditable access so agents can act for users without carrying long-lived secrets.",
 		visual: <TriageVisual />,
+	},
+	{
+		fig: "FIG 0.5",
+		title: "Workspace context",
+		copy: "Sync project files to a dev-aware cloud workspace so humans and coding agents work from the same context.",
+		visual: <SpeedVisual />,
 	},
 ]
 
@@ -36,9 +43,9 @@ export function BentoSpecies() {
 					transition={{ duration: 0.7, ease: [0.21, 0.98, 0.35, 1] }}
 					className="max-w-[940px] text-balance text-[clamp(40px,4.2vw,52px)] font-[590] leading-[1.08] tracking-[-0.045em] text-white"
 				>
-					Three products on one platform.{" "}
+					One product, four agentic primitives.{" "}
 					<span className="text-[#8f949e]">
-						Run tasks, automate workflows, and connect user identity without stitching together separate tools.
+						Run actions, orchestrate workflows, delegate access, and give agents real project context without stitching together separate tools.
 					</span>
 				</motion.h2>
 
@@ -47,7 +54,7 @@ export function BentoSpecies() {
 					whileInView={{ opacity: 1, y: 0 }}
 					viewport={{ once: true, margin: "-80px" }}
 					transition={{ duration: 0.7, ease: [0.21, 0.98, 0.35, 1], delay: 0.15 }}
-					className="mt-32 grid grid-cols-1 border-[#202329] md:grid-cols-3 md:border-x"
+					className="mt-32 grid grid-cols-1 border-[#202329] md:grid-cols-2 md:border-x xl:grid-cols-4"
 				>
 					{bentoCards.map((card) => {
 						const { fig, title, copy, visual } = card

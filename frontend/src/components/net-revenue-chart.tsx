@@ -26,7 +26,7 @@ type Props = {
 
 const chartConfig = {
 	tasks: {
-		label: "Tasks",
+		label: "Actions",
 		color: "var(--chart-2)",
 	},
 } satisfies ChartConfig;
@@ -78,7 +78,7 @@ export function NetRevenueChart({ data, loading }: Props) {
 		<DashboardCard className="gap-0 md:col-span-2">
 			<CardHeader className="gap-2">
 				<div className="flex flex-wrap items-center gap-2">
-					<CardTitle>Task executions</CardTitle>
+					<CardTitle>Action throughput</CardTitle>
 					{!loading && data.length > 0 && (
 						<Delta value={Number(growthPct)} variant="badge">
 							<DeltaIcon variant="trend" />
@@ -86,7 +86,7 @@ export function NetRevenueChart({ data, loading }: Props) {
 						</Delta>
 					)}
 				</div>
-				<CardDescription>Daily task executions, last 7 days.</CardDescription>
+				<CardDescription>Daily durable action executions, last 7 days.</CardDescription>
 			</CardHeader>
 			<CardContent>
 				{loading ? (
@@ -102,7 +102,7 @@ export function NetRevenueChart({ data, loading }: Props) {
 								</EmptyMedia>
 								<EmptyTitle>No executions yet</EmptyTitle>
 								<EmptyDescription>
-									Task execution data will appear here once you publish your first task.
+									Action execution data will appear here once you publish your first agent action.
 								</EmptyDescription>
 							</EmptyHeader>
 						</Empty>

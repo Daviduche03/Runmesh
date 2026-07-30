@@ -8,34 +8,34 @@ import { DeleteConfirmModal } from "@/components/ui/delete-confirm-modal";
 import { GeneralTab } from "./general-tab";
 import { WebhooksTab } from "./webhooks-tab";
 import { ApiKeysTab } from "./api-keys-tab";
-import { ConnectAppsTab } from "./connect-apps-tab";
 import { useApiKeysStore } from "@/stores/api-keys-store";
-import { useConnectAppsStore } from "@/stores/connect-apps-store";
 import { useWebhooksStore } from "@/stores/webhooks-store";
-import { WebhookIcon, KeyRoundIcon, Settings2Icon, Loader2Icon, CopyIcon, CheckIcon, PlugIcon } from "lucide-react";
+import { WebhookIcon, KeyRoundIcon, Settings2Icon, Loader2Icon, CopyIcon, CheckIcon } from "lucide-react";
+import { useSearchParams } from "react-router-dom";
 
 const tabs = [
 	{ id: "general", label: "General", icon: <Settings2Icon className="size-4" /> },
 	{ id: "webhooks", label: "Webhooks", icon: <WebhookIcon className="size-4" /> },
 	{ id: "api-keys", label: "API Keys", icon: <KeyRoundIcon className="size-4" /> },
-	{ id: "connect-apps", label: "Connect", icon: <PlugIcon className="size-4" /> },
 ] as const;
 
 export function SettingsPage() {
-	const [activeTab, setActiveTab] = useState("general");
+	const [searchParams, setSearchParams] = useSearchParams();
+	const initialTab = searchParams.get("tab") && tabs.some((tab) => tab.id === searchParams.get("tab"))
+		? searchParams.get("tab")!
+		: "general";
+	const [activeTab, setActiveTab] = useState(initialTab);
 	const [saved, setSaved] = useState(false);
 	const [showWebhookModal, setShowWebhookModal] = useState(false);
 	const [showKeyModal, setShowKeyModal] = useState(false);
-	const [showConnectModal, setShowConnectModal] = useState(false);
 	const [deleteTarget, setDeleteTarget] = useState<{
-		type: "webhook" | "key" | "connect-app" | "dead-letter";
+		type: "webhook" | "key" | "dead-letter";
 		id: string;
 		name: string;
 	} | null>(null);
 	const [copied, setCopied] = useState(false);
 
 	const apiKeys = useApiKeysStore();
-	const connectApps = useConnectAppsStore();
 	const webhooks = useWebhooksStore();
 
 	const [whName, setWhName] = useState("");
@@ -49,20 +49,29 @@ export function SettingsPage() {
 	const [lastCreatedWebhookSecret, setLastCreatedWebhookSecret] = useState<string | null>(null);
 	const [lastCreatedKey, setLastCreatedKey] = useState<string | null>(null);
 
-	const [connectName, setConnectName] = useState("");
-	const [connectSlug, setConnectSlug] = useState("");
-	const [connectRedirectUri, setConnectRedirectUri] = useState("");
-	const [connectProviders, setConnectProviders] = useState("google");
-	const [connectError, setConnectError] = useState("");
-
 	useEffect(() => {
 		if (activeTab === "api-keys") apiKeys.fetch();
-		if (activeTab === "connect-apps") connectApps.fetch();
 		if (activeTab === "webhooks") {
 			webhooks.fetch();
 			webhooks.fetchDeadLetters();
 		}
 	}, [activeTab]);
+
+	useEffect(() => {
+		const tab = searchParams.get("tab");
+		if (tab && tabs.some((item) => item.id === tab) && tab !== activeTab) {
+			setActiveTab(tab);
+		}
+	}, [searchParams, activeTab]);
+
+	const selectTab = (tab: string) => {
+		setActiveTab(tab);
+		if (tab === "general") {
+			setSearchParams({});
+			return;
+		}
+		setSearchParams({ tab });
+	};
 
 	const handleSave = () => {
 		setSaved(true);
@@ -115,38 +124,6 @@ export function SettingsPage() {
 		setDeleteTarget(null);
 	};
 
-	const handleCreateConnectApp = async (e: React.FormEvent) => {
-		e.preventDefault();
-		setConnectError("");
-		if (!connectName.trim() || !connectSlug.trim() || !connectRedirectUri.trim()) {
-			setConnectError("Name, slug, and redirect URI are required");
-			return;
-		}
-		const created = await connectApps.create({
-			name: connectName.trim(),
-			slug: connectSlug.trim().toLowerCase(),
-			redirect_uris: [connectRedirectUri.trim()],
-			allowed_providers: connectProviders
-				.split(",")
-				.map((value) => value.trim().toLowerCase())
-				.filter(Boolean),
-		});
-		if (created) {
-			setShowConnectModal(false);
-			setConnectName("");
-			setConnectSlug("");
-			setConnectRedirectUri("");
-			setConnectProviders("google");
-		} else {
-			setConnectError("Failed to create Connect app");
-		}
-	};
-
-	const handleDeleteConnectApp = async (id: string) => {
-		await connectApps.remove(id);
-		setDeleteTarget(null);
-	};
-
 	const handleDismissDeadLetter = async (id: string) => {
 		await webhooks.dismissDeadLetter(id);
 		setDeleteTarget(null);
@@ -167,19 +144,12 @@ export function SettingsPage() {
 						onConfirm: () => handleDeleteKey(deleteTarget.id),
 						confirming: false,
 					}
-				: deleteTarget.type === "dead-letter"
-					? {
-							title: "Dismiss dead letter",
-							description: "This failed delivery record will be removed from the queue.",
-							onConfirm: () => handleDismissDeadLetter(deleteTarget.id),
-							confirming: false,
-						}
-					: {
-							title: "Delete Connect app",
-							description: "All grants and sessions for this app will be removed.",
-							onConfirm: () => handleDeleteConnectApp(deleteTarget.id),
-							confirming: connectApps.deleting,
-						}
+				: {
+						title: "Dismiss dead letter",
+						description: "This failed delivery record will be removed from the queue.",
+						onConfirm: () => handleDismissDeadLetter(deleteTarget.id),
+						confirming: false,
+					}
 		: null;
 
 	return (
@@ -195,7 +165,7 @@ export function SettingsPage() {
 				{tabs.map((tab) => (
 					<button
 						key={tab.id}
-						onClick={() => setActiveTab(tab.id)}
+						onClick={() => selectTab(tab.id)}
 						className={`flex h-8 items-center gap-2 rounded-none px-3 text-sm font-medium transition-colors ${
 							activeTab === tab.id
 								? "bg-background text-foreground border border-border"
@@ -239,25 +209,6 @@ export function SettingsPage() {
 					loading={apiKeys.loading}
 					onAdd={() => { setShowKeyModal(true); setLastCreatedKey(null); setKeyName(""); setKeyPermissions(["write"]); setKeyError(""); }}
 					onDelete={(id, name) => setDeleteTarget({ type: "key", id, name })}
-				/>
-			)}
-
-			{activeTab === "connect-apps" && (
-				<ConnectAppsTab
-					apps={connectApps.apps}
-					loading={connectApps.loading}
-					grantsLoading={connectApps.grantsLoading}
-					grantsByApp={connectApps.grantsByApp}
-					onAdd={() => {
-						setShowConnectModal(true);
-						setConnectName("");
-						setConnectSlug("");
-						setConnectRedirectUri("http://localhost:3000/callback");
-						setConnectProviders("google");
-						setConnectError("");
-					}}
-					onExpand={(appId) => connectApps.fetchGrants(appId)}
-					onDelete={(id, name) => setDeleteTarget({ type: "connect-app", id, name })}
 				/>
 			)}
 
@@ -335,50 +286,6 @@ export function SettingsPage() {
 					</div>
 				</form>
 				)}
-			</Modal>
-
-			<Modal
-				open={showConnectModal}
-				onClose={() => {
-					setShowConnectModal(false);
-					setConnectError("");
-				}}
-				title="Create Connect app"
-			>
-				<form onSubmit={handleCreateConnectApp} className="grid gap-5">
-						<div className="grid gap-1.5">
-							<label className="text-sm font-medium">Name</label>
-							<Input placeholder="My SaaS" value={connectName} onChange={(e) => setConnectName(e.target.value)} />
-						</div>
-						<div className="grid gap-1.5">
-							<label className="text-sm font-medium">Slug</label>
-							<Input placeholder="my-saas" value={connectSlug} onChange={(e) => setConnectSlug(e.target.value)} />
-						</div>
-						<div className="grid gap-1.5">
-							<label className="text-sm font-medium">Redirect URI</label>
-							<Input
-								placeholder="http://localhost:3000/callback"
-								value={connectRedirectUri}
-								onChange={(e) => setConnectRedirectUri(e.target.value)}
-							/>
-						</div>
-						<div className="grid gap-1.5">
-							<label className="text-sm font-medium">Allowed providers</label>
-							<Input
-								placeholder="google, slack, meta"
-								value={connectProviders}
-								onChange={(e) => setConnectProviders(e.target.value)}
-							/>
-						</div>
-						{connectError && <p className="text-sm text-red-400">{connectError}</p>}
-						<div className="flex justify-end gap-3 pt-2 border-t border-border">
-							<Button type="button" variant="outline" onClick={() => setShowConnectModal(false)}>Cancel</Button>
-							<Button type="submit" disabled={connectApps.creating}>
-								{connectApps.creating && <Loader2Icon className="size-4 animate-spin me-1.5" />}
-								Create app
-							</Button>
-						</div>
-				</form>
 			</Modal>
 
 			<Modal open={showKeyModal} onClose={() => { setShowKeyModal(false); setLastCreatedKey(null); setCopied(false); }} title={lastCreatedKey ? "API key created" : "Create API key"}>

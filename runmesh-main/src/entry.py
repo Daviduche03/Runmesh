@@ -18,6 +18,7 @@ from services.workflow_graph import save_workflow_graph
 from services.workflow_runner import (
     start_workflow_run,
     list_workflow_runs,
+    cancel_workflow_run,
     recover_stale_workflow_runs,
 )
 from services.workflow_triggers import trigger_workflow_for_user, run_due_scheduled_workflows
@@ -51,8 +52,18 @@ from utils.types import (
     ConnectConsentRequest, ConnectTokenRequest,
     ConnectOtpResendRequest, ConnectOtpVerifyRequest,
 )
-from utils.auth import encode_token
+from utils.auth import (
+    encode_token,
+    decode_token,
+    build_oauth_state,
+    parse_oauth_state,
+    SESSION_TOKEN_TTL_SECONDS,
+    CLI_TOKEN_TTL_SECONDS,
+    AUTH_CODE_TTL_SECONDS,
+)
 from utils.dual_auth import get_jwt_user, require_auth, get_authenticated_user
+from utils.rate_limit import enforce_rate_limit, get_client_ip
+from utils.url_security import validate_outbound_url
 from utils.responses import success
 from utils.errors import http_exception_handler, validation_exception_handler
 
@@ -75,8 +86,8 @@ app.add_middleware(
     CORSMiddleware,
     allow_origins=origins,
     allow_credentials=True,
-    allow_methods=["*"],
-    allow_headers=["*"],
+    allow_methods=["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
+    allow_headers=["Authorization", "Content-Type", "X-API-Key", "X-Connect-Grant-Token"],
 )
 
 app.add_exception_handler(HTTPException, http_exception_handler)
@@ -244,6 +255,9 @@ async def api_schedule_task(task: ScheduledTaskRequest, request: Request, user: 
 
     if not task.url and not task.url_template:
         raise HTTPException(status_code=400, detail="url or url_template is required")
+    if task.url and task.url.strip():
+        # SSRF blocklist for static URLs (templated URLs are validated after render)
+        validate_outbound_url(task.url)
 
     try:
         scheduled_time = datetime.fromisoformat(task.scheduled_at.replace('Z', '+00:00'))
@@ -358,7 +372,10 @@ async def api_update_workflow(
         request.scope["env"],
         user["id"],
         workflow_id,
-        body.description,
+        description=body.description,
+        name=body.name,
+        trigger_type=body.trigger_type,
+        trigger_config=body.trigger_config,
     )
     return success(data, message="Workflow updated")
 
@@ -418,6 +435,16 @@ async def api_list_workflow_runs(
 ):
     runs = await list_workflow_runs(request.scope["env"], user["id"], workflow_id)
     return success(runs, meta={"total": len(runs)})
+
+
+@app.post("/api/v1/workflows/{workflow_id}/cancel")
+async def api_cancel_workflow(
+    workflow_id: str,
+    request: Request,
+    user: dict = Depends(require_auth("write")),
+):
+    result = await cancel_workflow_run(request.scope["env"], user["id"], workflow_id)
+    return success(result, message="Workflow run cancelled")
 
 
 @app.post("/api/v1/task/publish")
@@ -497,11 +524,36 @@ async def api_list_connect_providers():
     return await connect_service.list_connect_providers()
 
 
+@app.get("/api/v1/connect/audit")
+async def api_list_connect_audit(
+    request: Request,
+    event_type: Optional[str] = None,
+    app_id: Optional[str] = None,
+    connect_user_id: Optional[str] = None,
+    search: Optional[str] = None,
+    limit: int = 50,
+    offset: int = 0,
+    current_user: dict = Depends(require_auth("read")),
+):
+    env = request.scope["env"]
+    return await connect_service.list_audit_events(
+        ConnectAuditEventModel(env.DB),
+        ConnectAppModel(env.DB),
+        current_user["id"],
+        event_type=event_type,
+        app_id=app_id,
+        connect_user_id=connect_user_id,
+        search=search,
+        limit=limit,
+        offset=offset,
+    )
+
+
 @app.post("/api/v1/connect/otp/verify")
 async def api_verify_connect_otp(
     req: ConnectOtpVerifyRequest,
     request: Request,
-    current_user: dict = Depends(require_auth()),
+    current_user: dict = Depends(require_auth("write")),
 ):
     env = request.scope["env"]
     return await connect_service.verify_connect_otp(
@@ -521,7 +573,7 @@ async def api_verify_connect_otp(
 async def api_resend_connect_otp(
     req: ConnectOtpResendRequest,
     request: Request,
-    current_user: dict = Depends(require_auth()),
+    current_user: dict = Depends(require_auth("write")),
 ):
     env = request.scope["env"]
     return await connect_service.resend_connect_otp(
@@ -537,7 +589,7 @@ async def api_resend_connect_otp(
 async def api_create_connect_session(
     req: ConnectSessionCreateRequest,
     request: Request,
-    current_user: dict = Depends(require_auth()),
+    current_user: dict = Depends(require_auth("write")),
 ):
     env = request.scope["env"]
     base = getattr(env, "PUBLIC_URL", str(request.base_url).rstrip("/"))
@@ -647,17 +699,50 @@ async def connect_consent_submit(request: Request):
 async def api_exchange_connect_token(
     req: ConnectTokenRequest,
     request: Request,
-    current_user: dict = Depends(require_auth()),
+    current_user: dict = Depends(require_auth("write")),
 ):
     env = request.scope["env"]
     return await connect_service.exchange_connect_token(
         ConnectAppModel(env.DB),
         ConnectSessionModel(env.DB),
         ConnectGrantModel(env.DB),
+        ConnectAuditEventModel(env.DB),
         req,
         current_user["id"],
         env.JWT_SECRET,
     )
+
+
+@app.get("/api/v1/connect/tokens")
+async def api_list_connect_tokens(
+    request: Request,
+    task_id: Optional[str] = None,
+    workflow_run_id: Optional[str] = None,
+    workspace_project_id: Optional[str] = None,
+    current_user: dict = Depends(require_auth("read")),
+):
+    env = request.scope["env"]
+    audit_model = ConnectAuditEventModel(env.DB)
+    # Scope strictly to apps owned by this developer (prevents cross-tenant reads)
+    owned_apps = await ConnectAppModel(env.DB).list_by_developer_user_id(current_user["id"])
+    rows = await audit_model.find_token_exchanges(
+        app_ids=[app.id for app in owned_apps],
+        task_id=task_id,
+        workflow_run_id=workflow_run_id,
+        workspace_project_id=workspace_project_id,
+    )
+    return success([
+        {
+            "id": r.id,
+            "event_type": r.event_type,
+            "connect_app_id": r.connect_app_id,
+            "connect_user_id": r.connect_user_id,
+            "resource_id": r.resource_id,
+            "metadata": r.metadata,
+            "created_at": r.created_at,
+        }
+        for r in rows
+    ])
 
 
 @app.get("/api/v1/connect/grants/current")
@@ -693,6 +778,10 @@ async def api_list_connect_app_grants(
 @app.post("/auth/cli/start")
 async def cli_auth_start(request: Request):
     env = request.scope["env"]
+    await enforce_rate_limit(
+        env.DB, f"cli-start:{get_client_ip(request)}",
+        limit=10, window_seconds=600, detail="Too many login attempts. Try again later.",
+    )
     device_code = secrets.token_urlsafe(32)
     user_code = "".join(secrets.choice(string.ascii_uppercase + string.digits) for _ in range(8))
     user_code = f"{user_code[:4]}-{user_code[4:]}"
@@ -749,6 +838,10 @@ async def cli_auth_poll(request: Request):
     env = request.scope["env"]
     body = await request.json()
     device_code = body.get("device_code", "").strip()
+    await enforce_rate_limit(
+        env.DB, f"cli-poll:{device_code}",
+        limit=240, window_seconds=600, detail="Polling too frequently. Slow down.",
+    )
     row = await env.DB.prepare("""
         SELECT * FROM cli_auth_codes WHERE device_code = ?
     """).bind(device_code).first()
@@ -763,7 +856,11 @@ async def cli_auth_poll(request: Request):
     if r["status"] == "confirmed":
         user_model = UserModel(env.DB)
         user = await user_model.find_by_id(r["user_id"])
-        token = encode_token({"id": user["id"], "email": user["email"], "name": user["name"]}, env.JWT_SECRET)
+        token = encode_token(
+            {"id": user["id"], "email": user["email"], "name": user["name"]},
+            env.JWT_SECRET,
+            ttl_seconds=CLI_TOKEN_TTL_SECONDS,
+        )
         await env.DB.prepare("DELETE FROM cli_auth_codes WHERE device_code = ?").bind(device_code).run()
         return success({
             "status": "confirmed",
@@ -783,9 +880,16 @@ async def cli_verify_page(code: str, request: Request):
         return HTMLResponse(content="""<!DOCTYPE html>
 <html lang="en"><head><meta charset="utf-8"/><meta name="viewport" content="width=device-width,initial-scale=1"/>
 <title>Invalid Code — Runmesh</title><style>body{font-family:ui-sans-serif,system-ui,sans-serif;margin:0;background:#08090a;color:#fff;display:flex;justify-content:center;align-items:center;min-height:100vh}main{max-width:440px;padding:40px;text-align:center}h1{font-size:24px}p{color:#969799}</style>
-</head><body><main><h1>Code invalid or expired</h1><p>This verification code was not found or has expired. Please run <code>continuumm login</code> again.</p></main></body></html>""")
+</head><body><main><h1>Code invalid or expired</h1><p>This verification code was not found or has expired. Please run <code>runmesh login</code> again.</p></main></body></html>""")
     r = _to_dict(row)
     base_url = str(request.base_url).rstrip("/")
+    # Escape every interpolated value (defense-in-depth against HTML/JS injection)
+    from html import escape as _esc
+    from urllib.parse import quote as _quote
+    safe_base_url = _esc(base_url, quote=True)
+    safe_user_code = _esc(str(r["user_code"]), quote=True)
+    safe_code_html = _esc(code, quote=True)
+    safe_code_url = _quote(code, safe="")
     html = f"""<!DOCTYPE html>
 <html lang="en">
 <head><meta charset="utf-8"/><meta name="viewport" content="width=device-width,initial-scale=1"/>
@@ -806,10 +910,10 @@ async def cli_verify_page(code: str, request: Request):
   <main>
     <h1>Confirm CLI Login</h1>
     <p>A CLI session is requesting access to your Runmesh account.</p>
-    <div class="code">{r["user_code"]}</div>
+    <div class="code">{safe_user_code}</div>
     <p style="font-size:13px;color:#595a5c">If this code matches your terminal, click Confirm.</p>
     <div id="auth-section">
-      <a href="{base_url}/auth/github/login?redirect_to=/cli/verify%3Fcode%3D{code}" class="btn" id="login-btn">Sign in with GitHub</a>
+      <a href="{safe_base_url}/auth/github/login?redirect_to=/cli/verify%3Fcode%3D{safe_code_url}" class="btn" id="login-btn">Sign in with GitHub</a>
     </div>
     <div id="confirm-section" style="display:none">
       <button class="btn" id="confirm-btn" onclick="confirmLogin()">Confirm</button>
@@ -826,10 +930,10 @@ async def cli_verify_page(code: str, request: Request):
       var token = localStorage.getItem('runmesh-token');
       if (!token) {{ document.getElementById('status').textContent = 'Please sign in first'; return; }}
       document.getElementById('confirm-btn').disabled = true;
-      fetch('{base_url}/auth/cli/confirm', {{
+      fetch('{safe_base_url}/auth/cli/confirm', {{
         method: 'POST',
         headers: {{'Content-Type':'application/json','Authorization':'Bearer '+token}},
-        body: JSON.stringify({{user_code:'{code}'}})
+        body: JSON.stringify({{user_code:'{safe_code_html}'}})
       }}).then(function(r){{return r.json()}}).then(function(d){{
         if(d.ok){{document.getElementById('status').textContent = 'Confirmed! You can close this tab.';}}
         else{{document.getElementById('status').textContent = 'Error: '+(d.error?.message||'failed');document.getElementById('confirm-btn').disabled=false;}}
@@ -844,19 +948,34 @@ async def cli_verify_page(code: str, request: Request):
 @app.get("/auth/github/login")
 async def github_login(request: Request, redirect_to: Optional[str] = None):
     env = request.scope["env"]
+    await enforce_rate_limit(
+        env.DB, f"github-login:{get_client_ip(request)}",
+        limit=30, window_seconds=600, detail="Too many login attempts. Try again later.",
+    )
     redirect_uri = github_callback_redirect_uri(env, str(request.base_url))
     from urllib.parse import quote
     encoded_redirect = quote(redirect_uri, safe="")
-    state = quote(redirect_to) if redirect_to else ""
+    # Signed, short-lived state nonce — the frontend stores it and compares it
+    # after the callback, which blocks OAuth login CSRF.
+    state = build_oauth_state(env.JWT_SECRET, redirect_to or "")
     return success({
-        "url": f"https://github.com/login/oauth/authorize?client_id={env.GITHUB_CLIENT_ID}&redirect_uri={encoded_redirect}&scope=user:email&state={state}"
+        "url": f"https://github.com/login/oauth/authorize?client_id={env.GITHUB_CLIENT_ID}&redirect_uri={encoded_redirect}&scope=user:email&state={quote(state, safe='')}",
+        "state": state,
     })
 
 
 @app.get("/auth/github/callback")
 async def github_callback(code: str, request: Request, state: Optional[str] = ""):
     env = request.scope["env"]
+    await enforce_rate_limit(
+        env.DB, f"github-callback:{get_client_ip(request)}",
+        limit=30, window_seconds=600, detail="Too many login attempts. Try again later.",
+    )
     redirect_uri = github_callback_redirect_uri(env, str(request.base_url))
+
+    state_payload = parse_oauth_state(env.JWT_SECRET, state)
+    if state_payload is None:
+        raise HTTPException(status_code=400, detail="Invalid or expired OAuth state")
 
     try:
         access_token = await exchange_code_for_token(env, code, redirect_uri)
@@ -872,24 +991,61 @@ async def github_callback(code: str, request: Request, state: Optional[str] = ""
         github_id = str(github_user["id"])
         name = github_user.get("name") or github_user["login"]
         avatar_url = github_user.get("avatar_url", "")
-        github_email = github_user.get("email") or ""
-
-        if not github_email:
-            github_email = await fetch_primary_email(access_token)
+        # Only verified emails may be used for account matching — the public
+        # profile email from /user is unverified and must not be trusted.
+        github_email = await fetch_primary_email(access_token)
 
         user_id = await find_or_create_user(env.DB, github_id, name, avatar_url, github_email, github_user["login"])
-        token = encode_token({"id": user_id, "email": github_email, "name": name}, env.JWT_SECRET)
+        # Short-lived, single-purpose code — the frontend exchanges it for a
+        # session token via POST /auth/exchange so the credential never sits in
+        # a URL longer than necessary.
+        auth_code = encode_token(
+            {"type": "auth_code", "id": user_id},
+            env.JWT_SECRET,
+            ttl_seconds=AUTH_CODE_TTL_SECONDS,
+        )
         frontend_url = getattr(env, "FRONTEND_URL", str(request.base_url).replace("/auth/github/callback", ""))
-        from urllib.parse import unquote
-        redirect_to = unquote(state) if state else ""
+        from urllib.parse import quote
+        callback_url = f"{frontend_url}/auth/callback?code={quote(auth_code, safe='')}&state={quote(state, safe='')}"
+        redirect_to = state_payload.get("redirect_to") or ""
         if redirect_to:
-            return RedirectResponse(url=f"{frontend_url}/auth/callback?token={token}&redirect_to={redirect_to}")
-        return RedirectResponse(url=f"{frontend_url}/auth/callback?token={token}")
+            callback_url += f"&redirect_to={quote(redirect_to, safe='')}"
+        return RedirectResponse(url=callback_url)
     except HTTPException:
         raise
     except Exception as e:
         print(f"GitHub callback error: {e}")
         raise HTTPException(status_code=500, detail="Failed to complete GitHub login")
+
+
+@app.post("/auth/exchange")
+async def auth_exchange(request: Request):
+    """Swap a short-lived auth code (from the OAuth callback) for a session token."""
+    env = request.scope["env"]
+    await enforce_rate_limit(
+        env.DB, f"auth-exchange:{get_client_ip(request)}",
+        limit=30, window_seconds=600, detail="Too many attempts. Try again later.",
+    )
+    body = await request.json()
+    code = str(body.get("code", "")).strip()
+    if not code:
+        raise HTTPException(status_code=400, detail="code is required")
+    payload = decode_token(code, env.JWT_SECRET)
+    if not payload or payload.get("type") != "auth_code":
+        raise HTTPException(status_code=401, detail="Invalid or expired auth code")
+    user_model = UserModel(env.DB)
+    user = await user_model.find_by_id(str(payload["id"]))
+    if not user:
+        raise HTTPException(status_code=401, detail="User not found")
+    token = encode_token(
+        {"id": user["id"], "email": user["email"], "name": user["name"]},
+        env.JWT_SECRET,
+        ttl_seconds=SESSION_TOKEN_TTL_SECONDS,
+    )
+    return success({
+        "token": token,
+        "user": {"id": user["id"], "email": user["email"], "name": user["name"]},
+    })
 
 
 # Workspace API

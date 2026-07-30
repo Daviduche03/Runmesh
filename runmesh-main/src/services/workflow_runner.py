@@ -167,6 +167,46 @@ async def start_workflow_run(
     return _format_run(run)
 
 
+async def cancel_workflow_run(
+    env,
+    user_id: str,
+    workflow_id: str,
+) -> dict[str, Any]:
+    workflow_model = WorkflowModel(env.DB)
+    task_model = TaskModel(env.DB)
+    run_model = WorkflowRunModel(env.DB)
+
+    workflow = await workflow_model.find_by_id(workflow_id)
+    if not workflow or workflow.get("user_id") != user_id:
+        raise HTTPException(status_code=404, detail="Workflow not found")
+
+    active = await run_model.find_active_for_workflow(workflow_id)
+    if not active:
+        raise HTTPException(status_code=400, detail="No active run to cancel")
+
+    now = datetime.now(timezone.utc).isoformat()
+    tasks = await task_model.list_by_workflow_id(workflow_id)
+
+    for task in tasks:
+        status = (task.get("status") or "").lower()
+        if status in ("queued", "running", "dispatched"):
+            await task_model.update_status(str(task["id"]), "cancelled")
+
+    await run_model.update(
+        "workflow_runs",
+        "id = ?",
+        {"status": "cancelled", "completed_at": now},
+        str(active["id"]),
+    )
+    await _set_workflow_status(workflow_model, workflow_id, "paused")
+
+    return {
+        "id": str(active["id"]),
+        "status": "Cancelled",
+        "completedAt": now,
+    }
+
+
 async def handle_workflow_task_completion(
     env,
     task_id: str,
@@ -288,4 +328,25 @@ def _format_run(run: Optional[dict[str, Any]]) -> dict[str, Any]:
         "currentStep": int(run.get("current_step") or 0),
         "startedAt": run.get("started_at") or "",
         "completedAt": run.get("completed_at") or "",
+        "duration": _run_duration(run),
     }
+
+
+def _run_duration(run: dict[str, Any]) -> Optional[str]:
+    if (run.get("status") or "").lower() in ("running", "pending"):
+        return None
+    started = run.get("started_at")
+    completed = run.get("completed_at")
+    if started and completed:
+        try:
+            s = datetime.fromisoformat(started.replace("Z", "+00:00"))
+            c = datetime.fromisoformat(completed.replace("Z", "+00:00"))
+            diff = (c - s).total_seconds()
+            if diff < 1:
+                return f"{int(diff * 1000)}ms"
+            if diff < 60:
+                return f"{diff:.1f}s"
+            return f"{int(diff // 60)}m {int(diff % 60)}s"
+        except Exception:
+            return None
+    return None

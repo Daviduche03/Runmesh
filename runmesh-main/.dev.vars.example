@@ -1,7 +1,9 @@
-JWT_SECRET=replace-in-production
+JWT_SECRET=replace-with-a-long-random-string
 GITHUB_CLIENT_ID=your-github-client-id
 GITHUB_CLIENT_SECRET=your-github-client-secret
 GOOGLE_CONNECT_CLIENT_ID=your-google-connect-client-id
 GOOGLE_CONNECT_CLIENT_SECRET=your-google-connect-client-secret
+# Optional: enables OTP email delivery via Resend (codes are never logged)
+RESEND_API_KEY=
 FRONTEND_URL=http://localhost:5173
 PUBLIC_URL=http://localhost:8787

@@ -1,4 +1,5 @@
 import hashlib
+import hmac
 import json
 import re
 import secrets
@@ -32,17 +33,19 @@ def is_valid_email(email: str) -> bool:
     return bool(EMAIL_PATTERN.match(normalize_email(email)))
 
 
-def hash_connect_secret(value: str) -> str:
-    return hashlib.sha256(value.encode()).hexdigest()
+def hash_connect_secret(value: str, key: str) -> str:
+    """Keyed (HMAC-SHA256) hash so stored OTP codes / session tokens are not
+    brute-forceable from a database dump alone."""
+    return hmac.new(key.encode(), value.encode(), hashlib.sha256).hexdigest()
 
 
 def generate_otp_code() -> str:
     return "".join(str(secrets.randbelow(10)) for _ in range(OTP_LENGTH))
 
 
-def issue_account_token() -> tuple[str, str]:
+def issue_account_token(key: str) -> tuple[str, str]:
     raw = secrets.token_urlsafe(32)
-    return raw, hash_connect_secret(raw)
+    return raw, hash_connect_secret(raw, key)
 
 
 def account_session_expires_at() -> str:
@@ -81,7 +84,8 @@ async def send_connect_otp_email(env, to_email: str, code: str) -> None:
     api_key = getattr(env, "RESEND_API_KEY", None)
     from_email = getattr(env, "CONNECT_EMAIL_FROM", "Runmesh Connect <onboarding@resend.dev>")
     if not api_key:
-        print(f"[connect-otp] email={to_email} code={code}")
+        # Dev fallback: never log the code itself, only that a code was issued
+        print(f"[connect-otp] verification code issued for email={to_email}")
         return
     resp = await fetch(
         "https://api.resend.com/emails",

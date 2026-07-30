@@ -20,6 +20,10 @@ export function Login() {
 			const res = await fetch(url)
 			const body = await res.json()
 			if (body.ok && body.data?.url) {
+				// CSRF protection: the callback must return this exact state
+				if (body.data?.state) {
+					localStorage.setItem("runmesh-oauth-state", body.data.state)
+				}
 				window.location.href = body.data.url
 			}
 		} catch {

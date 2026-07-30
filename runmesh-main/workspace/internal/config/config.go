@@ -20,15 +20,18 @@ type RemoteConfig struct {
 	DefaultBucket string `json:"default_bucket,omitempty"`
 	Token         string `json:"token,omitempty"`
 	APIBase       string `json:"api_base,omitempty"`
+	// EnvKey is the hex-encoded 32-byte key for client-side .env encryption.
+	// It never leaves the device (only ciphertext is uploaded).
+	EnvKey string `json:"env_key,omitempty"`
 }
 
 type ProjectConfig struct {
 	Prefix string `json:"prefix"`
 }
 
-const configDirName = ".continuumm"
+const configDirName = ".runmesh"
 
-func ContinuummDir() (string, error) {
+func RunmeshDir() (string, error) {
 	home, err := os.UserHomeDir()
 	if err != nil {
 		return "", err
@@ -37,7 +40,7 @@ func ContinuummDir() (string, error) {
 }
 
 func GlobalPath() (string, error) {
-	dir, err := ContinuummDir()
+	dir, err := RunmeshDir()
 	if err != nil {
 		return "", err
 	}
@@ -72,7 +75,7 @@ func LoadGlobal() (*RemoteConfig, error) {
 }
 
 func SaveGlobal(cfg *RemoteConfig) error {
-	dir, err := ContinuummDir()
+	dir, err := RunmeshDir()
 	if err != nil {
 		return err
 	}
@@ -142,6 +145,6 @@ func (r *RemoteConfig) NewFs(ctx context.Context, bucket, prefix string) (fs.Fs,
 		"force_path_style":  "true",
 	}
 
-	cfg := fs.ConfigMap(ri.Prefix, ri.Options, "continuumm", userCfg)
-	return ri.NewFs(ctx, "continuumm", bucket+"/"+prefix, cfg)
+	cfg := fs.ConfigMap(ri.Prefix, ri.Options, "runmesh", userCfg)
+	return ri.NewFs(ctx, "runmesh", bucket+"/"+prefix, cfg)
 }

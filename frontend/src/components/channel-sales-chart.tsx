@@ -69,7 +69,7 @@ export function ChannelSalesChart({ data, loading }: Props) {
 			<CardHeader>
 				<div className="min-w-0 space-y-2">
 					<div className="flex flex-wrap items-center gap-2">
-						<CardTitle>Run status</CardTitle>
+						<CardTitle>Run reliability</CardTitle>
 						{!loading && data.length > 0 && (
 							<Delta value={growthPctNum} variant="badge">
 								<DeltaIcon variant="trend" />
@@ -78,7 +78,7 @@ export function ChannelSalesChart({ data, loading }: Props) {
 						)}
 					</div>
 					<CardDescription>
-						Daily successful vs failed runs, last {VISIBLE_DAYS} days.
+						Daily successful vs failed action runs, last {VISIBLE_DAYS} days.
 					</CardDescription>
 				</div>
 			</CardHeader>
@@ -90,7 +90,7 @@ export function ChannelSalesChart({ data, loading }: Props) {
 				) : data.length === 0 ? (
 				<EmptyState 
 					title="No data"
-					description="No run data available for the selected period."
+					description="No action run data available for the selected period."
 					icon={<ActivityIcon className="size-6 text-muted-foreground" />}
 				/>
 				) : (

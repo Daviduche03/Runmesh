@@ -1,11 +1,12 @@
 import json
 import asyncio
 from datetime import datetime, timezone
-from typing import Optional
+from typing import Any, Optional
 from db.orm import TaskModel, WorkflowModel, WorkflowRunModel
 from fastapi import HTTPException
 from utils.types import TaskPublish, WorkflowCreate
 from utils.responses import success
+from utils.url_security import validate_outbound_url
 from services.templating import apply_task_templates
 from services.workflow_graph import resolve_graph
 from services.workflow_trigger_config import normalize_trigger_config, format_trigger_config_for_api, parse_trigger_config
@@ -41,10 +42,87 @@ def format_duration(row: dict) -> Optional[str]:
     return None
 
 
+ACTION_METADATA_FIELDS = (
+    "action_kind",
+    "action_name",
+    "agent_id",
+    "agent_session_id",
+    "thread_id",
+    "tool_name",
+    "actor_user_id",
+    "approval_status",
+    "approval_id",
+    "connect_app_id",
+    "connect_grant_id",
+    "connect_session_id",
+    "workspace_project_id",
+)
+
+
+def _json_dump(value: Any) -> str:
+    if value is None:
+        return "{}"
+    if isinstance(value, str):
+        return value
+    return json.dumps(value)
+
+
+def action_metadata_from_request(source: Any, fallback: Optional[dict[str, Any]] = None) -> dict[str, Any]:
+    data: dict[str, Any] = {}
+    fallback = fallback or {}
+    for field in ACTION_METADATA_FIELDS:
+        value = getattr(source, field, None)
+        if value is None:
+            value = fallback.get(field)
+        if value is None:
+            continue
+        if isinstance(value, str):
+            value = value.strip()
+            if not value:
+                continue
+        data[field] = value
+    if "action_kind" not in data:
+        data["action_kind"] = "http"
+    if "approval_status" not in data:
+        data["approval_status"] = "not_required"
+    metadata = getattr(source, "metadata", None)
+    if not metadata and fallback.get("metadata"):
+        metadata = fallback.get("metadata")
+    data["metadata"] = _json_dump(metadata or {})
+    return data
+
+
+def public_action_metadata(row: dict) -> dict[str, Any]:
+    raw_metadata = row.get("metadata")
+    try:
+        metadata = json.loads(raw_metadata) if isinstance(raw_metadata, str) and raw_metadata else {}
+    except json.JSONDecodeError:
+        metadata = {}
+    return {
+        "actionKind": row.get("action_kind") or "http",
+        "actionName": row.get("action_name"),
+        "agentId": row.get("agent_id"),
+        "agentSessionId": row.get("agent_session_id"),
+        "threadId": row.get("thread_id"),
+        "toolName": row.get("tool_name"),
+        "actorUserId": row.get("actor_user_id"),
+        "approvalStatus": row.get("approval_status") or "not_required",
+        "approvalId": row.get("approval_id"),
+        "connectAppId": row.get("connect_app_id"),
+        "connectGrantId": row.get("connect_grant_id"),
+        "connectSessionId": row.get("connect_session_id"),
+        "workspaceProjectId": row.get("workspace_project_id"),
+        "metadata": metadata,
+    }
+
+
 async def create_task(task: TaskPublish, env, user_id: str) -> dict:
     task_model = TaskModel(env.DB)
     if not task.url and not task.url_template:
         raise HTTPException(status_code=400, detail="url or url_template is required")
+    if task.url and task.url.strip():
+        # SSRF blocklist for static URLs (templated URLs are validated after render)
+        validate_outbound_url(task.url)
 
     idempotency_key = (task.idempotency_key or "").strip()
     if idempotency_key:
@@ -108,6 +186,16 @@ async def create_workflow(workflow: WorkflowCreate, env, user_id: str) -> dict:
         "trigger_type": workflow.trigger_type,
         "trigger_config": trigger_config_str,
     }
+    if workflow.agent_id:
+        workflow_data["agent_id"] = workflow.agent_id
+    if workflow.thread_id:
+        workflow_data["thread_id"] = workflow.thread_id
+    if workflow.workspace_project_id:
+        workflow_data["workspace_project_id"] = workflow.workspace_project_id
+    if workflow.connect_app_id:
+        workflow_data["connect_app_id"] = workflow.connect_app_id
+    if workflow.metadata:
+        workflow_data["metadata"] = json.dumps(workflow.metadata)
     workflow_id = await workflow_model.create(workflow_data)
 
     try:
@@ -193,23 +281,44 @@ async def get_workflow(env, user_id: str, workflow_id: str) -> dict:
     return format_workflow(workflow, tasks)
 
 
-async def update_workflow(env, user_id: str, workflow_id: str, description: str) -> dict:
+async def update_workflow(env, user_id: str, workflow_id: str, description: Optional[str] = None, name: Optional[str] = None, trigger_type: Optional[str] = None, trigger_config: Optional[str] = None) -> dict:
     workflow_model = WorkflowModel(env.DB)
     workflow = await workflow_model.find_by_id(workflow_id)
     if not workflow or workflow.get("user_id") != user_id:
         raise HTTPException(status_code=404, detail="Workflow not found")
 
-    cleaned = description.strip()
-    if not cleaned:
-        raise HTTPException(status_code=400, detail="Description is required")
+    updates: dict[str, Any] = {}
+
+    if description is not None:
+        cleaned = description.strip()
+        if not cleaned:
+            raise HTTPException(status_code=400, detail="Description is required")
+        updates["description"] = cleaned
+
+    if name is not None:
+        cleaned_name = name.strip()
+        if not cleaned_name:
+            raise HTTPException(status_code=400, detail="Name is required")
+        updates["name"] = cleaned_name
+
+    if trigger_type is not None:
+        if trigger_type not in ("manual", "queue", "webhook", "schedule"):
+            raise HTTPException(status_code=400, detail="Invalid trigger type")
+        updates["trigger_type"] = trigger_type
+
+    if trigger_config is not None:
+        trigger_config_str = normalize_trigger_config(
+            trigger_type or workflow.get("trigger_type", "manual"),
+            trigger_config,
+        )
+        updates["trigger_config"] = trigger_config_str
+
+    if not updates:
+        raise HTTPException(status_code=400, detail="No fields to update")
 
     now = datetime.now(timezone.utc).isoformat()
-    await workflow_model.update(
-        "workflows",
-        "id = ?",
-        {"description": cleaned, "updated_at": now},
-        workflow_id,
-    )
+    updates["updated_at"] = now
+    await workflow_model.update("workflows", "id = ?", updates, workflow_id)
     return await get_workflow(env, user_id, workflow_id)
 
 

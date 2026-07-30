@@ -16,7 +16,7 @@ export function Header() {
 					aria-label="Runmesh Workspace home"
 				>
 					<LogoIcon className="size-6" />
-					<span>Workspace</span>
+					<span>Runmesh Workspace</span>
 				</Link>
 
 				<div className="hidden items-center gap-6 text-sm text-[#9a9da4] lg:flex">

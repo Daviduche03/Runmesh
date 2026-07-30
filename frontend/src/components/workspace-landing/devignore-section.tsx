@@ -34,11 +34,11 @@ export function DevignoreSection() {
 				>
 					<Badge>.devignore</Badge>
 					<h2 className="max-w-[640px] text-balance text-[clamp(34px,4vw,56px)] font-[590] leading-[1.04] tracking-[-0.05em] text-white">
-						Smart defaults — sync what matters
+						Dev-aware sync for real repositories
 					</h2>
 					<p className="mt-4 max-w-[560px] text-[17px] leading-7 tracking-[-0.015em] text-[#8f949e]">
 						A <code className="rounded bg-[#161616] px-1.5 py-0.5 text-[15px] text-[#d8dce3]">.devignore</code> file in your project root uses standard gitignore syntax to keep
-						build artifacts, dependencies, and OS junk out of the cloud.
+						build artifacts, dependencies, secrets, and OS junk out of the cloud context agents consume.
 					</p>
 				</motion.div>
 
@@ -52,9 +52,9 @@ export function DevignoreSection() {
 					<div>
 						<h3 className="text-[18px] font-[590] tracking-[-0.01em] text-[#d8dce3]">Created automatically</h3>
 						<p className="mt-2 text-[15px] leading-6 text-[#8f949e]">
-							When you run <code className="rounded bg-[#161616] px-1.5 py-0.5 text-[14px] text-[#d8dce3]">continuumm link</code>, a sensible
+							When you run <code className="rounded bg-[#161616] px-1.5 py-0.5 text-[14px] text-[#d8dce3]">runmesh workspace link</code>, a sensible
 							default <code className="rounded bg-[#161616] px-1.5 py-0.5 text-[14px] text-[#d8dce3]">.devignore</code> is generated. Edit it
-							anytime — patterns are applied via rclone filters during every sync operation.
+							anytime. Patterns are applied via rclone filters during every sync operation.
 						</p>
 						<h3 className="mt-8 text-[18px] font-[590] tracking-[-0.01em] text-[#d8dce3]">Same syntax as .gitignore</h3>
 						<p className="mt-2 text-[15px] leading-6 text-[#8f949e]">

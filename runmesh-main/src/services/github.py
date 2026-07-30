@@ -49,6 +49,12 @@ async def fetch_github_user(access_token: str) -> dict:
 
 
 async def fetch_primary_email(access_token: str) -> str:
+    """Return a verified GitHub email for the user, or "" if none.
+
+    Only verified emails may be used for account matching/linking — an
+    unverified email would let an attacker point their GitHub login at
+    someone else's account.
+    """
     emails_resp = await fetch(
         "https://api.github.com/user/emails",
         headers={"Authorization": f"Bearer {access_token}", "Accept": "application/json", "User-Agent": "Runmesh"},
@@ -60,6 +66,7 @@ async def fetch_primary_email(access_token: str) -> str:
         return ""
     if not isinstance(emails, list):
         return ""
+    # Prefer the primary verified email
     for entry in emails:
         if not isinstance(entry, dict):
             continue
@@ -67,8 +74,11 @@ async def fetch_primary_email(access_token: str) -> str:
             email = entry.get("email")
             if email:
                 return email
+    # Fall back to any other verified email (still proof of ownership)
     for entry in emails:
-        if isinstance(entry, dict):
+        if not isinstance(entry, dict):
+            continue
+        if entry.get("verified"):
             email = entry.get("email")
             if email:
                 return email

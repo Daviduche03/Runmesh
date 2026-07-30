@@ -1,6 +1,8 @@
+import hmac
 import re
 import secrets
 from datetime import datetime, timedelta, timezone
+from html import escape as html_escape
 from urllib.parse import urlencode, urlparse, urlunparse, parse_qsl
 
 from fastapi import HTTPException
@@ -43,6 +45,7 @@ from utils.connect_providers import (
 )
 from utils.auth import decode_token, encode_token
 from utils.connect_crypto import encrypt_connect_secret
+from utils.rate_limit import enforce_rate_limit
 from utils.responses import success
 from utils.types import (
     ConnectAppCreate,
@@ -86,6 +89,11 @@ GRANT_ACCESS_TTL_MINUTES = 60
 VALID_SESSION_MODES = {mode.value for mode in ConnectSessionMode}
 VALID_CONSENT_ACTIONS = {"approve", "deny"}
 GRANT_ACCESS_PREFIX = "rct_"
+OTP_ISSUE_MAX_PER_HOUR = 5
+
+
+def OTP_ISSUE_WINDOW_START() -> str:
+    return (datetime.now(timezone.utc) - timedelta(hours=1)).isoformat()
 
 
 def _serialize_app(app: ConnectAppRow) -> dict:
@@ -207,7 +215,6 @@ def _issue_connect_code(
     grant_id: str | None = None,
     connection_id: str | None = None,
 ) -> str:
-    expires_at = datetime.now(timezone.utc) + timedelta(minutes=CONNECT_CODE_TTL_MINUTES)
     payload = {
         "type": "connect_code",
         "session_id": session.id,
@@ -216,18 +223,15 @@ def _issue_connect_code(
         "external_user_id": session.external_user_id,
         "grant_id": grant_id,
         "connection_id": connection_id,
-        "exp": expires_at.isoformat(),
     }
-    return encode_token(payload, jwt_secret)
+    return encode_token(payload, jwt_secret, ttl_seconds=CONNECT_CODE_TTL_MINUTES * 60)
 
 
 def _parse_connect_code(code: str, jwt_secret: str) -> dict:
+    # decode_token enforces signature validity and the exp claim
     payload = decode_token(code, jwt_secret)
     if not payload or payload.get("type") != "connect_code":
         raise HTTPException(status_code=400, detail="Invalid connect code")
-    expires_at = datetime.fromisoformat(str(payload["exp"]).replace("Z", "+00:00"))
-    if expires_at <= datetime.now(timezone.utc):
-        raise HTTPException(status_code=400, detail="Connect code expired")
     return payload
 
 
@@ -402,6 +406,11 @@ async def _issue_otp_challenge(
     )
     connect_user_id = connect_user.id if connect_user else None
 
+    # Throttle: no more than OTP_ISSUE_MAX_PER_HOUR codes per email per hour
+    recent = await otp_model.count_recent_for_email(normalized_email, OTP_ISSUE_WINDOW_START())
+    if recent >= OTP_ISSUE_MAX_PER_HOUR:
+        raise HTTPException(status_code=429, detail="Too many verification codes requested. Try again later.")
+
     code = generate_otp_code()
     challenge = await otp_model.create(
         ConnectOtpChallengeCreate(
@@ -409,7 +418,7 @@ async def _issue_otp_challenge(
             external_user_id=external_user_id,
             connect_session_id=connect_session_id,
             email=normalized_email,
-            code_hash=hash_connect_secret(code),
+            code_hash=hash_connect_secret(code, env.JWT_SECRET),
             connect_user_id=connect_user_id,
             expires_at=otp_expires_at(),
         )
@@ -441,12 +450,21 @@ async def resend_connect_otp(
     }:
         raise HTTPException(status_code=400, detail="Verification challenge cannot be resent")
 
+    # Cooldown: at most one resend per challenge per minute
+    await enforce_rate_limit(
+        otp_model.db,
+        f"connect-otp-resend:{challenge.id}",
+        limit=1,
+        window_seconds=60,
+        detail="Verification code was just sent. Please wait before resending.",
+    )
+
     code = generate_otp_code()
     expires_at = otp_expires_at()
     await otp_model.update_challenge(
         challenge.id,
         {
-            "code_hash": hash_connect_secret(code),
+            "code_hash": hash_connect_secret(code, env.JWT_SECRET),
             "attempts": 0,
             "expires_at": expires_at,
             "status": ConnectOtpStatus.PENDING.value,
@@ -496,7 +514,7 @@ async def verify_connect_otp(
         )
         raise HTTPException(status_code=400, detail="Too many verification attempts")
 
-    if hash_connect_secret(req.code.strip()) != challenge.code_hash:
+    if not hmac.compare_digest(hash_connect_secret(req.code.strip(), env.JWT_SECRET), challenge.code_hash):
         await otp_model.update_challenge(
             challenge.id,
             {"attempts": challenge.attempts + 1},
@@ -614,8 +632,10 @@ def _build_grant_access_token(
     jwt_secret: str,
     *,
     grant: ConnectGrantRow,
+    task_id: str | None = None,
+    workflow_run_id: str | None = None,
+    workspace_project_id: str | None = None,
 ) -> str:
-    expires_at = datetime.now(timezone.utc) + timedelta(minutes=GRANT_ACCESS_TTL_MINUTES)
     payload = {
         "type": "connect_grant_access",
         "grant_id": grant.id,
@@ -623,20 +643,23 @@ def _build_grant_access_token(
         "connect_user_id": grant.connect_user_id,
         "connection_id": grant.connection_id,
         "scopes": grant.scopes,
-        "exp": expires_at.isoformat(),
     }
-    return f"{GRANT_ACCESS_PREFIX}{encode_token(payload, jwt_secret)}"
+    if task_id:
+        payload["task_id"] = task_id
+    if workflow_run_id:
+        payload["workflow_run_id"] = workflow_run_id
+    if workspace_project_id:
+        payload["workspace_project_id"] = workspace_project_id
+    return f"{GRANT_ACCESS_PREFIX}{encode_token(payload, jwt_secret, ttl_seconds=GRANT_ACCESS_TTL_MINUTES * 60)}"
 
 
 def _parse_grant_access_token(token: str, jwt_secret: str) -> dict:
     if not token.startswith(GRANT_ACCESS_PREFIX):
         raise HTTPException(status_code=401, detail="Invalid grant access token")
+    # decode_token enforces signature validity and the exp claim
     payload = decode_token(token[len(GRANT_ACCESS_PREFIX):], jwt_secret)
     if not payload or payload.get("type") != "connect_grant_access":
         raise HTTPException(status_code=401, detail="Invalid grant access token")
-    expires_at = datetime.fromisoformat(str(payload["exp"]).replace("Z", "+00:00"))
-    if expires_at <= datetime.now(timezone.utc):
-        raise HTTPException(status_code=401, detail="Grant access token expired")
     return payload
 
 
@@ -1157,6 +1180,12 @@ async def get_connect_consent_page(
 
     scopes = ", ".join(session.scopes) if session.scopes else provider.value
     account = connection.provider_account_label or provider.value
+    # All interpolated values are HTML-escaped: app names / account labels are
+    # user-controlled and would otherwise be a stored-XSS vector.
+    safe_app_name = html_escape(app.name, quote=True)
+    safe_account = html_escape(account, quote=True)
+    safe_scopes = html_escape(scopes, quote=True)
+    safe_state = html_escape(session.state, quote=True)
     html = f"""<!DOCTYPE html>
 <html lang="en">
 <head>
@@ -1177,13 +1206,13 @@ async def get_connect_consent_page(
 <body>
   <main>
     <h1>Approve access</h1>
-    <p><strong>{app.name}</strong> wants to use your connected account.</p>
+    <p><strong>{safe_app_name}</strong> wants to use your connected account.</p>
     <div class="meta">
-      <div>Account: {account}</div>
-      <div>Scopes: {scopes}</div>
+      <div>Account: {safe_account}</div>
+      <div>Scopes: {safe_scopes}</div>
     </div>
     <form method="post" action="/connect/consent">
-      <input type="hidden" name="state" value="{session.state}" />
+      <input type="hidden" name="state" value="{safe_state}" />
       <button type="submit" name="action" value="approve">Approve</button>
       <button type="submit" name="action" value="deny">Deny</button>
     </form>
@@ -1268,6 +1297,7 @@ async def exchange_connect_token(
     app_model: ConnectAppModel,
     session_model: ConnectSessionModel,
     grant_model: ConnectGrantModel,
+    audit_model: ConnectAuditEventModel,
     req: ConnectTokenRequest,
     developer_user_id: str,
     jwt_secret: str,
@@ -1322,10 +1352,34 @@ async def exchange_connect_token(
             raise HTTPException(status_code=400, detail="Grant is not active")
         if grant.connect_app_id != app.id:
             raise HTTPException(status_code=400, detail="Grant does not belong to this app")
-        result["grant_access_token"] = _build_grant_access_token(jwt_secret, grant=grant)
+        result["grant_access_token"] = _build_grant_access_token(
+            jwt_secret,
+            grant=grant,
+            task_id=req.task_id,
+            workflow_run_id=req.workflow_run_id,
+            workspace_project_id=req.workspace_project_id,
+        )
         result["grant_access_expires_in"] = GRANT_ACCESS_TTL_MINUTES * 60
         if req.grant_id:
             result["scopes"] = grant.scopes
+
+    await _audit(
+        audit_model,
+        event_type=ConnectAuditEventType.TOKEN_EXCHANGED,
+        actor_type=ConnectAuditActorType.DEVELOPER,
+        actor_id=developer_user_id,
+        connect_app_id=app.id,
+        resource_type=ConnectResourceType.CONNECT_TOKEN,
+        resource_id=result.get("grant_id"),
+        metadata={
+            "task_id": req.task_id,
+            "workflow_run_id": req.workflow_run_id,
+            "workspace_project_id": req.workspace_project_id,
+            "grant_id": result.get("grant_id"),
+            "connection_id": result.get("connection_id"),
+            "connect_user_id": result.get("connect_user_id"),
+        },
+    )
 
     return success(result, message="Connect token exchanged")
 
@@ -1403,3 +1457,48 @@ async def list_connect_app_grants(
         for grant in grants
     ]
     return success(items, meta={"total": len(items), "app_id": app.id})
+
+
+async def list_audit_events(
+    audit_model: ConnectAuditEventModel,
+    app_model: ConnectAppModel,
+    developer_user_id: str,
+    event_type: str | None = None,
+    app_id: str | None = None,
+    connect_user_id: str | None = None,
+    search: str | None = None,
+    limit: int = 50,
+    offset: int = 0,
+) -> dict:
+    # Scope strictly to apps owned by this developer (prevents cross-tenant reads)
+    owned_apps = await app_model.list_by_developer_user_id(developer_user_id)
+    owned_ids = [app.id for app in owned_apps]
+    if app_id is not None:
+        if app_id not in owned_ids:
+            raise HTTPException(status_code=404, detail="Connect app not found")
+        owned_ids = [app_id]
+    rows, total = await audit_model.list_all(
+        app_ids=owned_ids,
+        event_type=event_type,
+        app_id=app_id,
+        connect_user_id=connect_user_id,
+        search=search,
+        limit=limit,
+        offset=offset,
+    )
+    items = [
+        {
+            "id": r.id,
+            "event_type": r.event_type,
+            "actor_type": r.actor_type.value if hasattr(r.actor_type, 'value') else str(r.actor_type),
+            "actor_id": r.actor_id,
+            "connect_app_id": r.connect_app_id,
+            "connect_user_id": r.connect_user_id,
+            "resource_type": r.resource_type,
+            "resource_id": r.resource_id,
+            "metadata": r.metadata,
+            "created_at": r.created_at,
+        }
+        for r in rows
+    ]
+    return success(items, meta={"total": total, "limit": limit, "offset": offset})

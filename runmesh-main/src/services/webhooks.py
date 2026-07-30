@@ -5,11 +5,11 @@ import secrets
 import uuid
 from datetime import datetime, timezone
 from typing import Any, Callable, Awaitable, Optional
-from urllib.parse import urlparse
 
 from fastapi import HTTPException
 
 from db.orm import WebhookModel, WebhookDeadLetterModel
+from utils.url_security import validate_outbound_url
 
 WEBHOOK_QUEUE_NAME = "runmesh-webhooks"
 WEBHOOK_SECRET_PREFIX = "whsec_"
@@ -70,12 +70,8 @@ def webhook_subscribes_to(events_field: str, event: str) -> bool:
 
 
 def validate_webhook_url(url: str) -> str:
-    parsed = urlparse(url.strip())
-    if parsed.scheme not in ("https", "http"):
-        raise HTTPException(status_code=400, detail="Webhook URL must use http or https")
-    if not parsed.netloc:
-        raise HTTPException(status_code=400, detail="Webhook URL is invalid")
-    return url.strip()
+    # Scheme/host checks plus SSRF blocklist (private/loopback/link-local targets)
+    return validate_outbound_url(url, field_name="Webhook URL")
 
 
 def retry_delay_after_failure(failed_attempt: int) -> int:

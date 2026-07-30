@@ -18,12 +18,14 @@
 	"dev": {
 		"port": 8787
 	},
+	/**
+	 * Non-secret configuration only. Secrets (JWT_SECRET, GITHUB_CLIENT_SECRET,
+	 * GOOGLE_CONNECT_CLIENT_SECRET, RESEND_API_KEY) must be set with
+	 * `wrangler secret put <NAME>` (and kept in .dev.vars locally) — never here.
+	 */
 	"vars": {
-		"JWT_SECRET": "replace-in-production",
 		"GITHUB_CLIENT_ID": "Ov23lirHJAWe7DnnJZLK",
-		"GITHUB_CLIENT_SECRET": "***REMOVED***",
-		"GOOGLE_CONNECT_CLIENT_ID": "your-google-connect-client-id",
-		"GOOGLE_CONNECT_CLIENT_SECRET": "your-google-connect-client-secret",
+		"GOOGLE_CONNECT_CLIENT_ID": "605320313102-i8egn94uopop4jg7vcmb32gsdsl1h4aa.apps.googleusercontent.com",
 		"FRONTEND_URL": "https://runmesh.vercel.app",
 		"PUBLIC_URL": "https://runmesh.daviduche176.workers.dev"
 	},

@@ -2,6 +2,7 @@ package main
 
 import (
 	"bytes"
+	"encoding/hex"
 	"encoding/json"
 	"errors"
 	"flag"
@@ -13,6 +14,7 @@ import (
 	"time"
 
 	"runmesh/workspace/internal/config"
+	"runmesh/workspace/internal/envcrypt"
 	"runmesh/workspace/internal/fuse"
 	"runmesh/workspace/internal/sync"
 )
@@ -66,6 +68,8 @@ func main() {
 		cmdLogin()
 	case "whoami":
 		cmdWhoami()
+	case "envkey":
+		cmdEnvKey(os.Args[2:])
 	case "mount":
 		cmdMount(os.Args[2:])
 	case "umount":
@@ -82,20 +86,23 @@ func fatal(format string, args ...interface{}) {
 }
 
 func usage() {
-	fmt.Fprintf(os.Stderr, `Continuumm — Dev environment syncing
+	fmt.Fprintf(os.Stderr, `Runmesh Workspace — Dev environment syncing
 
 Usage:
-  continuumm config set    Save cloud storage credentials globally
-  continuumm link          Link this directory to a cloud prefix
-  continuumm login         Authenticate CLI with Runmesh
-  continuumm whoami        Show current authenticated user
-  continuumm up            Push local changes to cloud
-  continuumm down          Pull cloud changes to local
-  continuumm list          List files on remote
-  continuumm status        Show sync status
-  continuumm watch         Auto-sync local changes to cloud
-  continuumm mount <dir>   Mount cloud bucket as a FUSE filesystem
-  continuumm umount <dir>  Unmount a FUSE filesystem
+  runmesh config set    Save cloud storage credentials globally
+  runmesh link [prefix] Link this directory to a cloud prefix (defaults to dir name)
+  runmesh login         Authenticate CLI with Runmesh
+  runmesh whoami        Show current authenticated user
+  runmesh envkey        Manage the .env encryption key (--generate, --show)
+  runmesh up            Push local changes to cloud
+  runmesh down          Pull cloud changes to local
+  runmesh list          List files on remote
+  runmesh status        Show sync status
+  runmesh watch         Auto-sync local changes to cloud
+  runmesh mount <dir>   Mount cloud bucket as a FUSE filesystem
+  runmesh umount <dir>  Unmount a FUSE filesystem
+
+.env files sync encrypted (AES-256-GCM) — plaintext never leaves your device.
 `)
 }
 
@@ -109,14 +116,14 @@ func loadProject(projectDir string) (*config.RemoteConfig, *config.ProjectConfig
 		fatal("Error loading project config: %v", err)
 	}
 	if global == nil || proj == nil {
-		fatal("Run 'continuumm config set' and 'continuumm link <prefix>' first")
+		fatal("Run 'runmesh config set' and 'runmesh link <prefix>' first")
 	}
 	return global, proj
 }
 
 func cmdConfig(args []string) {
 	if len(args) < 1 || args[0] != "set" {
-		fatal("Usage: continuumm config set --bucket ... --endpoint ... --access-key ... --secret-key ...")
+		fatal("Usage: runmesh config set --bucket ... --endpoint ... --access-key ... --secret-key ...")
 	}
 
 	fs := flag.NewFlagSet("config set", flag.ExitOnError)
@@ -127,7 +134,34 @@ func cmdConfig(args []string) {
 	secretKey := fs.String("secret-key", "", "Secret access key")
 	bucket := fs.String("bucket", "", "Default R2/S3 bucket name")
 	apiBase := fs.String("api-base", "", "Runmesh API base URL")
+	envKey := fs.String("env-key", "", "Hex .env encryption key (copy from another device: runmesh envkey --show)")
 	fs.Parse(args[1:])
+
+	if *envKey != "" {
+		if _, err := envcrypt.ParseKey(*envKey); err != nil {
+			fatal("Invalid --env-key: %v", err)
+		}
+	}
+
+	// env-key-only update: merge into the existing global config
+	if *endpoint == "" && *accessKey == "" && *secretKey == "" && *bucket == "" {
+		if *envKey == "" {
+			fatal("--bucket, --endpoint, --access-key, and --secret-key are required")
+		}
+		cfg, err := config.LoadGlobal()
+		if err != nil {
+			fatal("Error loading config: %v", err)
+		}
+		if cfg == nil {
+			cfg = &config.RemoteConfig{}
+		}
+		cfg.EnvKey = *envKey
+		if err := config.SaveGlobal(cfg); err != nil {
+			fatal("Error saving config: %v", err)
+		}
+		fmt.Fprintf(os.Stderr, "Env encryption key saved to ~/.runmesh/config.json\n")
+		return
+	}
 
 	if *endpoint == "" || *accessKey == "" || *secretKey == "" || *bucket == "" {
 		fatal("--bucket, --endpoint, --access-key, and --secret-key are required")
@@ -141,11 +175,66 @@ func cmdConfig(args []string) {
 		SecretKey:     *secretKey,
 		DefaultBucket: *bucket,
 		APIBase:       *apiBase,
+		EnvKey:        *envKey,
 	}
 	if err := config.SaveGlobal(cfg); err != nil {
 		fatal("Error saving credentials: %v", err)
 	}
-	fmt.Fprintf(os.Stderr, "Credentials saved to ~/.continuumm/config.json\n")
+	fmt.Fprintf(os.Stderr, "Credentials saved to ~/.runmesh/config.json\n")
+}
+
+func cmdEnvKey(args []string) {
+	fs := flag.NewFlagSet("envkey", flag.ExitOnError)
+	generate := fs.Bool("generate", false, "Generate a new key and save it")
+	show := fs.Bool("show", false, "Print the hex key (for copying to another device)")
+	force := fs.Bool("force", false, "Overwrite an existing key")
+	fs.Parse(args)
+
+	rc, err := config.LoadGlobal()
+	if err != nil {
+		fatal("Error loading config: %v", err)
+	}
+	if rc == nil {
+		rc = &config.RemoteConfig{}
+	}
+	key, err := envcrypt.ResolveKey(rc.EnvKey)
+	if err != nil {
+		fatal("Error: %v", err)
+	}
+
+	if *generate {
+		if len(key) > 0 && !*force {
+			fatal("A key already exists (fingerprint " + envcrypt.KeyFingerprint(key) + "). Use --force to overwrite — existing encrypted files will become undecryptable.")
+		}
+		newKey, err := envcrypt.GenerateKey()
+		if err != nil {
+			fatal("Error: %v", err)
+		}
+		rc.EnvKey = hex.EncodeToString(newKey)
+		if err := config.SaveGlobal(rc); err != nil {
+			fatal("Error saving config: %v", err)
+		}
+		fmt.Fprintf(os.Stderr, "Generated new .env encryption key (fingerprint %s)\n", envcrypt.KeyFingerprint(newKey))
+		fmt.Fprintf(os.Stderr, "Saved to ~/.runmesh/config.json. Copy it to other devices with: runmesh envkey --show\n")
+		return
+	}
+
+	if len(key) == 0 {
+		fmt.Fprintf(os.Stderr, "No env encryption key configured. Create one: runmesh envkey --generate\n")
+		return
+	}
+	fmt.Fprintf(os.Stderr, "Env encryption key configured (fingerprint %s)\n", envcrypt.KeyFingerprint(key))
+	if os.Getenv(envcrypt.EnvKeyEnvVar) != "" {
+		fmt.Fprintf(os.Stderr, "Source: %s environment variable\n", envcrypt.EnvKeyEnvVar)
+	}
+	if *show {
+		keyHex := os.Getenv(envcrypt.EnvKeyEnvVar)
+		if keyHex == "" {
+			keyHex = rc.EnvKey
+		}
+		fmt.Fprintf(os.Stderr, "Key (keep secret): %s\n", keyHex)
+		fmt.Fprintf(os.Stderr, "On another device run: runmesh config set --env-key %s\n", keyHex)
+	}
 }
 
 func findProjectRoot() (string, error) {
@@ -154,7 +243,7 @@ func findProjectRoot() (string, error) {
 		return "", err
 	}
 	for {
-		if _, err := os.Stat(filepath.Join(dir, ".continuumm")); err == nil {
+		if _, err := os.Stat(filepath.Join(dir, ".runmesh")); err == nil {
 			return dir, nil
 		}
 		if _, err := os.Stat(filepath.Join(dir, ".git")); err == nil {
@@ -162,7 +251,7 @@ func findProjectRoot() (string, error) {
 		}
 		parent := filepath.Dir(dir)
 		if parent == dir {
-			return "", errors.New("no project root found (no .continuumm or .git directory)")
+			return "", errors.New("no project root found (no .runmesh or .git directory)")
 		}
 		dir = parent
 	}
@@ -174,7 +263,7 @@ func cmdLink(projectDir string) {
 		fatal("Error loading credentials: %v", err)
 	}
 	if global == nil {
-		fatal("No credentials found. Run 'continuumm config set' first.")
+		fatal("No credentials found. Run 'runmesh config set' first.")
 	}
 
 	proj, err := config.LoadProject(projectDir)
@@ -185,13 +274,37 @@ func cmdLink(projectDir string) {
 		fatal("Already linked as '%s' in %s", proj.Prefix, projectDir)
 	}
 
-	if len(os.Args) < 3 || os.Args[2] == "" {
-		fatal("Usage: continuumm link <prefix>")
+	var prefix string
+	if len(os.Args) < 3 || os.Args[2] == "" || os.Args[2] == "." {
+		// Default: use directory basename as prefix
+		prefix = filepath.Base(projectDir)
+	} else {
+		prefix = os.Args[2]
 	}
 
-	proj = &config.ProjectConfig{Prefix: os.Args[2]}
+	proj = &config.ProjectConfig{Prefix: prefix}
 	if err := config.SaveProject(projectDir, proj); err != nil {
 		fatal("Error saving project config: %v", err)
+	}
+
+	// Register with backend API if authenticated
+	if global.Token != "" {
+		apiBase := defaultAPIBase
+		if global.APIBase != "" {
+			apiBase = global.APIBase
+		}
+		bucket := global.DefaultBucket
+		body, _ := json.Marshal(map[string]string{
+			"prefix":     prefix,
+			"bucket":     bucket,
+			"local_path": projectDir,
+		})
+		req, _ := http.NewRequest("POST", apiBase+"/api/workspace/projects", bytes.NewReader(body))
+		req.Header.Set("Content-Type", "application/json")
+		req.Header.Set("Authorization", "Bearer "+global.Token)
+		if resp, err := http.DefaultClient.Do(req); err == nil {
+			resp.Body.Close()
+		}
 	}
 
 	ignorePath := filepath.Join(projectDir, ".devignore")
@@ -260,7 +373,7 @@ func cmdWatch(projectDir string) {
 
 func cmdMount(args []string) {
 	if len(args) < 1 {
-		fatal("Usage: continuumm mount <mountpoint> [--prefix <prefix>]")
+		fatal("Usage: runmesh mount <mountpoint> [--prefix <prefix>]")
 	}
 	mountpoint := args[0]
 
@@ -285,7 +398,7 @@ func cmdMount(args []string) {
 
 	rc, err := config.LoadGlobal()
 	if err != nil || rc == nil {
-		fatal("No credentials found. Run 'continuumm config set' first.")
+		fatal("No credentials found. Run 'runmesh config set' first.")
 	}
 
 	server, err := fuse.Mount(mountpoint, rc, prefix)
@@ -299,7 +412,7 @@ func cmdMount(args []string) {
 
 func cmdUmount(args []string) {
 	if len(args) < 1 {
-		fatal("Usage: continuumm umount <mountpoint>")
+		fatal("Usage: runmesh umount <mountpoint>")
 	}
 	cmd := exec.Command("umount", args[0])
 	cmd.Stderr = os.Stderr
@@ -351,8 +464,8 @@ func cmdLogin() {
 	}
 
 	if rc != nil && rc.Token != "" {
-		fmt.Fprintf(os.Stderr, "Already logged in. Use 'continuumm whoami' to check your session.\n")
-		fmt.Fprintf(os.Stderr, "To re-authenticate, run: continuumm config set --token \"\" first.\n")
+		fmt.Fprintf(os.Stderr, "Already logged in. Use 'runmesh whoami' to check your session.\n")
+		fmt.Fprintf(os.Stderr, "To re-authenticate, run: runmesh config set --token \"\" first.\n")
 		return
 	}
 
@@ -444,17 +557,17 @@ func cmdLogin() {
 			fmt.Fprintf(os.Stderr, "\n  ✓ Logged in as %s (%s)\n", user.Name, user.Email)
 			return
 		case "expired":
-			fatal("Login code expired. Run 'continuumm login' again.")
+			fatal("Login code expired. Run 'runmesh login' again.")
 		}
 	}
 
-	fatal("Login timed out. Run 'continuumm login' again.")
+	fatal("Login timed out. Run 'runmesh login' again.")
 }
 
 func cmdWhoami() {
 	rc, err := config.LoadGlobal()
 	if err != nil || rc == nil || rc.Token == "" {
-		fatal("Not logged in. Run 'continuumm login' first.")
+		fatal("Not logged in. Run 'runmesh login' first.")
 	}
 
 	apiBase := defaultAPIBase

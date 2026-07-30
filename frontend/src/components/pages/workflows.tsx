@@ -84,6 +84,7 @@ export function WorkflowsPage() {
 
 	const [statusFilter, setStatusFilter] = useState("");
 	const [triggerFilter, setTriggerFilter] = useState("");
+	const [searchQuery, setSearchQuery] = useState("");
 	const navigate = useNavigate();
 
 	const [modalOpen, setModalOpen] = useState(false);
@@ -147,6 +148,10 @@ export function WorkflowsPage() {
 	const filtered = workflows.filter((w) => {
 		if (statusFilter && w.status !== statusFilter) return false;
 		if (triggerFilter && w.trigger !== triggerFilter) return false;
+		if (searchQuery) {
+			const q = searchQuery.toLowerCase();
+			if (!w.name.toLowerCase().includes(q) && !w.endpoint.toLowerCase().includes(q)) return false;
+		}
 		return true;
 	});
 
@@ -160,7 +165,7 @@ export function WorkflowsPage() {
 				<div>
 					<h1 className="text-xl font-semibold tracking-tight">Workflows</h1>
 					<p className="text-sm text-muted-foreground mt-1">
-						Automate tasks with webhook-triggered and scheduled workflows.
+						Orchestrate durable agent runs with manual, webhook, and scheduled triggers.
 					</p>
 				</div>
 				<Button onClick={() => setModalOpen(true)}>
@@ -172,7 +177,7 @@ export function WorkflowsPage() {
 			<div className="flex items-center gap-3">
 				<div className="relative w-full max-w-sm">
 					<SearchIcon className="absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
-					<Input placeholder="Search workflows..." className="h-9 pl-9" />
+					<Input placeholder="Search workflows..." className="h-9 pl-9" value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)} />
 				</div>
 
 				<DropdownMenu>
@@ -237,7 +242,7 @@ export function WorkflowsPage() {
 								<TableCell colSpan={7} className="text-center py-8">
 									<EmptyState
 										title="No workflows yet"
-										description="Create a workflow to group and automate tasks."
+										description="Create a workflow to chain actions, retries, and agent handoffs."
 										icon={<GitBranchIcon className="size-6 text-muted-foreground" />}
 									/>
 								</TableCell>
@@ -335,7 +340,7 @@ export function WorkflowsPage() {
 						<label className="text-sm font-medium">Description</label>
 						<textarea
 							className="flex min-h-20 w-full rounded-none border border-input bg-background px-3 py-2 text-sm focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
-							placeholder="What this workflow does and when it runs"
+							placeholder="What this agent workflow does and when it runs"
 							value={description}
 							onChange={(e) => setDescription(e.target.value)}
 							required

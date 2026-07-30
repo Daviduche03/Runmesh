@@ -19,15 +19,19 @@ import type { SidebarNavGroup } from "@/components/app-shared";
 import { ChevronRightIcon } from "lucide-react";
 
 export function NavGroup({ label, items }: SidebarNavGroup) {
-	const { pathname } = useLocation();
+	const { pathname, search } = useLocation();
 
 	return (
 		<SidebarGroup>
 			{label && <SidebarGroupLabel>{label}</SidebarGroupLabel>}
 			<SidebarMenu>
 				{items.map((item) => {
-					const isActive = pathname === item.path ||
+					const isSettingsTab = item.path?.startsWith("/settings?tab=") && `${pathname}${search}` === item.path;
+					const isSettingsRoot = item.path === "/settings" && pathname === "/settings" && !search;
+					const isActive = (item.path !== "/settings" && pathname === item.path) ||
+						isSettingsRoot ||
 						(item.path === "/workflows" && pathname.startsWith("/workflows/")) ||
+						isSettingsTab ||
 						item.subItems?.some((s) => pathname === s.path);
 
 					return (

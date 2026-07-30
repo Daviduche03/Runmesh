@@ -12,6 +12,8 @@ import { RunsPage } from "@/components/pages/runs"
 import { WorkflowsPage } from "@/components/pages/workflows"
 import { WorkflowDetailPage } from "@/components/pages/workflow-detail"
 import { SettingsPage } from "@/components/pages/settings"
+import { ConnectPage } from "@/components/pages/connect"
+import { ConnectAppPage } from "@/components/pages/connect-app"
 import { useAuthStore } from "@/stores/auth-store"
 
 function ProtectedRoute({ children }: { children: React.ReactNode }) {
@@ -87,6 +89,26 @@ export function App() {
 					<ProtectedRoute>
 						<AppShell>
 							<SettingsPage />
+						</AppShell>
+					</ProtectedRoute>
+				}
+			/>
+			<Route
+				path="/connect/apps/:appId"
+				element={
+					<ProtectedRoute>
+						<AppShell>
+							<ConnectAppPage />
+						</AppShell>
+					</ProtectedRoute>
+				}
+			/>
+			<Route
+				path="/connect"
+				element={
+					<ProtectedRoute>
+						<AppShell>
+							<ConnectPage />
 						</AppShell>
 					</ProtectedRoute>
 				}

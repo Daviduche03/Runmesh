@@ -1,5 +1,5 @@
 import type { ReactNode } from "react";
-import { LayoutGridIcon, ActivityIcon, WorkflowIcon, SettingsIcon, HelpCircleIcon, BookOpenIcon, CloudIcon } from "lucide-react";
+import { LayoutGridIcon, ActivityIcon, WorkflowIcon, SettingsIcon, HelpCircleIcon, BookOpenIcon, CloudIcon, ShieldCheckIcon } from "lucide-react";
 
 export type SidebarNavItem = {
 	title: string;
@@ -19,7 +19,7 @@ export const navGroups: SidebarNavGroup[] = [
 		label: "Product",
 		items: [
 			{
-				title: "Dashboard",
+				title: "Overview",
 				path: "/dashboard",
 				icon: (
 					<LayoutGridIcon
@@ -27,15 +27,7 @@ export const navGroups: SidebarNavGroup[] = [
 				),
 			},
 			{
-				title: "Workspace",
-				path: "/app/workspace",
-				icon: (
-					<CloudIcon
-					/>
-				),
-			},
-			{
-				title: "Runs",
+				title: "Actions",
 				path: "/runs",
 				icon: (
 					<ActivityIcon
@@ -50,10 +42,31 @@ export const navGroups: SidebarNavGroup[] = [
 					/>
 				),
 			},
+			{
+				title: "Workspace",
+				path: "/app/workspace",
+				icon: (
+					<CloudIcon
+					/>
+				),
+			},
 		],
 	},
 	{
-		label: "Administration",
+		label: "Access",
+		items: [
+			{
+				title: "Connect",
+				path: "/connect",
+				icon: (
+					<ShieldCheckIcon
+					/>
+				),
+			},
+		],
+	},
+	{
+		label: "System",
 		items: [
 			{
 				title: "Settings",

@@ -10,14 +10,14 @@ import { Input } from "@/components/ui/input";
 import { SearchIcon } from "lucide-react";
 
 const runs = [
-	{ id: "tk-1045", endpoint: "/webhooks/receipt", status: "Completed", scheduled: "2 min ago", duration: "1.2s" },
-	{ id: "tk-1044", endpoint: "/api/v1/process-order", status: "Running", scheduled: "15 min ago", duration: "—" },
-	{ id: "tk-1043", endpoint: "/webhooks/shipment/update", status: "Completed", scheduled: "1 hour ago", duration: "0.8s" },
-	{ id: "tk-1042", endpoint: "/api/v1/sync/inventory", status: "Failed", scheduled: "3 hours ago", duration: "30.1s" },
-	{ id: "tk-1041", endpoint: "/webhooks/user/signup", status: "Completed", scheduled: "5 hours ago", duration: "0.4s" },
-	{ id: "tk-1040", endpoint: "/api/v1/charge/refund", status: "Completed", scheduled: "8 hours ago", duration: "2.1s" },
-	{ id: "tk-1039", endpoint: "/webhooks/order/cancelled", status: "Pending", scheduled: "12 hours ago", duration: "—" },
-	{ id: "tk-1038", endpoint: "/api/v1/export/csv", status: "Running", scheduled: "14 hours ago", duration: "—" },
+	{ id: "tk-1045", endpoint: "/api/agent/github", status: "Completed", scheduled: "2 min ago", duration: "1.2s" },
+	{ id: "tk-1044", endpoint: "/api/agent/research", status: "Running", scheduled: "15 min ago", duration: "-" },
+	{ id: "tk-1043", endpoint: "/api/agent/slack", status: "Completed", scheduled: "1 hour ago", duration: "0.8s" },
+	{ id: "tk-1042", endpoint: "/api/agent/sync-crm", status: "Failed", scheduled: "3 hours ago", duration: "30.1s" },
+	{ id: "tk-1041", endpoint: "/api/agent/summary", status: "Completed", scheduled: "5 hours ago", duration: "0.4s" },
+	{ id: "tk-1040", endpoint: "/api/agent/refund", status: "Completed", scheduled: "8 hours ago", duration: "2.1s" },
+	{ id: "tk-1039", endpoint: "/api/agent/follow-up", status: "Pending", scheduled: "12 hours ago", duration: "-" },
+	{ id: "tk-1038", endpoint: "/api/agent/export", status: "Running", scheduled: "14 hours ago", duration: "-" },
 ];
 
 const statusColor = (status: string) => {
@@ -36,7 +36,7 @@ export function RunsPreview() {
 			<div className="flex items-center justify-between">
 				<div>
 					<h2 className="text-[15px] font-[590] text-[#d9dce3]">Latest runs</h2>
-					<p className="text-[13px] text-[#6d727d] mt-0.5">Tasks and workflow runs across your account.</p>
+					<p className="text-[13px] text-[#6d727d] mt-0.5">Agent actions and workflow runs across your account.</p>
 				</div>
 				<div className="relative w-56">
 					<SearchIcon className="absolute left-3 top-1/2 size-3.5 -translate-y-1/2 text-[#6d727d]" />
@@ -47,7 +47,7 @@ export function RunsPreview() {
 				<Table>
 					<TableHeader>
 						<TableRow className="border-b-[#24272d]">
-							<TableHead className="ps-4 text-[11px] font-medium text-[#6d727d] uppercase">Task ID</TableHead>
+							<TableHead className="ps-4 text-[11px] font-medium text-[#6d727d] uppercase">Action ID</TableHead>
 							<TableHead className="text-[11px] font-medium text-[#6d727d] uppercase">Endpoint</TableHead>
 							<TableHead className="text-[11px] font-medium text-[#6d727d] uppercase">Status</TableHead>
 							<TableHead className="pe-4 text-right text-[11px] font-medium text-[#6d727d] uppercase">Duration</TableHead>

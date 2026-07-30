@@ -1,4 +1,4 @@
-# Continuumm
+# Runmesh Workspace
 
 **A developer-first cloud filesystem and execution layer.**
 
@@ -30,7 +30,7 @@ Existing solutions fall into two camps, neither of which solves the actual probl
 
 ## The Vision: Three Layers, Three Timescales
 
-The key insight that makes Continuumm different:
+The key insight that makes Runmesh Workspace different:
 
 **Your files, your environment, and your execution are all the same thing — at different timescales.**
 
@@ -66,11 +66,11 @@ Each layer builds on the one below it. Together they form a single concept: **yo
 
 Your project files live in an S3-compatible bucket (Cloudflare R2) and feel local on any device.
 
-- One bucket per developer, projects as prefixes (`bucket/midday/`, `bucket/continuumm/`)
+- One bucket per developer, projects as prefixes (`bucket/midday/`, `bucket/runmesh/`)
 - `.devignore` keeps build artifacts, `node_modules`, cache, and platform-specific junk out of sync
 - Auto-sync daemon watches for local changes and pushes to cloud; polls cloud and pulls down remote changes
-- Credentials stored globally (`~/.continuumm/config.json`), not per-project
-- Projects are linked to cloud prefixes (`continuumm link <prefix>`) — the bucket is a global setting
+- Credentials stored globally (`~/.runmesh/config.json`), not per-project
+- Projects are linked to cloud prefixes (`runmesh link <prefix>`) — the bucket is a global setting
 
 ### Environment Layer (Planned)
 
@@ -91,7 +91,7 @@ Every piece of this was technically possible before — but the tooling to compo
 - **E2B / Daytona** — sandbox APIs for ephemeral code execution.
 - **Go** — single language, single binary, cross-platform, excellent for CLI tooling.
 
-The gap is the **orchestration layer**. That's what Continuumm builds.
+The gap is the **orchestration layer**. That's what Runmesh Workspace builds.
 
 And the agentic use case — agents that need real dev environments with real project files to work in, not toy sandboxes — is brand new and completely underserved.
 
@@ -100,18 +100,18 @@ And the agentic use case — agents that need real dev environments with real pr
 ## Architecture
 
 ```
-~/.continuumm/config.json     # Global: credentials + default bucket
+~/.runmesh/config.json     # Global: credentials + default bucket
   project/
     .devignore                  # Ignore patterns (gitignore syntax)
-    .continuumm/config.json     # Project: cloud prefix mapping
+    .runmesh/config.json     # Project: cloud prefix mapping
 ```
 
 ### Config Model
 
 | Config | Location | Contents |
 |--------|----------|----------|
-| Global | `~/.continuumm/config.json` | Provider, endpoint, access key, secret key, region, default bucket |
-| Project | `project/.continuumm/config.json` | Cloud prefix (e.g. `"midday"`) |
+| Global | `~/.runmesh/config.json` | Provider, endpoint, access key, secret key, region, default bucket |
+| Project | `project/.runmesh/config.json` | Cloud prefix (e.g. `"midday"`) |
 
 This split means credentials are never in your project directory. The project only stores which cloud prefix it maps to. The bucket is a global setting — all projects live under one bucket.
 
@@ -149,14 +149,16 @@ This split means credentials are never in your project directory. The project on
 
 | Feature | Status | Details |
 |---------|--------|---------|
-| `config set` | Done | Stores credentials globally in `~/.continuumm/` |
+| `config set` | Done | Stores credentials globally in `~/.runmesh/` |
 | `link` | Done | Links a local directory to a cloud prefix |
-| `up` | Done | Full sync from local → cloud |
-| `down` | Done | Full sync from cloud → local |
+| `envkey` | Done | Manages the .env encryption key (`--generate`, `--show`, `--force`) |
+| `up` | Done | Full sync from local → cloud (env files encrypted) |
+| `down` | Done | Full sync from cloud → local (env files decrypted) |
 | `list` | Done | Lists all files stored in the cloud prefix |
-| `status` | Done | Shows local vs remote file diff |
+| `status` | Done | Shows local vs remote file diff (incl. encrypted env diff) |
 | `watch` | Done | Bidirectional auto-sync daemon (push on change, pull every 8s) |
 | `.devignore` | Done | Gitignore-syntax patterns to exclude files from sync |
+| Encrypted `.env` sync | Done | AES-256-GCM, zero-knowledge — key never leaves devices |
 | Single-bucket namespace | Done | All projects under one bucket, projects as prefixes |
 | Global credentials | Done | Credentials never stored in project directory |
 | `no_check_bucket` | Done | Skips bucket existence checks for R2 compatibility |
@@ -168,14 +170,14 @@ This split means credentials are never in your project directory. The project on
 |---------|--------|---------|
 | Lazy loading | Planned | Only fetch files on access (FUSE mount or on-demand download) |
 | Watch mode improvements | Planned | Handle renames properly, reduce edge-case noise |
-| Root command UX | Planned | `continuumm` without args should show meaningful state |
+| Root command UX | Planned | `runmesh` without args should show meaningful state |
 
 ### 📋 Planned
 
 | Feature | Layer | Details |
 |---------|-------|---------|
-| Project registry (`continuumm projects`) | Storage | List all linked projects and their sync status |
-| `continuumm clone <prefix>` | Storage | Pull an existing cloud project to a fresh local machine |
+| Project registry (`runmesh projects`) | Storage | List all linked projects and their sync status |
+| `runmesh clone <prefix>` | Storage | Pull an existing cloud project to a fresh local machine |
 | Sync multiple projects at once | Storage | Watch daemon that handles all linked projects |
 | Per-machine `.devignore` overrides | Storage | Ignore different things on different devices |
 | File history / versioning | Storage | Dropbox-style version history for synced files |
@@ -185,10 +187,9 @@ This split means credentials are never in your project directory. The project on
 | Cloud workspace management | Environment | List, start, stop, reconnect persistent workspaces |
 | Env var sync | Environment | `~/.envrc`-style env sync across devices |
 | `E2B` / `Daytona` integration | Execution | Ephemeral sandboxes with project files mounted |
-| Agent API | Execution | `continuumm run <task>` — spin sandbox, run task, return diff |
+| Agent API | Execution | `runmesh run <task>` — spin sandbox, run task, return diff |
 | Web dashboard | UX | View sync status, manage projects, trigger syncs from browser |
-| Mobile app | UX | `continuumm` on iOS/Android (at least file access) |
-| Encrypted secrets | Storage | Sync `.env` files with encryption |
+| Mobile app | UX | `runmesh` on iOS/Android (at least file access) |
 | Team sharing | Storage | Share prefixes with other developers |
 
 ---
@@ -197,12 +198,12 @@ This split means credentials are never in your project directory. The project on
 
 ```bash
 # Install via Go
-go install github.com/daviduche03/Continuumm/cmd/continuumm@latest
+go install github.com/Daviduche03/Runmesh/runmesh-main/workspace/cmd/runmesh@latest
 
 # Or build from source
-git clone https://github.com/daviduche03/Continuumm
-cd Continuumm
-go install ./cmd/continuumm/
+git clone https://github.com/Daviduche03/Runmesh
+cd Runmesh/runmesh-main/workspace
+go install ./cmd/runmesh/
 ```
 
 Requires Go 1.25+.
@@ -214,14 +215,14 @@ Requires Go 1.25+.
 ### 1. Configure credentials (once)
 
 ```bash
-continuumm config set \
+runmesh config set \
   --bucket matriq \
   --endpoint https://<account_id>.r2.cloudflarestorage.com \
   --access-key <your_access_key> \
   --secret-key <your_secret_key>
 ```
 
-Credentials are stored in `~/.continuumm/config.json` with `0600` permissions. The bucket is global — all projects live under this bucket as prefixes.
+Credentials are stored in `~/.runmesh/config.json` with `0600` permissions. The bucket is global — all projects live under this bucket as prefixes.
 
 Supported providers: `Cloudflare` (R2), `AWS` (S3), `Minio`, `Wasabi`, and any S3-compatible storage.
 
@@ -229,34 +230,69 @@ Supported providers: `Cloudflare` (R2), `AWS` (S3), `Minio`, `Wasabi`, and any S
 
 ```bash
 cd ~/code/my-project
-continuumm link my-project
+runmesh link my-project
 ```
 
-This creates `.continuumm/config.json` and a default `.devignore`. Your local directory is now mapped to `bucket/my-project/` in the cloud.
+This creates `.runmesh/config.json` and a default `.devignore`. Your local directory is now mapped to `bucket/my-project/` in the cloud.
 
 ### 3. Sync
 
 ```bash
 # One-time syncs
-continuumm up       # Push local changes to cloud
-continuumm down     # Pull cloud changes to local
+runmesh up       # Push local changes to cloud
+runmesh down     # Pull cloud changes to local
 
 # Auto-sync daemon (bidirectional)
-continuumm watch    # Push on change, pull every 8s
+runmesh watch    # Push on change, pull every 8s
 ```
 
 ### 4. Inspect
 
 ```bash
-continuumm list     # List files in cloud
-continuumm status   # Show local vs remote diff
+runmesh list     # List files in cloud
+runmesh status   # Show local vs remote diff
 ```
+
+---
+
+## Encrypted `.env` sync
+
+`.env` files sync too — but **never as plaintext**. They are encrypted on your
+device before upload and only decrypted after download. The bucket only ever
+holds ciphertext; the key never leaves your devices (zero-knowledge).
+
+```bash
+# One time, on your primary device — generates and saves a key to
+# ~/.runmesh/config.json (mode 0600)
+runmesh envkey --generate
+
+# Copy the key to another device
+runmesh envkey --show          # prints the hex key
+# …on the other device:
+runmesh config set --env-key <hex>
+```
+
+How it works:
+
+- `.env`, `.env.local`, `.env.production`, etc. are **always excluded** from the
+  normal (plaintext) sync — hard-coded, regardless of your `.devignore`.
+- On `up`/`watch` they are encrypted with **AES-256-GCM** and uploaded as
+  `.env.enc` siblings. On `down`/`watch` they are decrypted back with `0600`
+  permissions.
+- An HMAC change-tag in each blob lets devices skip unchanged files without
+  decrypting — and without exposing a plaintext hash to anyone but key holders.
+- `.env.example` / `.env.sample` stay plaintext (they are meant to be shared).
+- Wrong or missing key? Sync continues for everything else and prints a
+  warning — plaintext is never written or uploaded as a fallback.
+- `RUNMESH_ENV_KEY=<hex>` overrides the configured key (useful for CI/agents).
+- Rotating the key (`envkey --generate --force`) makes old cloud blobs
+  undecryptable; re-push from a device that has the plaintext.
 
 ---
 
 ## `.devignore`
 
-A `.devignore` file in your project root tells Continuumm which files and directories to exclude from sync. It uses standard gitignore syntax.
+A `.devignore` file in your project root tells Runmesh Workspace which files and directories to exclude from sync. It uses standard gitignore syntax.
 
 Default `.devignore`:
 
@@ -288,9 +324,9 @@ Thumbs.db
 
 Git is a version control system. It solves **time** — history, branches, collaboration. Moving files between machines is a side effect, not the purpose.
 
-Continuumm solves **space** — your workspace, live, on every device, right now. No commits, no push/pull dance, no stale copies. The cloud *is* your working directory.
+Runmesh Workspace solves **space** — your workspace, live, on every device, right now. No commits, no push/pull dance, no stale copies. The cloud *is* your working directory.
 
-They're complementary. You still use Git inside a Continuumm-synced project for history and collaboration. Continuumm just makes sure `git status` sees the same files on every machine.
+They're complementary. You still use Git inside a Runmesh Workspace-synced project for history and collaboration. Runmesh Workspace just makes sure `git status` sees the same files on every machine.
 
 ### Vs. Dropbox
 
@@ -301,13 +337,13 @@ Dropbox is a general-purpose file sync tool. It has no concept of:
 - How to interact with agents or automated tooling
 - What lazy loading means for a monorepo
 
-Continuumm is purpose-built for developers. It understands `.devignore`, it integrates with your CLI, and it's designed for the agentic era.
+Runmesh Workspace is purpose-built for developers. It understands `.devignore`, it integrates with your CLI, and it's designed for the agentic era.
 
 ### Vs. Codespaces / Gitpod
 
 Full browser IDEs lock you into their editor, their terminal, their workflow. You `ssh` into a remote machine or you live inside a web app. They solve "remote development" by replacing your local setup.
 
-Continuumm takes the opposite approach: your local tools stay your local tools. The cloud is just storage and compute that feels local. You use your own editor, your own terminal, your own workflow — on any device.
+Runmesh Workspace takes the opposite approach: your local tools stay your local tools. The cloud is just storage and compute that feels local. You use your own editor, your own terminal, your own workflow — on any device.
 
 ---
 
@@ -349,7 +385,7 @@ In the current implementation, local is the primary source and cloud is a mirror
 
 The long-term model is the reverse: the cloud bucket is the source of truth, and local machines maintain a synced cache. This enables:
 - Lazy loading (only pull files you access)
-- Trivial onboarding (`continuumm clone` on a new machine)
+- Trivial onboarding (`runmesh clone` on a new machine)
 - Agent execution (sandboxes read/write the canonical copy)
 
 ### Why `CopyDir` for watch instead of per-file operations?
@@ -363,7 +399,7 @@ The tradeoff: `CopyDir` does a full directory listing on each call. For the push
 ## Project Structure
 
 ```
-cmd/continuumm/main.go       # CLI entry point — commands, flags, usage
+cmd/runmesh/main.go       # CLI entry point — commands, flags, usage
 internal/
   config/config.go            # Global + project config management, S3 filesystem construction
   ignore/ignore.go            # .devignore parser, gitignore matcher, rclone filter builder
@@ -379,10 +415,10 @@ go.sum                        # Dependency checksums
 
 ```bash
 # Build
-go build ./cmd/continuumm/
+go build ./cmd/runmesh/
 
 # Install to GOPATH/bin
-go install ./cmd/continuumm/
+go install ./cmd/runmesh/
 
 # Test
 go test ./...
@@ -405,7 +441,7 @@ go vet ./...
 - [ ] FUSE mount for local filesystem feel
 - [ ] Per-machine `.devignore` overrides
 - [ ] File conflict resolution
-- [ ] `continuumm clone` for new devices
+- [ ] `runmesh clone` for new devices
 - [ ] Encrypted secrets sync
 
 ### Phase 2: Environment Layer
@@ -417,7 +453,7 @@ go vet ./...
 
 ### Phase 3: Execution Layer
 - [ ] E2B / Daytona sandbox integration
-- [ ] `continuumm run <task>` — ephemeral agent execution
+- [ ] `runmesh run <task>` — ephemeral agent execution
 - [ ] Sandbox has read/write access to project files from storage layer
 - [ ] Diff review — what did the agent change?
 - [ ] Parallel sandbox execution for CI-like workflows
