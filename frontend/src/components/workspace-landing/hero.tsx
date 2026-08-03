@@ -32,27 +32,27 @@ export function Hero() {
 							</span>
 							<span>Shared context for agent execution</span>
 						</span>
-						<span className="font-normal text-[#747883]">runmesh workspace watch</span>
+						<span className="font-normal text-[#747883]">runmesh watch</span>
 						<span className="mt-2 flex items-center gap-3">
 							<span className="grid size-4 shrink-0 place-items-center rounded-md bg-[#24204a]">
 								<span className="size-1.5 rounded-sm bg-[#6f7cff]" />
 							</span>
 							<span>Mount files where work happens</span>
 						</span>
-						<span className="font-normal text-[#747883]">runmesh workspace mount ~/code</span>
+						<span className="font-normal text-[#747883]">runmesh mount ~/code</span>
 					</div>
 				</div>
 
 				<div className="relative mt-12 overflow-hidden rounded-t-lg border border-b-0 border-[#2b2e35] bg-[#101113] opacity-0 animate-fade-in-up-4">
 					<div className="p-4">
 						<pre className="overflow-x-auto text-[13px] leading-6 text-[#c9cdd4]">
-							<code>{`$ runmesh workspace link midday
+							<code>{`$ runmesh link midday
 Linked /Users/me/code/midday → cloud: matriq/midday
 
-$ runmesh workspace watch
+$ runmesh watch
 Watching /Users/me/code/midday (push on change, pull every 8s)...
 
-$ runmesh workspace mount ~/code --prefix midday
+$ runmesh mount ~/code --prefix midday
 Mounted matriq/midday at /Users/me/code
 
 $ ls ~/code/midday/

@@ -7,22 +7,22 @@ const features = [
 	{
 		icon: ArrowUpFromLine,
 		title: "Push to cloud",
-		desc: "One-command upload: runmesh workspace up copies project context to S3/R2, respecting .devignore patterns.",
+		desc: "One-command upload: runmesh up copies project context to S3/R2, respecting .devignore patterns.",
 	},
 	{
 		icon: ArrowDownFromLine,
 		title: "Pull from cloud",
-		desc: "runmesh workspace down fetches the latest cloud state to any machine or execution environment.",
+		desc: "runmesh down fetches the latest cloud state to any machine or execution environment.",
 	},
 	{
 		icon: Eye,
 		title: "List & status",
-		desc: "runmesh workspace list shows remote files; runmesh workspace status diffs local vs cloud file sets.",
+		desc: "runmesh list shows remote files; runmesh status diffs local vs cloud file sets.",
 	},
 	{
 		icon: RefreshCw,
 		title: "Auto-sync daemon",
-		desc: "runmesh workspace watch keeps local and cloud context aligned while developers and agents move between machines.",
+		desc: "runmesh watch keeps local and cloud context aligned while developers and agents move between machines.",
 	},
 ]
 

@@ -7,22 +7,22 @@ const steps = [
 	{
 		icon: Download,
 		title: "Install the CLI",
-		desc: "npm install -g runmesh",
+		desc: "go install github.com/Daviduche03/Runmesh/runmesh-main/workspace/cmd/runmesh@latest",
 	},
 	{
 		icon: Key,
 		title: "Configure credentials",
-		desc: "runmesh workspace config set --bucket my-bucket --endpoint https://... --access-key ... --secret-key ...",
+		desc: "runmesh config set --bucket my-bucket --endpoint https://... --access-key ... --secret-key ...",
 	},
 	{
 		icon: Terminal,
 		title: "Link your project",
-		desc: "cd ~/code/my-project && runmesh workspace link my-project",
+		desc: "cd ~/code/my-project && runmesh link my-project",
 	},
 	{
 		icon: BookOpen,
 		title: "Sync or mount",
-		desc: "runmesh workspace watch\nrunmesh workspace mount ~/code",
+		desc: "runmesh watch\nrunmesh mount ~/code",
 	},
 ]
 
