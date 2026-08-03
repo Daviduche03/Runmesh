@@ -7,7 +7,7 @@ const benefits = [
 	{
 		icon: HardDrive,
 		title: "Mount as local filesystem",
-		desc: "runmesh workspace mount exposes your workspace as a FUSE filesystem with files available on demand.",
+		desc: "runmesh mount exposes your workspace as a FUSE filesystem with files available on demand.",
 	},
 	{
 		icon: Zap,

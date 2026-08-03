@@ -41,7 +41,7 @@ export function CliSection() {
 						One command surface for portable project context
 					</h2>
 					<p className="mt-4 max-w-[560px] text-[17px] leading-7 tracking-[-0.015em] text-[#8f949e]">
-						The <code className="rounded bg-[#161616] px-1.5 py-0.5 text-[15px] text-[#d8dce3]">runmesh workspace</code> CLI connects local development,
+						The <code className="rounded bg-[#161616] px-1.5 py-0.5 text-[15px] text-[#d8dce3]">runmesh</code> CLI connects local development,
 						cloud workspaces, and agent execution around the same project files.
 					</p>
 				</motion.div>

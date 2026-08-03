@@ -52,7 +52,7 @@ export function DevignoreSection() {
 					<div>
 						<h3 className="text-[18px] font-[590] tracking-[-0.01em] text-[#d8dce3]">Created automatically</h3>
 						<p className="mt-2 text-[15px] leading-6 text-[#8f949e]">
-							When you run <code className="rounded bg-[#161616] px-1.5 py-0.5 text-[14px] text-[#d8dce3]">runmesh workspace link</code>, a sensible
+							When you run <code className="rounded bg-[#161616] px-1.5 py-0.5 text-[14px] text-[#d8dce3]">runmesh link</code>, a sensible
 							default <code className="rounded bg-[#161616] px-1.5 py-0.5 text-[14px] text-[#d8dce3]">.devignore</code> is generated. Edit it
 							anytime. Patterns are applied via rclone filters during every sync operation.
 						</p>
