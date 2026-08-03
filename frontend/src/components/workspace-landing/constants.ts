@@ -6,5 +6,6 @@ export const headerNavLinks = [
 	{ label: "Sync", id: "sync" },
 	{ label: "FUSE", id: "fuse" },
 	{ label: ".devignore", id: "devignore" },
+	{ label: "Env", id: "env" },
 	{ label: "CLI", id: "cli" },
 ] as const

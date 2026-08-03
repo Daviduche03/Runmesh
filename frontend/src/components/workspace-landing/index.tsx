@@ -5,6 +5,7 @@ import { Hero } from "./hero"
 import { SyncSection } from "./sync-section"
 import { FusefsSection } from "./fusefs-section"
 import { DevignoreSection } from "./devignore-section"
+import { EncryptSection } from "./encrypt-section"
 import { CliSection } from "./cli-section"
 import { PreFooter } from "./pre-footer"
 import { Footer } from "./footer"
@@ -30,6 +31,7 @@ export function WorkspaceLanding() {
 			<SyncSection />
 			<FusefsSection />
 			<DevignoreSection />
+			<EncryptSection />
 			<CliSection />
 			<PreFooter />
 			<Footer />
