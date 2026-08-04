@@ -1,72 +1,63 @@
+import { sectionPadding } from "./constants"
+import { EnvVisual } from "./visuals/env-visual"
 import { motion } from "framer-motion"
-import { SectionIntro } from "./section-intro"
-import { container, sectionPadding } from "./constants"
-
-const steps = [
-	{
-		cmd: "runmesh envkey --generate",
-		out: "Generated new .env encryption key (fingerprint 1a2b3c4d)",
-		note: "One time on your primary device. Saves the key to ~/.runmesh/config.json (0600).",
-	},
-	{
-		cmd: "runmesh envkey --show",
-		out: "Key (keep secret): <hex>",
-		note: "Prints the key so you can copy it to your other machines.",
-	},
-	{
-		cmd: "runmesh config set --env-key <hex>",
-		out: "Env encryption key saved to ~/.runmesh/config.json",
-		note: "On each additional device, restore the same key and syncs decrypt locally.",
-	},
-]
 
 export function EncryptSection() {
 	return (
 		<section id="env" className={`scroll-mt-14 border-b border-[#15181d] ${sectionPadding}`}>
-			<div className={container}>
-				<motion.div
+			<div className="mx-auto w-[min(1256px,calc(100%_-_48px))]">
+				<motion.h2
 					initial={{ opacity: 0, y: 24 }}
 					whileInView={{ opacity: 1, y: 0 }}
 					viewport={{ once: true, margin: "-80px" }}
 					transition={{ duration: 0.7, ease: [0.21, 0.98, 0.35, 1] }}
+					className="max-w-[940px] text-balance text-[clamp(40px,4.2vw,52px)] font-[590] leading-[1.08] tracking-[-0.045em] text-white"
 				>
-					<SectionIntro badge="Encrypted .env" title="Secrets sync without ever leaving plaintext">
-						<span className="text-white">Your .env files travel encrypted with AES-256-GCM.</span> The key is generated on your
-						device, never uploaded, and shared only between machines you control.
-					</SectionIntro>
-				</motion.div>
+					Secrets sync without ever leaving plaintext.{" "}
+					<span className="text-[#8f949e]">
+						Your .env files travel encrypted with AES-256-GCM — the key is generated on your device, never uploaded.
+					</span>
+				</motion.h2>
 
 				<motion.div
 					initial={{ opacity: 0, y: 24 }}
 					whileInView={{ opacity: 1, y: 0 }}
 					viewport={{ once: true, margin: "-80px" }}
 					transition={{ duration: 0.7, ease: [0.21, 0.98, 0.35, 1], delay: 0.15 }}
-					className="overflow-hidden rounded-lg border border-[#24272d] bg-[#0d0e10]"
+					className="mt-16 grid grid-cols-1 border-[#202329] md:grid-cols-[1.2fr_0.8fr] md:border-x"
 				>
-					<div className="flex items-center gap-2 border-b border-[#24272d] px-4 py-2.5">
-						<span className="size-2.5 rounded-full bg-[#ff5f56]" />
-						<span className="size-2.5 rounded-full bg-[#ffbd2e]" />
-						<span className="size-2.5 rounded-full bg-[#27c93f]" />
-						<span className="ml-2 text-[12px] text-[#595a5c]">setup</span>
-					</div>
-					<div className="grid gap-0 lg:grid-cols-3">
-						{steps.map((step, index) => (
-							<div
-								className="flex flex-col border-b border-[#24272d] p-6 last:border-b-0 lg:border-b-0 lg:border-r lg:last:border-r-0"
-								key={step.cmd}
-							>
-								<div className="flex items-center justify-between">
-									<span className="font-mono text-[12px] tracking-[0.16em] text-[#383c44]">STEP {index + 1}</span>
-									<span className="font-mono text-[12px] text-[#383c44]">0{index + 1}</span>
+					<article className="group flex min-h-[470px] flex-col border-[#202329] px-8 md:border-r">
+						<div className="font-mono text-[12px] tracking-[0.16em] text-[#383c44]">FIG 3.1</div>
+						<div className="flex flex-1 items-center justify-center py-10 opacity-80 transition-opacity duration-300 group-hover:opacity-100">
+							<EnvVisual />
+						</div>
+						<div className="pb-1">
+							<h3 className="mb-3 text-[16px] font-[590] tracking-[-0.01em] text-[#d8dce3]">End-to-end encrypted .env</h3>
+							<p className="max-w-[520px] text-[16px] leading-6 text-[#8f949e]">
+								Secrets are sealed on your device before upload — the cloud only ever stores ciphertext.
+							</p>
+						</div>
+					</article>
+
+					<article className="min-h-[470px] px-8">
+						<div className="font-mono text-[12px] tracking-[0.16em] text-[#383c44]">FIG 3.2</div>
+						<div className="mt-20 grid gap-0 border-y border-[#202329]">
+							{[
+								["Key generation", "runmesh envkey --generate creates the key; --show prints it"],
+								["Share across devices", "runmesh config set --env-key <hex> restores it elsewhere"],
+								["Zero-knowledge diffs", "Keyed tag detects changes without decrypting"],
+								["Templates stay shared", ".env.example / .env.sample are never encrypted"],
+							].map(([title, copy]) => (
+								<div className="border-b border-[#202329] py-5 last:border-b-0" key={title}>
+									<span className="text-[16px] font-[590] tracking-[-0.01em] text-[#d8dce3]">{title}</span>
+									<p className="mt-1 text-[14px] text-[#8f949e]">{copy}</p>
 								</div>
-								<div className="mt-6 rounded-[6px] border border-[#24272d] bg-[#08090a] p-4 font-mono text-[13px] leading-6">
-									<div className="text-[#6f7cff]">{step.cmd}</div>
-									<div className="mt-2 text-[#4c525c]">{step.out}</div>
-								</div>
-								<p className="mt-4 text-[14px] leading-6 text-[#8f949e]">{step.note}</p>
-							</div>
-						))}
-					</div>
+							))}
+						</div>
+						<p className="mt-16 max-w-[330px] text-[16px] leading-6 text-[#8f949e]">
+							No key? Sync continues for everything else and prints a warning — plaintext is never written as a fallback.
+						</p>
+					</article>
 				</motion.div>
 			</div>
 		</section>

@@ -1,4 +1,13 @@
 export function FuseVisual() {
+	const tree = [
+		{ name: "src/", depth: 1, dim: false },
+		{ name: "components/", depth: 2, dim: false },
+		{ name: "app.tsx", depth: 3, dim: false },
+		{ name: "package.json", depth: 1, dim: false },
+		{ name: "node_modules/", depth: 1, dim: true },
+		{ name: "dist/", depth: 1, dim: true },
+	]
+
 	return (
 		<svg
 			viewBox="0 0 288 224"
@@ -7,20 +16,43 @@ export function FuseVisual() {
 			className="mx-auto h-56 w-72"
 			aria-hidden
 		>
-			<g transform="translate(96 4) scale(3.4)" fill="#0a0b0d" stroke="#4c525c" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
-				<path d="M17.5 19H9a7 7 0 1 1 6.71-9h1.79a4.5 4.5 0 1 1 0 9Z" />
-			</g>
-			<g stroke="#4c525c" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-				<line x1="144" y1="72" x2="144" y2="92" />
-				<path d="M144 92l-6-8 M144 92l6-8" />
-			</g>
-			<g transform="translate(74 94) scale(5.8)" fill="#0a0b0d" stroke="#4c525c" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round">
-				<path d="M22 12H2" />
-				<path d="M5.45 5.11 2 12v6a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2v-6l-3.45-6.89A2 2 0 0 0 16.76 4H7.24a2 2 0 0 0-1.79 1.11Z" />
-				<line x1="6" y1="16" x2="6.01" y2="16" />
-				<line x1="10" y1="16" x2="10.01" y2="16" />
-			</g>
-			<circle cx="216" cy="120" r="5" fill="#4cb782" />
+			<rect x="20" y="16" width="248" height="84" rx="6" fill="#0a0b0d" stroke="#363a42" />
+			<text x="36" y="40" fill="#6b7280" fontFamily="ui-monospace, monospace" fontSize="10">
+				~/code/midday (FUSE)
+			</text>
+			<line x1="20" y1="48" x2="268" y2="48" stroke="#202329" />
+			{tree.map((entry, index) => {
+				const baseY = 60 + index * 12
+				return (
+					<g key={entry.name}>
+						<circle cx={36 + entry.depth * 10} cy={baseY + 3} r="2" fill={entry.dim ? "#4c525c" : "#6f7cff"} />
+						<text
+							x={44 + entry.depth * 10}
+							y={baseY + 6}
+							fill={entry.dim ? "#4c525c" : "#8f949e"}
+							fontFamily="ui-monospace, monospace"
+							fontSize="9"
+						>
+							{entry.name}
+						</text>
+					</g>
+				)
+			})}
+
+			<line x1="144" y1="104" x2="144" y2="120" stroke="#4c525c" strokeWidth="1.5" />
+			<polygon points="140,118 148,118 144,124" fill="#4c525c" />
+
+			<rect x="40" y="124" width="208" height="84" rx="6" fill="#0a0b0d" stroke="#4c525c" />
+			<text x="56" y="148" fill="#6b7280" fontFamily="ui-monospace, monospace" fontSize="10">
+				bucket/midday/
+			</text>
+			<line x1="40" y1="156" x2="248" y2="156" stroke="#202329" />
+			<text x="56" y="174" fill="#4c525c" fontFamily="ui-monospace, monospace" fontSize="9">
+				lazy fetch on open
+			</text>
+			<text x="56" y="190" fill="#4cb782" fontFamily="ui-monospace, monospace" fontSize="9">
+				write-back on close
+			</text>
 		</svg>
 	)
 }

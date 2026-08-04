@@ -28,7 +28,7 @@ export function SyncSection() {
 				>
 					<div className="grid min-h-[420px] grid-cols-1 bg-[#0b0c0e] text-[#8f949e] lg:grid-cols-[0.92fr_1.08fr]">
 						<div className="border-b border-[#24272d] p-8 lg:border-b-0 lg:border-r">
-							<div className="font-mono text-[12px] tracking-[0.16em] text-[#383c44]">SYNC</div>
+							<div className="font-mono text-[12px] tracking-[0.16em] text-[#383c44]">SYNC TOPOLOGY</div>
 							<div className="mt-8">
 								<SyncVisual />
 							</div>
