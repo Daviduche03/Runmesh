@@ -65,10 +65,10 @@ export function CliSection() {
 				>
 					{steps.map((s, i) => (
 						<article key={s.title} className="group flex min-h-[320px] flex-col border-[#202329] md:border-r md:last:border-r-0 xl:border-b xl:last:border-b-0">
-							<div className="flex items-center justify-between px-8 pt-8">
-								<span className="font-mono text-[12px] tracking-[0.16em] text-[#383c44]">FIG 4.{i + 1}</span>
-								<span className="font-mono text-[12px] text-[#383c44]">0{i + 1}</span>
-							</div>
+					<div className="flex items-center justify-between px-8 pt-8">
+						<span className="font-mono text-[12px] tracking-[0.16em] text-[#383c44]">STEP {i + 1}</span>
+						<span className="font-mono text-[12px] text-[#383c44]">0{i + 1}</span>
+					</div>
 							<div className="px-8 pt-6">
 								<h3 className="text-[16px] font-[590] tracking-[-0.01em] text-[#d8dce3]">{s.title}</h3>
 								<pre className="mt-4 overflow-x-auto rounded-md bg-[#0d0e10] p-3 text-[12px] leading-5 text-[#c9cdd4]">
