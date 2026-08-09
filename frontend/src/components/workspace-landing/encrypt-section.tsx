@@ -1,63 +1,67 @@
-import { sectionPadding } from "./constants"
-import { EnvVisual } from "./visuals/env-visual"
 import { motion } from "framer-motion"
+import { Badge } from "./badge"
+import { container, sectionPadding } from "./constants"
+import { Lock, KeyRound, ShieldCheck, FileKey } from "lucide-react"
+
+const features = [
+	{
+		icon: Lock,
+		title: "End-to-end encrypted .env",
+		desc: ".env files are sealed with AES-256-GCM on your device before upload. The cloud only ever stores ciphertext.",
+	},
+	{
+		icon: KeyRound,
+		title: "One key, every machine",
+		desc: "runmesh envkey --generate creates a key; runmesh envkey --show prints it; runmesh config set --env-key <hex> restores it on the next device.",
+	},
+	{
+		icon: ShieldCheck,
+		title: "Zero-knowledge change detection",
+		desc: "A keyed tag lets devices tell whether a secret changed without decrypting — no plaintext-hash oracle for outsiders.",
+	},
+	{
+		icon: FileKey,
+		title: "Templates stay shared",
+		desc: ".env.example and .env.sample are never encrypted, so structure stays visible while real secrets stay locked.",
+	},
+]
 
 export function EncryptSection() {
 	return (
 		<section id="env" className={`scroll-mt-14 border-b border-[#15181d] ${sectionPadding}`}>
-			<div className="mx-auto w-[min(1256px,calc(100%_-_48px))]">
-				<motion.h2
+			<div className={container}>
+				<motion.div
 					initial={{ opacity: 0, y: 24 }}
 					whileInView={{ opacity: 1, y: 0 }}
 					viewport={{ once: true, margin: "-80px" }}
 					transition={{ duration: 0.7, ease: [0.21, 0.98, 0.35, 1] }}
-					className="max-w-[940px] text-balance text-[clamp(40px,4.2vw,52px)] font-[590] leading-[1.08] tracking-[-0.045em] text-white"
 				>
-					Secrets sync without ever leaving plaintext.{" "}
-					<span className="text-[#8f949e]">
-						Your .env files travel encrypted with AES-256-GCM — the key is generated on your device, never uploaded.
-					</span>
-				</motion.h2>
+					<Badge>Encrypted .env</Badge>
+					<h2 className="max-w-[640px] text-balance text-[clamp(34px,4vw,56px)] font-[590] leading-[1.04] tracking-[-0.05em] text-white">
+						Secrets sync without ever leaving plaintext
+					</h2>
+					<p className="mt-4 max-w-[560px] text-[17px] leading-7 tracking-[-0.015em] text-[#8f949e]">
+						Project files sync in the open, but your <code className="rounded bg-[#161616] px-1.5 py-0.5 text-[15px] text-[#d8dce3]">.env</code> secrets travel encrypted.
+						<span className="text-white"> The key is generated on your device, never uploaded, and shared only between machines you control.</span>
+					</p>
+				</motion.div>
 
 				<motion.div
 					initial={{ opacity: 0, y: 24 }}
 					whileInView={{ opacity: 1, y: 0 }}
 					viewport={{ once: true, margin: "-80px" }}
 					transition={{ duration: 0.7, ease: [0.21, 0.98, 0.35, 1], delay: 0.15 }}
-					className="mt-16 grid grid-cols-1 border-[#202329] md:grid-cols-[1.2fr_0.8fr] md:border-x"
+					className="mt-16 grid gap-px overflow-hidden rounded-lg border border-[#202329] bg-[#202329] sm:grid-cols-2"
 				>
-					<article className="group flex min-h-[470px] flex-col border-[#202329] px-8 md:border-r">
-						<div className="font-mono text-[12px] tracking-[0.16em] text-[#383c44]">FIG 3.1</div>
-						<div className="flex flex-1 items-center justify-center py-10 opacity-80 transition-opacity duration-300 group-hover:opacity-100">
-							<EnvVisual />
+					{features.map((f) => (
+						<div key={f.title} className="flex flex-col gap-3 bg-[#08090a] p-8">
+							<div className="grid size-10 place-items-center rounded-lg border border-[#24272d] bg-[#101113]">
+								<f.icon className="size-5 text-[#8f949e]" />
+							</div>
+							<h3 className="text-[16px] font-[590] tracking-[-0.01em] text-[#d8dce3]">{f.title}</h3>
+							<p className="text-[15px] leading-6 text-[#8f949e]">{f.desc}</p>
 						</div>
-						<div className="pb-1">
-							<h3 className="mb-3 text-[16px] font-[590] tracking-[-0.01em] text-[#d8dce3]">End-to-end encrypted .env</h3>
-							<p className="max-w-[520px] text-[16px] leading-6 text-[#8f949e]">
-								Secrets are sealed on your device before upload — the cloud only ever stores ciphertext.
-							</p>
-						</div>
-					</article>
-
-					<article className="min-h-[470px] px-8">
-						<div className="font-mono text-[12px] tracking-[0.16em] text-[#383c44]">FIG 3.2</div>
-						<div className="mt-20 grid gap-0 border-y border-[#202329]">
-							{[
-								["Key generation", "runmesh envkey --generate creates the key; --show prints it"],
-								["Share across devices", "runmesh config set --env-key <hex> restores it elsewhere"],
-								["Zero-knowledge diffs", "Keyed tag detects changes without decrypting"],
-								["Templates stay shared", ".env.example / .env.sample are never encrypted"],
-							].map(([title, copy]) => (
-								<div className="border-b border-[#202329] py-5 last:border-b-0" key={title}>
-									<span className="text-[16px] font-[590] tracking-[-0.01em] text-[#d8dce3]">{title}</span>
-									<p className="mt-1 text-[14px] text-[#8f949e]">{copy}</p>
-								</div>
-							))}
-						</div>
-						<p className="mt-16 max-w-[330px] text-[16px] leading-6 text-[#8f949e]">
-							No key? Sync continues for everything else and prints a warning — plaintext is never written as a fallback.
-						</p>
-					</article>
+					))}
 				</motion.div>
 			</div>
 		</section>

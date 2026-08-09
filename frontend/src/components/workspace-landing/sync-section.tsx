@@ -1,7 +1,30 @@
 import { motion } from "framer-motion"
-import { SectionIntro } from "./section-intro"
+import { Badge } from "./badge"
 import { container, sectionPadding } from "./constants"
-import { SyncVisual } from "./visuals/sync-visual"
+import { ArrowUpFromLine, ArrowDownFromLine, Eye, RefreshCw } from "lucide-react"
+
+const features = [
+	{
+		icon: ArrowUpFromLine,
+		title: "Push to cloud",
+		desc: "One-command upload: runmesh up copies project context to S3/R2, respecting .devignore patterns.",
+	},
+	{
+		icon: ArrowDownFromLine,
+		title: "Pull from cloud",
+		desc: "runmesh down fetches the latest cloud state to any machine or execution environment.",
+	},
+	{
+		icon: Eye,
+		title: "List & status",
+		desc: "runmesh list shows remote files; runmesh status diffs local vs cloud file sets.",
+	},
+	{
+		icon: RefreshCw,
+		title: "Auto-sync daemon",
+		desc: "runmesh watch keeps local and cloud context aligned while developers and agents move between machines.",
+	},
+]
 
 export function SyncSection() {
 	return (
@@ -13,10 +36,14 @@ export function SyncSection() {
 					viewport={{ once: true, margin: "-80px" }}
 					transition={{ duration: 0.7, ease: [0.21, 0.98, 0.35, 1] }}
 				>
-					<SectionIntro badge="Sync" title="Project files in the cloud, local on every device">
-						<span className="text-white">Your project lives in S3-compatible storage — Cloudflare R2, AWS S3, or Minio.</span>{" "}
-						Developers and agents pick up the same workspace without forcing every handoff through git.
-					</SectionIntro>
+					<Badge>Sync</Badge>
+					<h2 className="max-w-[640px] text-balance text-[clamp(34px,4vw,56px)] font-[590] leading-[1.04] tracking-[-0.05em] text-white">
+						Keep project context ready for every actor
+					</h2>
+					<p className="mt-4 max-w-[560px] text-[17px] leading-7 tracking-[-0.015em] text-[#8f949e]">
+						Your project files live in an S3-compatible bucket: Cloudflare R2, AWS S3, Minio, or any provider.
+						<span className="text-white"> Developers and agents can pick up the same workspace without forcing every handoff through git.</span>
+					</p>
 				</motion.div>
 
 				<motion.div
@@ -24,35 +51,17 @@ export function SyncSection() {
 					whileInView={{ opacity: 1, y: 0 }}
 					viewport={{ once: true, margin: "-80px" }}
 					transition={{ duration: 0.7, ease: [0.21, 0.98, 0.35, 1], delay: 0.15 }}
-					className="overflow-hidden rounded-t-lg border border-b-0 border-[#24272d] bg-[#111315]"
+					className="mt-16 grid gap-px overflow-hidden rounded-lg border border-[#202329] bg-[#202329] sm:grid-cols-2"
 				>
-					<div className="grid min-h-[420px] grid-cols-1 bg-[#0b0c0e] text-[#8f949e] lg:grid-cols-[0.92fr_1.08fr]">
-						<div className="border-b border-[#24272d] p-8 lg:border-b-0 lg:border-r">
-							<div className="font-mono text-[12px] tracking-[0.16em] text-[#383c44]">SYNC TOPOLOGY</div>
-							<div className="mt-8">
-								<SyncVisual />
+					{features.map((f) => (
+						<div key={f.title} className="flex flex-col gap-3 bg-[#08090a] p-8">
+							<div className="grid size-10 place-items-center rounded-lg border border-[#24272d] bg-[#101113]">
+								<f.icon className="size-5 text-[#8f949e]" />
 							</div>
+							<h3 className="text-[16px] font-[590] tracking-[-0.01em] text-[#d8dce3]">{f.title}</h3>
+							<p className="text-[15px] leading-6 text-[#8f949e]">{f.desc}</p>
 						</div>
-						<div className="p-8">
-							<div className="font-mono text-[12px] tracking-[0.16em] text-[#383c44]">SYNC LIFECYCLE</div>
-							<div className="mt-10 grid gap-0 border-y border-[#24272d]">
-								{[
-									["up", "rclone CopyDir pushes changed files to the cloud prefix"],
-									["down", "Every 8s the same compare runs in reverse and pulls diffs"],
-									["watch", "fsnotify pushes on change, debounced to a 500ms window"],
-									["devignore", "Patterns applied as rclone filters in every sync direction"],
-								].map(([state, copy], index) => (
-									<div className="grid grid-cols-[120px_1fr] border-b border-[#24272d] py-5 last:border-b-0" key={state}>
-										<div className="flex items-center gap-3">
-											<span className={`size-1.5 rounded-full ${index < 2 ? "bg-[#6f7cff]" : index === 2 ? "bg-[#4cb782]" : "bg-[#4c525c]"}`} />
-											<span className="font-mono text-[12px] text-[#d8dce3]">{state}</span>
-										</div>
-										<div className="text-[14px] text-[#8f949e]">{copy}</div>
-									</div>
-								))}
-							</div>
-						</div>
-					</div>
+					))}
 				</motion.div>
 			</div>
 		</section>

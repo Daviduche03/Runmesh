@@ -1,5 +1,5 @@
 import { motion } from "framer-motion"
-import { SectionIntro } from "./section-intro"
+import { Badge } from "./badge"
 import { container, sectionPadding } from "./constants"
 
 const defaultDevignore = `# .devignore — files and directories to exclude from sync
@@ -32,10 +32,14 @@ export function DevignoreSection() {
 					viewport={{ once: true, margin: "-80px" }}
 					transition={{ duration: 0.7, ease: [0.21, 0.98, 0.35, 1] }}
 				>
-					<SectionIntro badge=".devignore" title="Dev-aware sync for real repositories">
-						A <code className="rounded bg-[#161616] px-1.5 py-0.5 text-[15px] text-[#d8dce3]">.devignore</code> file in your project root uses standard
-						gitignore syntax to keep build artifacts, dependencies, secrets, and OS junk out of the cloud context agents consume.
-					</SectionIntro>
+					<Badge>.devignore</Badge>
+					<h2 className="max-w-[640px] text-balance text-[clamp(34px,4vw,56px)] font-[590] leading-[1.04] tracking-[-0.05em] text-white">
+						Dev-aware sync for real repositories
+					</h2>
+					<p className="mt-4 max-w-[560px] text-[17px] leading-7 tracking-[-0.015em] text-[#8f949e]">
+						A <code className="rounded bg-[#161616] px-1.5 py-0.5 text-[15px] text-[#d8dce3]">.devignore</code> file in your project root uses standard gitignore syntax to keep
+						build artifacts, dependencies, secrets, and OS junk out of the cloud context agents consume.
+					</p>
 				</motion.div>
 
 				<motion.div
