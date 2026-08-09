@@ -141,6 +141,8 @@ async def create_task(task: TaskPublish, env, user_id: str) -> dict:
         "execution_type": task.execution_type,
         "user_id": user_id,
     }
+    if task.signing_secret:
+        task_data["signing_secret"] = task.signing_secret
     if idempotency_key:
         task_data["idempotency_key"] = idempotency_key
     apply_task_templates(task_data, task.payload_template, task.url_template)

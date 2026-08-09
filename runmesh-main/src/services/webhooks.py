@@ -209,21 +209,37 @@ async def enqueue_webhook_delivery(
         await queue.send(message)
 
 
-async def deliver_webhook(
+async def signed_dispatch(
     fetch_fn: FetchFn,
-    webhook: dict[str, Any],
+    url: str,
+    secret: str,
     event: str,
-    envelope: dict[str, Any],
+    body: Any,
     delivery_attempt: int,
+    capture_body: bool = False,
 ) -> tuple[bool, Optional[int], Optional[str]]:
-    body_bytes = json.dumps(envelope, separators=(",", ":")).encode()
+    """POST a body to ``url`` with HMAC-SHA256 signature headers.
+
+    Used for every outbound delivery from Runmesh — webhook events and task
+    executions alike — so receivers can verify authenticity with the same
+    ``X-Runmesh-Signature`` code path. ``body`` may be a ``dict``/``list``
+    (JSON-encoded here) or a pre-encoded ``str``/``bytes``; the signature is
+    computed over exactly the bytes sent. When ``capture_body`` is true, the
+    third return value is the (truncated) response body on success instead of
+    None.
+    """
+    if isinstance(body, bytes):
+        body_bytes = body
+    elif isinstance(body, str):
+        body_bytes = body.encode("utf-8")
+    else:
+        body_bytes = json.dumps(body, separators=(",", ":")).encode()
     timestamp = int(datetime.now(timezone.utc).timestamp())
-    secret = webhook.get("secret", "")
     signature = sign_payload(secret, timestamp, body_bytes)
 
     try:
         response = await fetch_fn(
-            webhook["url"],
+            url,
             method="POST",
             headers={
                 "content-type": "application/json",
@@ -236,11 +252,35 @@ async def deliver_webhook(
             body=body_bytes,
         )
         status_code = response.status
+        if capture_body:
+            from services.templating import read_fetch_response_body
+
+            body_out = await read_fetch_response_body(response)
+            if status_code >= 400:
+                return False, status_code, body_out or f"HTTP {status_code}"
+            return True, status_code, body_out
         if status_code >= 400:
             return False, status_code, f"HTTP {status_code}"
         return True, status_code, None
     except Exception as e:
         return False, None, str(e)
+
+
+async def deliver_webhook(
+    fetch_fn: FetchFn,
+    webhook: dict[str, Any],
+    event: str,
+    envelope: dict[str, Any],
+    delivery_attempt: int,
+) -> tuple[bool, Optional[int], Optional[str]]:
+    return await signed_dispatch(
+        fetch_fn,
+        webhook["url"],
+        webhook.get("secret", ""),
+        event,
+        envelope,
+        delivery_attempt,
+    )
 
 
 async def schedule_webhook_retry(

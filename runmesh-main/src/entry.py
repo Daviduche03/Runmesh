@@ -283,6 +283,8 @@ async def api_schedule_task(task: ScheduledTaskRequest, request: Request, user: 
         "user_id": user["id"],
         "workflow_id": task.workflow_id,
     }
+    if task.signing_secret:
+        task_data["signing_secret"] = task.signing_secret
     if idempotency_key:
         task_data["idempotency_key"] = idempotency_key
     apply_task_templates(task_data, task.payload_template, task.url_template)

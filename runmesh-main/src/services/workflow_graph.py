@@ -202,6 +202,9 @@ async def sync_graph_to_tasks(
             "workflow_id": workflow_id,
             "step_order": step_order,
         }
+        signing_secret = (data.get("signing_secret") or "").strip()
+        if signing_secret:
+            task_data["signing_secret"] = signing_secret
         apply_task_templates(task_data, data.get("payload_template"), data.get("url_template"))
 
         if task_id and str(task_id) in existing_by_id:
@@ -214,6 +217,8 @@ async def sync_graph_to_tasks(
                 "step_order": step_order,
                 "updated_at": datetime.now(timezone.utc).isoformat(),
             }
+            if signing_secret:
+                update_fields["signing_secret"] = signing_secret
             if task_data.get("payload_template"):
                 update_fields["payload_template"] = task_data["payload_template"]
             if task_data.get("url_template"):

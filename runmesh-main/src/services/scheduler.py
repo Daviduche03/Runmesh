@@ -110,6 +110,8 @@ class TaskScheduler:
             full_task_data["url_template"] = task_data["url_template"]
         if task_data.get("idempotency_key"):
             full_task_data["idempotency_key"] = task_data["idempotency_key"]
+        if task_data.get("signing_secret"):
+            full_task_data["signing_secret"] = task_data["signing_secret"]
 
         await self.task_model.create(full_task_data)
         return task_id

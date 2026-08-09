@@ -3,8 +3,8 @@ import json
 from fastapi import HTTPException
 
 from db.orm import TaskModel, WorkflowRunModel
-from services.templating import resolve_task_request, read_fetch_response_body
-from services.webhooks import dispatch_event, _ack_message, _queue_message_body
+from services.templating import resolve_task_request
+from services.webhooks import dispatch_event, signed_dispatch, _ack_message, _queue_message_body
 from services.workflow_runner import handle_workflow_task_completion
 from utils.url_security import is_outbound_url_allowed
 
@@ -125,16 +125,28 @@ async def process_task_message(env, message, fetch_fn) -> None:
             if isinstance(task_payload, (dict, list))
             else task_payload
         )
-        res = await fetch_fn(
+        task_secret = task_row.get("signing_secret") or ""
+        ok, target_status_code, dispatch_out = await signed_dispatch(
+            fetch_fn,
             target_url,
-            method="POST",
-            headers={"content-type": "application/json"},
-            body=fetch_body,
+            task_secret,
+            "task.execute",
+            fetch_body,
+            1,
+            capture_body=True,
         )
-        target_status_code = res.status
-        response_body = await read_fetch_response_body(res)
-        final_status = "completed" if res.status < 400 else "failed"
-
+        if ok:
+            final_status = "completed"
+            response_body = dispatch_out or ""
+        elif target_status_code is not None and dispatch_out:
+            final_status = "failed"
+            response_body = dispatch_out
+        elif target_status_code is not None:
+            final_status = "failed"
+            response_body = ""
+        else:
+            print(f"Task delivery error for {task_id}: {dispatch_out}")
+            raise ValueError(dispatch_out or "delivery failed") from None
         if final_status == "failed":
             retries = task_row.get("retries") or 0
             max_retries = task_row.get("max_retries") or 5

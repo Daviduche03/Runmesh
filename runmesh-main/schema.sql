@@ -43,7 +43,8 @@ CREATE TABLE IF NOT EXISTS tasks (
   connect_grant_id TEXT,
   connect_session_id TEXT,
   workspace_project_id TEXT,
-  metadata TEXT NOT NULL DEFAULT '{}'
+  metadata TEXT NOT NULL DEFAULT '{}',
+  signing_secret TEXT
 );
 
 CREATE INDEX IF NOT EXISTS idx_tasks_agent
