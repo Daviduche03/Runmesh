@@ -26,6 +26,7 @@ import {
 	CardTitle,
 } from "@/components/ui/card";
 import { useConnectAppsStore, type ConnectApp } from "@/stores/connect-apps-store";
+import { apiGet } from "@/lib/api";
 import EmptyState from "@/components/empty-state";
 import {
 	PlusIcon, Trash2Icon, CopyIcon, Loader2Icon, MoreVerticalIcon,
@@ -126,16 +127,20 @@ export function ConnectPage() {
 	// Metrics state
 	const [pendingApprovals, setPendingApprovals] = useState<number>(0);
 	const [tokenRequests24h, setTokenRequests24h] = useState<number>(0);
+	const [metrics, setMetrics] = useState<Record<string, number>>({});
+	const [latencyP99, setLatencyP99] = useState<number>(0);
 
 	useEffect(() => {
 		connectApps.fetch();
 		// Fetch metrics
 		const fetchMetrics = async () => {
 			try {
-				const res = await apiGet<{ pending_approvals: number; token_requests_24h: number }>("/api/v1/connect/metrics");
+				const res = await apiGet<{ pending_approvals: number; token_requests_24h: number; metrics: Record<string, number>; latency_p99_ms: number }>("/api/v1/connect/metrics");
 				if (res.data) {
 					setPendingApprovals(res.data.pending_approvals);
 					setTokenRequests24h(res.data.token_requests_24h);
+					setMetrics(res.data.metrics || {});
+					setLatencyP99(res.data.latency_p99_ms || 0);
 				}
 			} catch {
 				// ignore
@@ -191,7 +196,7 @@ export function ConnectPage() {
 				</Button>
 			</div>
 
-			<div className="grid grid-cols-1 gap-px bg-border p-px md:grid-cols-2 lg:grid-cols-4">
+			<div className="grid grid-cols-1 gap-px bg-border p-px md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6">
 				<DashboardCard>
 					<CardHeader className="flex flex-row items-center justify-between">
 						<CardTitle className="font-normal text-xs tracking-wide">Registered apps</CardTitle>
@@ -237,6 +242,33 @@ export function ConnectPage() {
 					</CardContent>
 					<CardFooter className="gap-1 rounded-none bg-background text-xs">
 						<span className="text-muted-foreground">Last 24 hours</span>
+					</CardFooter>
+				</DashboardCard>
+
+				<DashboardCard>
+					<CardHeader className="flex flex-row items-center justify-between">
+						<CardTitle className="font-normal text-xs tracking-wide">Blocked</CardTitle>
+					</CardHeader>
+					<CardContent className="flex flex-col gap-1 text-xs">
+						<div className="flex justify-between"><span className="text-muted-foreground">pending</span><span className="tabular-nums">{metrics["token_blocked_pending"] || 0}</span></div>
+						<div className="flex justify-between"><span className="text-muted-foreground">denied</span><span className="tabular-nums">{metrics["token_blocked_denied"] || 0}</span></div>
+						<div className="flex justify-between"><span className="text-muted-foreground">expired</span><span className="tabular-nums">{metrics["token_blocked_expired"] || 0}</span></div>
+						<div className="flex justify-between"><span className="text-muted-foreground">exhausted</span><span className="tabular-nums">{metrics["token_blocked_exhausted"] || 0}</span></div>
+					</CardContent>
+					<CardFooter className="gap-1 rounded-none bg-background text-xs">
+						<span className="text-muted-foreground">Last isolate</span>
+					</CardFooter>
+				</DashboardCard>
+
+				<DashboardCard>
+					<CardHeader className="flex flex-row items-center justify-between">
+						<CardTitle className="font-normal text-xs tracking-wide">p99 latency</CardTitle>
+					</CardHeader>
+					<CardContent className="flex flex-row items-center gap-2">
+						<p className="font-semibold text-xl tabular-nums">{latencyP99 ? `${latencyP99}ms` : "—"}</p>
+					</CardContent>
+					<CardFooter className="gap-1 rounded-none bg-background text-xs">
+						<span className="text-muted-foreground">Token exchange</span>
 					</CardFooter>
 				</DashboardCard>
 			</div>
