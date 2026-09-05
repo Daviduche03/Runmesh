@@ -826,7 +826,7 @@ async def api_get_connect_metrics(
 ):
     """Get current Agentic Connect Layer metrics and monitoring data."""
     env = request.scope["env"]
-    return await connect_service.get_connect_metrics(env, current_user["workspace_user_id"])
+    return await connect_service.get_connect_metrics(env, current_user["id"])
 
 
 @app.get("/api/v1/connect/tokens")

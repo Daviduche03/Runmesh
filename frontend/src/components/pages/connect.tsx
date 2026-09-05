@@ -128,8 +128,6 @@ export function ConnectPage() {
 	const [cError, setCError] = useState("");
 
 	// Metrics state
-	const [pendingApprovals, setPendingApprovals] = useState<number>(0);
-	const [tokenRequests24h, setTokenRequests24h] = useState<number>(0);
 	const [metrics, setMetrics] = useState<Record<string, number>>({});
 	const [latencyP99, setLatencyP99] = useState<number>(0);
 
@@ -140,8 +138,6 @@ export function ConnectPage() {
 			try {
 				const res = await apiGet<{ pending_approvals: number; token_requests_24h: number; metrics: Record<string, number>; latency_p99_ms: number }>("/api/v1/connect/metrics");
 				if (res.data) {
-					setPendingApprovals(res.data.pending_approvals);
-					setTokenRequests24h(res.data.token_requests_24h);
 					setMetrics(res.data.metrics || {});
 					setLatencyP99(res.data.latency_p99_ms || 0);
 				}
@@ -199,7 +195,7 @@ export function ConnectPage() {
 				</Button>
 			</div>
 
-			<div className="grid grid-cols-1 gap-px bg-border p-px md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6">
+			<div className="grid grid-cols-1 gap-px bg-border p-px md:grid-cols-2 lg:grid-cols-4">
 				<DashboardCard>
 					<CardHeader className="flex flex-row items-center justify-between">
 						<CardTitle className="font-normal text-xs tracking-wide">Registered apps</CardTitle>
@@ -224,31 +220,7 @@ export function ConnectPage() {
 					</CardFooter>
 				</DashboardCard>
 
-				<DashboardCard>
-					<CardHeader className="flex flex-row items-center justify-between">
-						<CardTitle className="font-normal text-xs tracking-wide">Pending approvals</CardTitle>
-					</CardHeader>
-					<CardContent className="flex flex-row items-center gap-2">
-						<p className="font-semibold text-xl tabular-nums">{pendingApprovals}</p>
-					</CardContent>
-					<CardFooter className="gap-1 rounded-none bg-background text-xs">
-						<span className="text-muted-foreground">Awaiting review</span>
-					</CardFooter>
-				</DashboardCard>
-
-				<DashboardCard>
-					<CardHeader className="flex flex-row items-center justify-between">
-						<CardTitle className="font-normal text-xs tracking-wide">Token requests</CardTitle>
-					</CardHeader>
-					<CardContent className="flex flex-row items-center gap-2">
-						<p className="font-semibold text-xl tabular-nums">{tokenRequests24h}</p>
-					</CardContent>
-					<CardFooter className="gap-1 rounded-none bg-background text-xs">
-						<span className="text-muted-foreground">Last 24 hours</span>
-					</CardFooter>
-				</DashboardCard>
-
-				<DashboardCard className="gap-0 xl:col-span-3">
+				<DashboardCard className="gap-0">
 					<CardHeader className="gap-2">
 						<CardTitle>Blocked breakdown</CardTitle>
 						<CardDescription>Token requests blocked by reason, last isolate.</CardDescription>
@@ -279,7 +251,7 @@ export function ConnectPage() {
 					</CardContent>
 				</DashboardCard>
 
-				<DashboardCard className="gap-0 xl:col-span-3">
+				<DashboardCard className="gap-0">
 					<CardHeader className="gap-2">
 						<CardTitle>Token latency</CardTitle>
 						<CardDescription>p99 token exchange latency.</CardDescription>
