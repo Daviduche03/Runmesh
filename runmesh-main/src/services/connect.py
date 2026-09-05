@@ -1903,14 +1903,12 @@ def _seconds_until(timestamp: str | None) -> int | None:
         return None
 
 
-async def get_connect_metrics(env, workspace_user_id: str):
+async def get_connect_metrics(env, user_id: str):
     """Get Connect metrics: pending approvals and recent token requests."""
-    from db.client import get_db_client
     from utils.responses import success
     
-    db = get_db_client(env)
-    grant_model = ConnectGrantModel(db)
-    audit_model = ConnectAuditEventModel(db)
+    grant_model = ConnectGrantModel(env.DB)
+    audit_model = ConnectAuditEventModel(env.DB)
     
     # Count pending approvals
     pending_grants = await grant_model.find_by_approval_status("pending_approval")
