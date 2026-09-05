@@ -65,7 +65,7 @@ from utils.auth import (
 from utils.dual_auth import get_jwt_user, require_auth, get_authenticated_user
 from utils.rate_limit import enforce_rate_limit, get_client_ip
 from utils.url_security import validate_outbound_url
-from utils.responses import success
+from utils.responses import success, error
 from utils.errors import http_exception_handler, validation_exception_handler
 
 app = FastAPI(
