@@ -29,8 +29,11 @@ import { useConnectAppsStore, type ConnectApp } from "@/stores/connect-apps-stor
 import { apiGet } from "@/lib/api";
 import EmptyState from "@/components/empty-state";
 import {
-	PlusIcon, Trash2Icon, CopyIcon, Loader2Icon, MoreVerticalIcon,
+	PlusIcon, Trash2Icon, CopyIcon, Loader2Icon, MoreVerticalIcon, BarChart3Icon,
 } from "lucide-react";
+import { Bar, BarChart, XAxis } from "recharts";
+import { ChartContainer, ChartTooltip, ChartTooltipContent, type ChartConfig } from "@/components/ui/chart";
+import { CardDescription } from "@/components/ui/card";
 
 function ConnectAppsTable({ apps, loading, onDelete }: {
 	apps: ConnectApp[];
@@ -245,30 +248,62 @@ export function ConnectPage() {
 					</CardFooter>
 				</DashboardCard>
 
-				<DashboardCard>
-					<CardHeader className="flex flex-row items-center justify-between">
-						<CardTitle className="font-normal text-xs tracking-wide">Blocked</CardTitle>
+				<DashboardCard className="gap-0 xl:col-span-3">
+					<CardHeader className="gap-2">
+						<CardTitle>Blocked breakdown</CardTitle>
+						<CardDescription>Token requests blocked by reason, last isolate.</CardDescription>
 					</CardHeader>
-					<CardContent className="flex flex-col gap-1 text-xs">
-						<div className="flex justify-between"><span className="text-muted-foreground">pending</span><span className="tabular-nums">{metrics["token_blocked_pending"] || 0}</span></div>
-						<div className="flex justify-between"><span className="text-muted-foreground">denied</span><span className="tabular-nums">{metrics["token_blocked_denied"] || 0}</span></div>
-						<div className="flex justify-between"><span className="text-muted-foreground">expired</span><span className="tabular-nums">{metrics["token_blocked_expired"] || 0}</span></div>
-						<div className="flex justify-between"><span className="text-muted-foreground">exhausted</span><span className="tabular-nums">{metrics["token_blocked_exhausted"] || 0}</span></div>
+					<CardContent>
+						{Object.keys(metrics).filter(k => k.startsWith("token_blocked_")).length === 0 ? (
+							<div className="flex h-40 items-center justify-center">
+								<div className="text-center">
+									<BarChart3Icon className="mx-auto size-5 text-muted-foreground" />
+									<p className="mt-2 text-sm text-muted-foreground">No blocks yet</p>
+								</div>
+							</div>
+						) : (
+							<ChartContainer config={{ count: { label: "Blocked", color: "var(--chart-1)" } } satisfies ChartConfig} className="h-40 w-full">
+								<BarChart accessibilityLayer data={[
+									{ reason: "pending", count: metrics["token_blocked_pending"] || 0 },
+									{ reason: "denied", count: metrics["token_blocked_denied"] || 0 },
+									{ reason: "expired", count: metrics["token_blocked_expired"] || 0 },
+									{ reason: "exhausted", count: metrics["token_blocked_exhausted"] || 0 },
+									{ reason: "not_yet", count: metrics["token_blocked_not_yet_valid"] || 0 },
+								]}>
+									<XAxis dataKey="reason" tickLine={false} axisLine={false} tickMargin={8} />
+									<ChartTooltip content={<ChartTooltipContent hideLabel />} cursor={false} />
+									<Bar dataKey="count" fill="var(--color-count)" radius={2} />
+								</BarChart>
+							</ChartContainer>
+						)}
 					</CardContent>
-					<CardFooter className="gap-1 rounded-none bg-background text-xs">
-						<span className="text-muted-foreground">Last isolate</span>
-					</CardFooter>
 				</DashboardCard>
 
-				<DashboardCard>
-					<CardHeader className="flex flex-row items-center justify-between">
-						<CardTitle className="font-normal text-xs tracking-wide">p99 latency</CardTitle>
+				<DashboardCard className="gap-0 xl:col-span-3">
+					<CardHeader className="gap-2">
+						<CardTitle>Token latency</CardTitle>
+						<CardDescription>p99 token exchange latency.</CardDescription>
 					</CardHeader>
-					<CardContent className="flex flex-row items-center gap-2">
-						<p className="font-semibold text-xl tabular-nums">{latencyP99 ? `${latencyP99}ms` : "—"}</p>
+					<CardContent>
+						{!latencyP99 ? (
+							<div className="flex h-40 items-center justify-center">
+								<div className="text-center">
+									<BarChart3Icon className="mx-auto size-5 text-muted-foreground" />
+									<p className="mt-2 text-sm text-muted-foreground">No requests yet</p>
+								</div>
+							</div>
+						) : (
+							<ChartContainer config={{ latency: { label: "Latency", color: "var(--chart-2)" } } satisfies ChartConfig} className="h-40 w-full">
+								<BarChart accessibilityLayer data={[{ name: "p99", latency: latencyP99 }]}>
+									<XAxis dataKey="name" tickLine={false} axisLine={false} />
+									<ChartTooltip content={<ChartTooltipContent hideLabel />} cursor={false} />
+									<Bar dataKey="latency" fill="var(--color-latency)" radius={2} />
+								</BarChart>
+							</ChartContainer>
+						)}
 					</CardContent>
 					<CardFooter className="gap-1 rounded-none bg-background text-xs">
-						<span className="text-muted-foreground">Token exchange</span>
+						<span className="text-muted-foreground">{latencyP99 ? `${latencyP99}ms p99` : "Token exchange"}</span>
 					</CardFooter>
 				</DashboardCard>
 			</div>
