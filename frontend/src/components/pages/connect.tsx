@@ -199,7 +199,7 @@ export function ConnectPage() {
 				</Button>
 			</div>
 
-			<div className="grid grid-cols-1 gap-px bg-border p-px md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6">
+			<div className="grid grid-cols-1 gap-px bg-border p-px md:grid-cols-2 lg:grid-cols-4">
 				<DashboardCard>
 					<CardHeader className="flex flex-row items-center justify-between">
 						<CardTitle className="font-normal text-xs tracking-wide">Registered apps</CardTitle>
@@ -248,7 +248,7 @@ export function ConnectPage() {
 					</CardFooter>
 				</DashboardCard>
 
-				<DashboardCard className="gap-0 xl:col-span-3">
+				<DashboardCard className="gap-0 lg:col-span-2">
 					<CardHeader className="gap-2">
 						<CardTitle>Blocked breakdown</CardTitle>
 						<CardDescription>Token requests blocked by reason, last isolate.</CardDescription>
@@ -279,7 +279,7 @@ export function ConnectPage() {
 					</CardContent>
 				</DashboardCard>
 
-				<DashboardCard className="gap-0 xl:col-span-3">
+				<DashboardCard className="gap-0 lg:col-span-2">
 					<CardHeader className="gap-2">
 						<CardTitle>Token latency</CardTitle>
 						<CardDescription>p99 token exchange latency.</CardDescription>
