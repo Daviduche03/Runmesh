@@ -176,6 +176,17 @@ async def _audit(
     resource_type: ConnectResourceType | None = None,
     resource_id: str | None = None,
     metadata: dict | None = None,
+    agent_id: str | None = None,
+    task_id: str | None = None,
+    workflow_run_id: str | None = None,
+    approval_required: bool = False,
+    denial_reason: str | None = None,
+    token_issued_at: str | None = None,
+    token_expires_at: str | None = None,
+    result: str = "success",
+    error_code: str | None = None,
+    error_message: str | None = None,
+    request_id: str | None = None,
 ) -> None:
     await audit_model.create(
         ConnectAuditEventCreate(
@@ -187,6 +198,17 @@ async def _audit(
             resource_type=resource_type.value if resource_type else None,
             resource_id=resource_id,
             metadata=metadata or {},
+            agent_id=agent_id,
+            task_id=task_id,
+            workflow_run_id=workflow_run_id,
+            approval_required=approval_required,
+            denial_reason=denial_reason,
+            token_issued_at=token_issued_at,
+            token_expires_at=token_expires_at,
+            result=result,
+            error_code=error_code,
+            error_message=error_message,
+            request_id=request_id,
         )
     )
 
@@ -1352,6 +1374,43 @@ async def exchange_connect_token(
             raise HTTPException(status_code=400, detail="Grant is not active")
         if grant.connect_app_id != app.id:
             raise HTTPException(status_code=400, detail="Grant does not belong to this app")
+        
+        if grant.approval_status == "denied":
+            raise HTTPException(status_code=403, detail=json.dumps({
+                "error": "grant_denied",
+                "message": "Grant has been denied and cannot be used",
+                "grant_id": grant.id,
+            }))
+        if grant.approval_status != "approved":
+            raise HTTPException(status_code=403, detail=json.dumps({
+                "error": "grant_pending_approval",
+                "message": "Grant is awaiting approval",
+                "grant_id": grant.id,
+            }))
+        
+        # ========== NEW: Time-bounded validity checks (P1) ==========
+        from datetime import datetime, timezone
+        now = datetime.now(timezone.utc)
+        
+        if grant.valid_from:
+            valid_from = datetime.fromisoformat(grant.valid_from.replace('Z', '+00:00'))
+            if now < valid_from:
+                raise HTTPException(status_code=403, detail=json.dumps({
+                    "error": "grant_not_yet_valid",
+                    "message": "Grant is not yet valid",
+                    "valid_from": grant.valid_from,
+                }))
+        
+        if grant.valid_until:
+            valid_until = datetime.fromisoformat(grant.valid_until.replace('Z', '+00:00'))
+            if now > valid_until:
+                raise HTTPException(status_code=403, detail=json.dumps({
+                    "error": "grant_expired",
+                    "message": "Grant validity window has passed",
+                    "grant_id": grant.id,
+                    "valid_until": grant.valid_until,
+                }))
+        
         result["grant_access_token"] = _build_grant_access_token(
             jwt_secret,
             grant=grant,
@@ -1360,6 +1419,14 @@ async def exchange_connect_token(
             workspace_project_id=req.workspace_project_id,
         )
         result["grant_access_expires_in"] = GRANT_ACCESS_TTL_MINUTES * 60
+        # NEW: Echo agentic context and approval info in response (P0/P1)
+        result["task_id"] = req.task_id
+        result["workflow_run_id"] = req.workflow_run_id
+        result["agent_id"] = req.agent_id
+        result["approval_status"] = grant.approval_status
+        result["valid_from"] = grant.valid_from
+        result["valid_until"] = grant.valid_until
+        result["seconds_until_expiration"] = _seconds_until(grant.valid_until)
         if req.grant_id:
             result["scopes"] = grant.scopes
 
@@ -1375,12 +1442,13 @@ async def exchange_connect_token(
             "task_id": req.task_id,
             "workflow_run_id": req.workflow_run_id,
             "workspace_project_id": req.workspace_project_id,
+            "agent_id": req.agent_id,
             "grant_id": result.get("grant_id"),
             "connection_id": result.get("connection_id"),
             "connect_user_id": result.get("connect_user_id"),
         },
     )
-
+    
     return success(result, message="Connect token exchanged")
 
 
@@ -1502,3 +1570,301 @@ async def list_audit_events(
         for r in rows
     ]
     return success(items, meta={"total": total, "limit": limit, "offset": offset})
+
+
+# ============================================================================
+# Agentic Connect Layer (P0/P1): Task-aware grants with approval gating
+# ============================================================================
+
+
+async def list_grants_by_agent_id(
+    grant_model: ConnectGrantModel,
+    connect_user_id: str,
+    agent_id: str,
+    page: int = 1,
+    limit: int = 50,
+) -> dict:
+    """Query grants by agent_id with pagination."""
+    offset = (page - 1) * limit
+    grants = await grant_model.find_by_agent_id(
+        connect_user_id, agent_id, limit=limit, offset=offset
+    )
+    total = await grant_model.count_by_agent_id(connect_user_id, agent_id)
+    
+    items = [
+        {
+            "id": g.id,
+            "provider": g.connection.provider if hasattr(g, 'connection') else None,
+            "scopes": g.scopes,
+            "approval_status": g.approval_status,
+            "agent_id": g.agent_id,
+            "created_by_task_id": g.created_by_task_id,
+            "created_by_workflow_run_id": g.created_by_workflow_run_id,
+            "created_at": g.created_at,
+            "expires_at": None,  # From connection
+            "valid_from": g.valid_from,
+            "valid_until": g.valid_until,
+            "seconds_until_expiration": _seconds_until(g.valid_until),
+            "status": g.status.value if hasattr(g.status, 'value') else str(g.status),
+        }
+        for g in grants
+    ]
+    return success(items, meta={
+        "total": total,
+        "page": page,
+        "limit": limit,
+        "pages": (total + limit - 1) // limit,
+    })
+
+
+async def list_grants_by_task_id(
+    grant_model: ConnectGrantModel,
+    connect_user_id: str,
+    task_id: str,
+    page: int = 1,
+    limit: int = 50,
+) -> dict:
+    """Query grants by task_id with pagination."""
+    offset = (page - 1) * limit
+    grants = await grant_model.find_by_task_id(
+        connect_user_id, task_id, limit=limit, offset=offset
+    )
+    total = await grant_model.count_by_task_id(connect_user_id, task_id)
+    
+    items = [
+        {
+            "id": g.id,
+            "provider": g.connection.provider if hasattr(g, 'connection') else None,
+            "scopes": g.scopes,
+            "approval_status": g.approval_status,
+            "agent_id": g.agent_id,
+            "created_by_task_id": g.created_by_task_id,
+            "created_by_workflow_run_id": g.created_by_workflow_run_id,
+            "created_at": g.created_at,
+            "expires_at": None,  # From connection
+            "valid_from": g.valid_from,
+            "valid_until": g.valid_until,
+            "seconds_until_expiration": _seconds_until(g.valid_until),
+            "status": g.status.value if hasattr(g.status, 'value') else str(g.status),
+        }
+        for g in grants
+    ]
+    return success(items, meta={
+        "total": total,
+        "page": page,
+        "limit": limit,
+        "pages": (total + limit - 1) // limit,
+    })
+
+
+async def list_grants_by_workflow_run_id(
+    grant_model: ConnectGrantModel,
+    connect_user_id: str,
+    workflow_run_id: str,
+    page: int = 1,
+    limit: int = 50,
+) -> dict:
+    """Query grants by workflow_run_id with pagination."""
+    offset = (page - 1) * limit
+    grants = await grant_model.find_by_workflow_run_id(
+        connect_user_id, workflow_run_id, limit=limit, offset=offset
+    )
+    total = await grant_model.count_by_workflow_run_id(connect_user_id, workflow_run_id)
+    
+    items = [
+        {
+            "id": g.id,
+            "provider": g.connection.provider if hasattr(g, 'connection') else None,
+            "scopes": g.scopes,
+            "approval_status": g.approval_status,
+            "agent_id": g.agent_id,
+            "created_by_task_id": g.created_by_task_id,
+            "created_by_workflow_run_id": g.created_by_workflow_run_id,
+            "created_at": g.created_at,
+            "expires_at": None,  # From connection
+            "valid_from": g.valid_from,
+            "valid_until": g.valid_until,
+            "seconds_until_expiration": _seconds_until(g.valid_until),
+            "status": g.status.value if hasattr(g.status, 'value') else str(g.status),
+        }
+        for g in grants
+    ]
+    return success(items, meta={
+        "total": total,
+        "page": page,
+        "limit": limit,
+        "pages": (total + limit - 1) // limit,
+    })
+
+
+async def approve_grant(
+    grant_model: ConnectGrantModel,
+    audit_model: ConnectAuditEventModel,
+    grant_id: str,
+    approved_by_user_id: str,
+    approval_reason: str | None = None,
+    env = None,
+) -> dict:
+    """Approve a pending grant."""
+    grant = await grant_model.find_by_id(grant_id)
+    if grant is None:
+        raise HTTPException(status_code=404, detail=json.dumps({
+            "error": "grant_not_found",
+            "message": f"No grant found with id: {grant_id}",
+            "grant_id": grant_id,
+        }))
+    
+    # Can only approve pending grants
+    if grant.approval_status != "pending_approval":
+        raise HTTPException(status_code=409, detail=json.dumps({
+            "error": "grant_invalid_state",
+            "message": f"Grant state is {grant.approval_status}, not pending_approval",
+            "grant_id": grant_id,
+        }))
+    
+    # Update grant to approved (SIMPLIFIED: only update approval_status)
+    now = utc_now_iso()
+    await grant_model.update_grant(
+        grant_id,
+        {
+            "approval_status": "approved",
+        }
+    )
+    
+    # Audit the approval with full agentic context
+    await _audit(
+        audit_model,
+        event_type=ConnectAuditEventType.GRANT_APPROVED,
+        actor_type=ConnectAuditActorType.USER,
+        actor_id=approved_by_user_id,
+        connect_app_id=grant.connect_app_id,
+        resource_type=ConnectResourceType.CONNECT_GRANT,
+        resource_id=grant_id,
+        agent_id=grant.agent_id,
+        task_id=grant.created_by_task_id,
+        workflow_run_id=grant.created_by_workflow_run_id,
+        result="success",
+        metadata={
+            "approval_reason": approval_reason or "Grant approved",
+            "approved_at": now,
+        },
+    )
+    
+    # Return updated grant
+    updated_grant = await grant_model.find_by_id(grant_id)
+    return success({
+        "id": updated_grant.id,
+        "approval_status": updated_grant.approval_status,
+        "message": "Grant approved successfully",
+    })
+
+
+async def deny_grant(
+    grant_model: ConnectGrantModel,
+    audit_model: ConnectAuditEventModel,
+    grant_id: str,
+    denied_by_user_id: str,
+    denial_reason: str,
+    env = None,
+) -> dict:
+    """Deny a grant request."""
+    grant = await grant_model.find_by_id(grant_id)
+    if grant is None:
+        raise HTTPException(status_code=404, detail=json.dumps({
+            "error": "grant_not_found",
+            "message": f"No grant found with id: {grant_id}",
+            "grant_id": grant_id,
+        }))
+    
+    if grant.approval_status != "pending_approval":
+        raise HTTPException(status_code=409, detail=json.dumps({
+            "error": "grant_invalid_state",
+            "message": f"Cannot deny grant in state {grant.approval_status}",
+            "grant_id": grant_id,
+        }))
+    
+    # Update grant to denied (SIMPLIFIED: only update approval_status)
+    now = utc_now_iso()
+    await grant_model.update_grant(
+        grant_id,
+        {
+            "approval_status": "denied",
+        }
+    )
+    
+    # Audit the denial with full agentic context (decision metadata stored here)
+    await _audit(
+        audit_model,
+        event_type=ConnectAuditEventType.GRANT_DENIED,
+        actor_type=ConnectAuditActorType.USER,
+        actor_id=denied_by_user_id,
+        connect_app_id=grant.connect_app_id,
+        resource_type=ConnectResourceType.CONNECT_GRANT,
+        resource_id=grant_id,
+        agent_id=grant.agent_id,
+        task_id=grant.created_by_task_id,
+        workflow_run_id=grant.created_by_workflow_run_id,
+        denial_reason=denial_reason,
+        result="success",
+        metadata={
+            "reason": denial_reason,
+            "denied_at": now,
+        },
+    )
+    
+    # Return updated grant
+    updated_grant = await grant_model.find_by_id(grant_id)
+    return success({
+        "id": updated_grant.id,
+        "approval_status": updated_grant.approval_status,
+        "message": "Grant denied successfully",
+    })
+
+
+def _seconds_until(timestamp: str | None) -> int | None:
+    """Calculate seconds until a timestamp."""
+    if not timestamp:
+        return None
+    try:
+        from datetime import datetime, timezone
+        now = datetime.now(timezone.utc)
+        expiry = datetime.fromisoformat(timestamp.replace('Z', '+00:00'))
+        delta = expiry - now
+        return max(0, int(delta.total_seconds()))
+    except Exception:
+        return None
+
+
+async def get_connect_metrics(env, workspace_user_id: str):
+    """Get Connect metrics: pending approvals and recent token requests."""
+    from db.client import get_db_client
+    from utils.responses import success
+    
+    db = get_db_client(env)
+    grant_model = ConnectGrantModel(db)
+    audit_model = ConnectAuditEventModel(db)
+    
+    # Count pending approvals
+    pending_grants = await grant_model.find_by_approval_status("pending_approval")
+    pending_count = len(pending_grants)
+    
+    # Count token exchange events in last 24 hours
+    twenty_four_hours_ago = (datetime.now(timezone.utc) - timedelta(hours=24)).isoformat()
+    
+    # Query all token exchange events (no app filtering - get all)
+    token_events, _ = await audit_model.list_all(
+        event_type=ConnectAuditEventType.TOKEN_EXCHANGED,
+        app_ids=None,  # no filtering by app
+        limit=1000,
+    )
+    
+    # Filter events from last 24 hours
+    recent_tokens = [
+        e for e in token_events 
+        if e.created_at and e.created_at >= twenty_four_hours_ago
+    ]
+    
+    return success({
+        "pending_approvals": pending_count,
+        "token_requests_24h": len(recent_tokens),
+    })

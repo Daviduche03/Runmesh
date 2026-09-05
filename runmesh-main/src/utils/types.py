@@ -134,8 +134,9 @@ class ConnectTokenRequest(BaseModel):
     task_id: Optional[str] = None
     workflow_run_id: Optional[str] = None
     workspace_project_id: Optional[str] = None
+    agent_id: Optional[str] = None
 
-    @field_validator("code", "grant_id", "task_id", "workflow_run_id", "workspace_project_id", mode="before")
+    @field_validator("code", "grant_id", "task_id", "workflow_run_id", "workspace_project_id", "agent_id", mode="before")
     @classmethod
     def _strip_optional(cls, value: Any) -> Optional[str]:
         if value is None:
@@ -150,6 +151,16 @@ class ConnectTokenRequest(BaseModel):
         if bool(self.code) == bool(self.grant_id):
             raise ValueError("provide exactly one of code or grant_id")
         return self
+
+
+class ConnectGrantApprovalRequest(BaseModel):
+    """Request to approve a pending grant."""
+    reason: Optional[str] = None
+
+
+class ConnectGrantDenialRequest(BaseModel):
+    """Request to deny a grant."""
+    reason: str
 
 
 def utc_now_iso() -> str:
@@ -511,11 +522,23 @@ class ConnectGrantRow(ConnectRowBase):
     revoked_at: Optional[str] = None
     created_at: str
     updated_at: str
+    created_by_task_id: Optional[str] = None
+    created_by_workflow_run_id: Optional[str] = None
+    agent_id: Optional[str] = None
+    approval_status: str = "pending_approval"
+    valid_from: Optional[str] = None
+    valid_until: Optional[str] = None
+    resource_filters: Optional[Dict[str, Any]] = None
 
     @field_validator("scopes", mode="before")
     @classmethod
     def _scopes(cls, value: Any) -> List[str]:
         return parse_json_list(value)
+
+    @field_validator("resource_filters", mode="before")
+    @classmethod
+    def _resource_filters(cls, value: Any) -> Optional[Dict[str, Any]]:
+        return parse_json_dict(value) if value else None
 
     @field_validator("status", mode="before")
     @classmethod
@@ -530,6 +553,12 @@ class ConnectGrantCreate(BaseModel):
     scopes: List[str] = Field(default_factory=list)
     status: ConnectGrantStatus = ConnectGrantStatus.ACTIVE
     granted_at: Optional[str] = None
+    created_by_task_id: Optional[str] = None
+    created_by_workflow_run_id: Optional[str] = None
+    agent_id: Optional[str] = None
+    valid_from: Optional[str] = None
+    valid_until: Optional[str] = None
+    resource_filters: Optional[Dict[str, Any]] = None
 
 
 class ConnectSessionRow(ConnectRowBase):
@@ -593,6 +622,17 @@ class ConnectAuditEventRow(ConnectRowBase):
     resource_id: Optional[str] = None
     metadata: Dict[str, Any] = Field(default_factory=dict)
     created_at: str
+    agent_id: Optional[str] = None
+    task_id: Optional[str] = None
+    workflow_run_id: Optional[str] = None
+    approval_required: bool = False
+    denial_reason: Optional[str] = None
+    token_issued_at: Optional[str] = None
+    token_expires_at: Optional[str] = None
+    result: str = "success"
+    error_code: Optional[str] = None
+    error_message: Optional[str] = None
+    request_id: Optional[str] = None
 
     @field_validator("metadata", mode="before")
     @classmethod
@@ -614,3 +654,14 @@ class ConnectAuditEventCreate(BaseModel):
     resource_type: Optional[str] = None
     resource_id: Optional[str] = None
     metadata: Dict[str, Any] = Field(default_factory=dict)
+    agent_id: Optional[str] = None
+    task_id: Optional[str] = None
+    workflow_run_id: Optional[str] = None
+    approval_required: bool = False
+    denial_reason: Optional[str] = None
+    token_issued_at: Optional[str] = None
+    token_expires_at: Optional[str] = None
+    result: str = "success"
+    error_code: Optional[str] = None
+    error_message: Optional[str] = None
+    request_id: Optional[str] = None

@@ -446,6 +446,111 @@ class ConnectGrantModel(Model):
             grant_id,
         )
 
+    # Agentic Connect Layer (P0/P1): Agent/task-aware grant queries
+    
+    async def find_by_agent_id(
+        self,
+        connect_user_id: str,
+        agent_id: str,
+        limit: int = 50,
+        offset: int = 0,
+    ) -> list[ConnectGrantRow]:
+        """Query grants by agent_id (indexed lookup)."""
+        raw_rows = await self.find_many(
+            "connect_grants",
+            "connect_user_id = ? AND agent_id = ? ORDER BY created_at DESC",
+            connect_user_id,
+            agent_id,
+            limit=limit,
+            offset=offset,
+        )
+        return _rows(raw_rows, ConnectGrantRow)
+
+    async def find_by_task_id(
+        self,
+        connect_user_id: str,
+        task_id: str,
+        limit: int = 50,
+        offset: int = 0,
+    ) -> list[ConnectGrantRow]:
+        """Query grants by task_id (indexed lookup)."""
+        raw_rows = await self.find_many(
+            "connect_grants",
+            "connect_user_id = ? AND created_by_task_id = ? ORDER BY created_at DESC",
+            connect_user_id,
+            task_id,
+            limit=limit,
+            offset=offset,
+        )
+        return _rows(raw_rows, ConnectGrantRow)
+
+    async def find_by_workflow_run_id(
+        self,
+        connect_user_id: str,
+        workflow_run_id: str,
+        limit: int = 50,
+        offset: int = 0,
+    ) -> list[ConnectGrantRow]:
+        """Query grants by workflow_run_id (indexed lookup)."""
+        raw_rows = await self.find_many(
+            "connect_grants",
+            "connect_user_id = ? AND created_by_workflow_run_id = ? ORDER BY created_at DESC",
+            connect_user_id,
+            workflow_run_id,
+            limit=limit,
+            offset=offset,
+        )
+        return _rows(raw_rows, ConnectGrantRow)
+
+    async def count_by_agent_id(self, connect_user_id: str, agent_id: str) -> int:
+        """Count grants by agent_id."""
+        result = await self.find_one(
+            "connect_grants",
+            "SELECT COUNT(*) as cnt FROM connect_grants WHERE connect_user_id = ? AND agent_id = ?",
+            connect_user_id,
+            agent_id,
+        )
+        return result.get("cnt", 0) if result else 0
+
+    async def count_by_task_id(self, connect_user_id: str, task_id: str) -> int:
+        """Count grants by task_id."""
+        result = await self.find_one(
+            "connect_grants",
+            "SELECT COUNT(*) as cnt FROM connect_grants WHERE connect_user_id = ? AND created_by_task_id = ?",
+            connect_user_id,
+            task_id,
+        )
+        return result.get("cnt", 0) if result else 0
+
+    async def count_by_workflow_run_id(self, connect_user_id: str, workflow_run_id: str) -> int:
+        """Count grants by workflow_run_id."""
+        result = await self.find_one(
+            "connect_grants",
+            "SELECT COUNT(*) as cnt FROM connect_grants WHERE connect_user_id = ? AND created_by_workflow_run_id = ?",
+            connect_user_id,
+            workflow_run_id,
+        )
+        return result.get("cnt", 0) if result else 0
+
+    async def update_grant(self, grant_id: str, updates: dict) -> int:
+        """Update grant with dict of fields."""
+        updates["updated_at"] = utc_now_iso()
+        return await self.update(
+            "connect_grants",
+            "id = ?",
+            updates,
+            grant_id,
+        )
+
+    async def find_by_approval_status(self, approval_status: str) -> list[ConnectGrantRow]:
+        """Find all grants with a specific approval status."""
+        raw_rows = await self.find_many(
+            "connect_grants",
+            "approval_status = ? ORDER BY created_at DESC",
+            approval_status,
+        )
+        return _rows(raw_rows, ConnectGrantRow)
+
 
 class ConnectSessionModel(Model):
     async def create(self, payload: ConnectSessionCreate) -> ConnectSessionRow:

@@ -51,6 +51,7 @@ from utils.types import (
     ConnectAppCreateRequest, ConnectSessionCreateRequest,
     ConnectConsentRequest, ConnectTokenRequest,
     ConnectOtpResendRequest, ConnectOtpVerifyRequest,
+    ConnectGrantApprovalRequest, ConnectGrantDenialRequest,  # NEW: Agentic Connect Layer (P0/P1)
 )
 from utils.auth import (
     encode_token,
@@ -713,6 +714,100 @@ async def api_exchange_connect_token(
         current_user["id"],
         env.JWT_SECRET,
     )
+
+
+@app.get("/api/v1/connect/grants")
+async def api_list_grants(
+    request: Request,
+    agent_id: Optional[str] = None,
+    task_id: Optional[str] = None,
+    workflow_run_id: Optional[str] = None,
+    page: int = 1,
+    limit: int = 50,
+    current_user: dict = Depends(require_auth("read")),
+):
+    """Query grants by agent_id, task_id, or workflow_run_id."""
+    if not (agent_id or task_id or workflow_run_id):
+        return error(400, "At least one of agent_id, task_id, or workflow_run_id must be provided")
+    
+    env = request.scope["env"]
+    grant_model = ConnectGrantModel(env.DB)
+    
+    try:
+        if agent_id:
+            return await connect_service.list_grants_by_agent_id(
+                grant_model, current_user["id"], agent_id, page, limit
+            )
+        elif task_id:
+            return await connect_service.list_grants_by_task_id(
+                grant_model, current_user["id"], task_id, page, limit
+            )
+        else:
+            return await connect_service.list_grants_by_workflow_run_id(
+                grant_model, current_user["id"], workflow_run_id, page, limit
+            )
+    except HTTPException as e:
+        return error(e.status_code, e.detail)
+
+
+@app.post("/api/v1/connect/grants/{grant_id}/approve")
+async def api_approve_grant(
+    grant_id: str,
+    req: ConnectGrantApprovalRequest,
+    request: Request,
+    current_user: dict = Depends(require_auth("write")),
+):
+    """Approve a pending grant."""
+    env = request.scope["env"]
+    grant_model = ConnectGrantModel(env.DB)
+    audit_model = ConnectAuditEventModel(env.DB)
+    
+    try:
+        return await connect_service.approve_grant(
+            grant_model,
+            audit_model,
+            grant_id,
+            current_user["id"],
+            req.reason,
+            env,
+        )
+    except HTTPException as e:
+        return error(e.status_code, e.detail)
+
+
+@app.post("/api/v1/connect/grants/{grant_id}/deny")
+async def api_deny_grant(
+    grant_id: str,
+    req: ConnectGrantDenialRequest,
+    request: Request,
+    current_user: dict = Depends(require_auth("write")),
+):
+    """Deny a grant request."""
+    env = request.scope["env"]
+    grant_model = ConnectGrantModel(env.DB)
+    audit_model = ConnectAuditEventModel(env.DB)
+    
+    try:
+        return await connect_service.deny_grant(
+            grant_model,
+            audit_model,
+            grant_id,
+            current_user["id"],
+            req.reason,
+            env,
+        )
+    except HTTPException as e:
+        return error(e.status_code, e.detail)
+
+
+@app.get("/api/v1/connect/metrics")
+async def api_get_connect_metrics(
+    request: Request,
+    current_user: dict = Depends(require_auth("read")),
+):
+    """Get current Agentic Connect Layer metrics and monitoring data."""
+    env = request.scope["env"]
+    return await connect_service.get_connect_metrics(env, current_user["workspace_user_id"])
 
 
 @app.get("/api/v1/connect/tokens")

@@ -1,5 +1,3 @@
-"use client";
-
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
@@ -14,18 +12,24 @@ import {
 	TableHeader,
 	TableRow,
 } from "@/components/ui/table";
+import {
+	DropdownMenu,
+	DropdownMenuContent,
+	DropdownMenuItem,
+	DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
+import { DashboardCard } from "@/components/dashboard-card";
+import {
+	CardContent,
+	CardFooter,
+	CardHeader,
+	CardTitle,
+} from "@/components/ui/card";
 import { useConnectAppsStore, type ConnectApp } from "@/stores/connect-apps-store";
-import { apiGet } from "@/lib/api";
 import EmptyState from "@/components/empty-state";
 import {
-	ShieldCheckIcon, PlusIcon, Trash2Icon, CheckIcon, CopyIcon,
-	Loader2Icon, UsersIcon, KeyRoundIcon, GitBranchIcon, Grid3X3Icon,
+	PlusIcon, Trash2Icon, CopyIcon, Loader2Icon, MoreVerticalIcon,
 } from "lucide-react";
-
-const tabs = [
-	{ id: "apps", label: "Apps", icon: <ShieldCheckIcon className="size-4" /> },
-	{ id: "providers", label: "Providers", icon: <Grid3X3Icon className="size-4" /> },
-] as const;
 
 function ConnectAppsTable({ apps, loading, onDelete }: {
 	apps: ConnectApp[];
@@ -33,153 +37,83 @@ function ConnectAppsTable({ apps, loading, onDelete }: {
 	onDelete: (id: string, name: string) => void;
 }) {
 	const navigate = useNavigate();
-	const [copied, setCopied] = useState<string | null>(null);
-
-	const copyValue = (key: string, value: string) => {
-		navigator.clipboard.writeText(value);
-		setCopied(key);
-		setTimeout(() => setCopied(null), 2000);
-	};
 
 	return (
-		<div className="rounded-lg border border-border">
-			<Table>
-				<TableHeader>
-					<TableRow>
-						<TableHead className="ps-6">Name</TableHead>
-						<TableHead>Slug</TableHead>
-						<TableHead>Providers</TableHead>
-						<TableHead>Status</TableHead>
-						<TableHead>Created</TableHead>
-						<TableHead className="pe-6 text-right">Actions</TableHead>
-					</TableRow>
-				</TableHeader>
-				<TableBody>
-					{loading ? (
-						Array.from({ length: 3 }).map((_, i) => (
-							<TableRow className="h-12" key={i}>
-								<TableCell className="ps-6"><Skeleton className="h-4 w-24" /></TableCell>
-								<TableCell><Skeleton className="h-4 w-20" /></TableCell>
-								<TableCell><Skeleton className="h-4 w-16" /></TableCell>
-								<TableCell><Skeleton className="h-4 w-12" /></TableCell>
-								<TableCell><Skeleton className="h-4 w-20" /></TableCell>
-								<TableCell className="pe-6"><Skeleton className="h-4 w-8 ms-auto" /></TableCell>
-							</TableRow>
-						))
-					) : apps.length === 0 ? null : (
-						apps.map((app) => (
-							<TableRow className="h-12" key={app.id}>
-								<TableCell className="ps-6">
-									<button className="font-medium text-sm hover:text-emerald-400 transition-colors" onClick={() => navigate(`/connect/apps/${app.id}`)}>
-										{app.name}
-									</button>
-								</TableCell>
-								<TableCell className="text-muted-foreground text-sm font-mono">{app.slug}</TableCell>
-								<TableCell className="text-muted-foreground text-sm">
-									{app.allowed_providers.length ? app.allowed_providers.join(", ") : "any"}
-								</TableCell>
-								<TableCell className="text-sm">{app.status}</TableCell>
-								<TableCell className="text-muted-foreground text-sm">
-									{app.created_at ? new Date(app.created_at).toLocaleDateString() : "—"}
-								</TableCell>
-								<TableCell className="pe-6 text-right" onClick={(e) => e.stopPropagation()}>
-									<div className="flex items-center justify-end gap-1">
-										<Button variant="ghost" size="icon-sm" onClick={() => copyValue(`id-${app.id}`, app.id)}>
-											{copied === `id-${app.id}` ? <CheckIcon className="size-3.5 text-emerald-400" /> : <CopyIcon className="size-3.5" />}
+		<Table>
+			<TableHeader>
+				<TableRow>
+					<TableHead className="ps-6">Name</TableHead>
+					<TableHead>Slug</TableHead>
+					<TableHead>Providers</TableHead>
+					<TableHead>Status</TableHead>
+					<TableHead>Created</TableHead>
+					<TableHead className="pe-6 text-right">Actions</TableHead>
+				</TableRow>
+			</TableHeader>
+			<TableBody>
+				{loading ? (
+					Array.from({ length: 3 }).map((_, i) => (
+						<TableRow className="h-12" key={i}>
+							<TableCell className="ps-6"><Skeleton className="h-4 w-24" /></TableCell>
+							<TableCell><Skeleton className="h-4 w-20" /></TableCell>
+							<TableCell><Skeleton className="h-4 w-16" /></TableCell>
+							<TableCell><Skeleton className="h-4 w-12" /></TableCell>
+							<TableCell><Skeleton className="h-4 w-20" /></TableCell>
+							<TableCell className="pe-6"><Skeleton className="h-4 w-8 ms-auto" /></TableCell>
+						</TableRow>
+					))
+				) : apps.length === 0 ? null : (
+					apps.map((app) => (
+						<TableRow 
+							className="h-12 cursor-pointer" 
+							key={app.id}
+							onClick={() => navigate(`/connect/apps/${app.id}`)}
+						>
+							<TableCell className="ps-6 font-medium">
+								{app.name}
+							</TableCell>
+							<TableCell className="text-muted-foreground text-sm font-mono">{app.slug}</TableCell>
+							<TableCell className="text-muted-foreground text-sm">
+								{app.allowed_providers.length ? app.allowed_providers.join(", ") : "any"}
+							</TableCell>
+							<TableCell className="text-sm">{app.status}</TableCell>
+							<TableCell className="text-muted-foreground text-sm">
+								{app.created_at ? new Date(app.created_at).toLocaleDateString() : "—"}
+							</TableCell>
+							<TableCell className="pe-6 text-right" onClick={(e) => e.stopPropagation()}>
+								<DropdownMenu>
+									<DropdownMenuTrigger asChild>
+										<Button variant="ghost" size="icon-sm">
+											<MoreVerticalIcon className="size-4" />
 										</Button>
-										<Button variant="ghost" size="icon-sm" className="text-muted-foreground hover:text-red-400" onClick={() => onDelete(app.id, app.name)}>
-											<Trash2Icon className="size-3.5" />
-										</Button>
-									</div>
-								</TableCell>
-							</TableRow>
-						))
-					)}
-				</TableBody>
-			</Table>
-		</div>
-	);
-}
-
-type Provider = {
-	id: string;
-	scopes: string[];
-	oauth_enabled: boolean;
-};
-
-function ProvidersTab() {
-	const [providers, setProviders] = useState<Provider[]>([]);
-	const [loading, setLoading] = useState(true);
-
-	useEffect(() => {
-		const fetchProviders = async () => {
-			setLoading(true);
-			try {
-				const { data } = await apiGet<Provider[]>("/api/v1/connect/providers");
-				setProviders(data ?? []);
-			} catch {
-				setProviders([]);
-			} finally {
-				setLoading(false);
-			}
-		};
-		void fetchProviders();
-	}, []);
-
-	if (loading) {
-		return (
-			<div className="py-16 flex items-center justify-center">
-				<Loader2Icon className="size-6 animate-spin text-muted-foreground" />
-			</div>
-		);
-	}
-
-	return (
-		<div className="grid gap-4">
-			{providers.map((p) => (
-				<div key={p.id} className="rounded-lg border border-border">
-					<div className="flex items-center justify-between px-5 py-4 border-b border-border">
-						<div className="flex items-center gap-3">
-							<div className="flex size-9 items-center justify-center rounded-none border border-border bg-muted">
-								<span className="text-sm font-semibold uppercase">{p.id.slice(0, 2)}</span>
-							</div>
-							<div>
-								<h3 className="text-sm font-medium capitalize">{p.id}</h3>
-								<p className="text-xs text-muted-foreground">
-									{p.oauth_enabled ? "OAuth 2.0 enabled" : "OAuth not yet implemented"}
-								</p>
-							</div>
-						</div>
-						<span className={`inline-flex items-center gap-1.5 rounded-none border px-2 py-0.5 text-xs font-medium ${
-							p.oauth_enabled
-								? "bg-emerald-500/10 text-emerald-400 border-emerald-500/20"
-								: "bg-amber-500/10 text-amber-400 border-amber-500/20"
-						}`}>
-							<span className={`size-1.5 rounded-full ${p.oauth_enabled ? "bg-emerald-400" : "bg-amber-400"}`} />
-							{p.oauth_enabled ? "Available" : "Planned"}
-						</span>
-					</div>
-					<div className="px-5 py-3">
-						<p className="text-xs font-medium text-muted-foreground uppercase tracking-wider mb-2">
-							Scopes ({p.scopes.length})
-						</p>
-						<div className="grid grid-cols-2 md:grid-cols-3 gap-1.5">
-							{p.scopes.map((scope) => (
-								<code key={scope} className="text-xs font-mono text-muted-foreground bg-muted px-2 py-1">
-									{scope}
-								</code>
-							))}
-						</div>
-					</div>
-				</div>
-			))}
-		</div>
+									</DropdownMenuTrigger>
+									<DropdownMenuContent align="end">
+										<DropdownMenuItem onClick={() => {
+											navigator.clipboard.writeText(app.id);
+										}}>
+											<CopyIcon className="size-3.5 me-2" />
+											Copy ID
+										</DropdownMenuItem>
+										<DropdownMenuItem 
+											className="text-red-400 focus:text-red-400"
+											onClick={() => onDelete(app.id, app.name)}
+										>
+											<Trash2Icon className="size-3.5 me-2" />
+											Delete
+										</DropdownMenuItem>
+									</DropdownMenuContent>
+								</DropdownMenu>
+							</TableCell>
+						</TableRow>
+					))
+				)}
+			</TableBody>
+		</Table>
 	);
 }
 
 export function ConnectPage() {
 	const connectApps = useConnectAppsStore();
-	const [activeTab, setActiveTab] = useState("apps");
 	const [showCreateModal, setShowCreateModal] = useState(false);
 	const [deleteTarget, setDeleteTarget] = useState<{ id: string; name: string } | null>(null);
 
@@ -189,8 +123,25 @@ export function ConnectPage() {
 	const [cProviders, setCProviders] = useState("google");
 	const [cError, setCError] = useState("");
 
+	// Metrics state
+	const [pendingApprovals, setPendingApprovals] = useState<number>(0);
+	const [tokenRequests24h, setTokenRequests24h] = useState<number>(0);
+
 	useEffect(() => {
 		connectApps.fetch();
+		// Fetch metrics
+		const fetchMetrics = async () => {
+			try {
+				const res = await apiGet<{ pending_approvals: number; token_requests_24h: number }>("/api/v1/connect/metrics");
+				if (res.data) {
+					setPendingApprovals(res.data.pending_approvals);
+					setTokenRequests24h(res.data.token_requests_24h);
+				}
+			} catch {
+				// ignore
+			}
+		};
+		void fetchMetrics();
 	}, []);
 
 	const handleCreate = async (e: React.FormEvent) => {
@@ -231,101 +182,94 @@ export function ConnectPage() {
 				<div>
 					<h1 className="text-2xl font-semibold tracking-tight">Connect</h1>
 					<p className="text-sm text-muted-foreground mt-1">
-						Register apps that issue scoped, auditable access for agents acting on behalf of users.
+						Manage OAuth apps that issue scoped, auditable access for agents acting on behalf of users.
 					</p>
 				</div>
-				{activeTab === "apps" && (
-					<Button onClick={() => setShowCreateModal(true)}>
-						<PlusIcon className="size-4 me-1.5" />
-						Create app
-					</Button>
+				<Button onClick={() => setShowCreateModal(true)}>
+					<PlusIcon className="size-4 me-1.5" />
+					Create app
+				</Button>
+			</div>
+
+			<div className="grid grid-cols-1 gap-px bg-border p-px md:grid-cols-2 lg:grid-cols-4">
+				<DashboardCard>
+					<CardHeader className="flex flex-row items-center justify-between">
+						<CardTitle className="font-normal text-xs tracking-wide">Registered apps</CardTitle>
+					</CardHeader>
+					<CardContent className="flex flex-row items-center gap-2">
+						<p className="font-semibold text-xl tabular-nums">{connectApps.loading ? "..." : connectApps.apps.length}</p>
+					</CardContent>
+					<CardFooter className="gap-1 rounded-none bg-background text-xs">
+						<span className="text-muted-foreground">OAuth 2.0 enabled</span>
+					</CardFooter>
+				</DashboardCard>
+
+				<DashboardCard>
+					<CardHeader className="flex flex-row items-center justify-between">
+						<CardTitle className="font-normal text-xs tracking-wide">Active grants</CardTitle>
+					</CardHeader>
+					<CardContent className="flex flex-row items-center gap-2">
+						<p className="font-semibold text-xl tabular-nums">{totalGrants}</p>
+					</CardContent>
+					<CardFooter className="gap-1 rounded-none bg-background text-xs">
+						<span className="text-muted-foreground">User authorizations</span>
+					</CardFooter>
+				</DashboardCard>
+
+				<DashboardCard>
+					<CardHeader className="flex flex-row items-center justify-between">
+						<CardTitle className="font-normal text-xs tracking-wide">Pending approvals</CardTitle>
+					</CardHeader>
+					<CardContent className="flex flex-row items-center gap-2">
+						<p className="font-semibold text-xl tabular-nums">{pendingApprovals}</p>
+					</CardContent>
+					<CardFooter className="gap-1 rounded-none bg-background text-xs">
+						<span className="text-muted-foreground">Awaiting review</span>
+					</CardFooter>
+				</DashboardCard>
+
+				<DashboardCard>
+					<CardHeader className="flex flex-row items-center justify-between">
+						<CardTitle className="font-normal text-xs tracking-wide">Token requests</CardTitle>
+					</CardHeader>
+					<CardContent className="flex flex-row items-center gap-2">
+						<p className="font-semibold text-xl tabular-nums">{tokenRequests24h}</p>
+					</CardContent>
+					<CardFooter className="gap-1 rounded-none bg-background text-xs">
+						<span className="text-muted-foreground">Last 24 hours</span>
+					</CardFooter>
+				</DashboardCard>
+			</div>
+
+			<div className="rounded-none border border-border">
+				<div className="px-5 py-4 border-b border-border">
+					<h2 className="text-sm font-semibold tracking-wider text-muted-foreground uppercase">Registered apps</h2>
+				</div>
+				{connectApps.loading && connectApps.apps.length === 0 ? (
+					<div className="py-16 flex items-center justify-center">
+						<Loader2Icon className="size-6 animate-spin text-muted-foreground" />
+					</div>
+				) : connectApps.apps.length === 0 ? (
+					<div>
+						<EmptyState
+							title="No Connect apps"
+							description="Register an app to start issuing scoped, auditable access tokens for your users."
+						/>
+						<div className="flex justify-center pb-6">
+							<Button variant="outline" size="sm" onClick={() => setShowCreateModal(true)}>
+								<PlusIcon className="size-3.5 me-1.5" />
+								Create app
+							</Button>
+						</div>
+					</div>
+				) : (
+					<ConnectAppsTable
+						apps={connectApps.apps}
+						loading={connectApps.loading}
+						onDelete={(id, name) => setDeleteTarget({ id, name })}
+					/>
 				)}
 			</div>
-
-			<div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-				<div className="rounded-none border border-border bg-background px-5 py-5 flex flex-col justify-center min-h-[88px]">
-					<div className="flex items-center justify-between">
-						<p className="text-2xl font-semibold tabular-nums">{connectApps.loading ? "..." : connectApps.apps.length}</p>
-						<ShieldCheckIcon className="size-4 text-muted-foreground" />
-					</div>
-					<p className="text-sm text-muted-foreground mt-1">Registered apps</p>
-				</div>
-				<div className="rounded-none border border-border bg-background px-5 py-5 flex flex-col justify-center min-h-[88px]">
-					<div className="flex items-center justify-between">
-						<p className="text-2xl font-semibold tabular-nums">{totalGrants}</p>
-						<UsersIcon className="size-4 text-muted-foreground" />
-					</div>
-					<p className="text-sm text-muted-foreground mt-1">Active grants</p>
-				</div>
-				<div className="rounded-none border border-border bg-background px-5 py-5 flex flex-col justify-center min-h-[88px]">
-					<div className="flex items-center justify-between">
-						<p className="text-2xl font-semibold tabular-nums">3</p>
-						<GitBranchIcon className="size-4 text-muted-foreground" />
-					</div>
-					<p className="text-sm text-muted-foreground mt-1">Providers</p>
-				</div>
-				<div className="rounded-none border border-border bg-background px-5 py-5 flex flex-col justify-center min-h-[88px]">
-					<div className="flex items-center justify-between">
-						<div className="flex items-center gap-2">
-							<span className="size-2 rounded-full bg-emerald-400" />
-							<span className="text-sm font-medium text-foreground">Active</span>
-						</div>
-						<KeyRoundIcon className="size-4 text-muted-foreground" />
-					</div>
-					<p className="text-sm text-muted-foreground mt-1">Connect SDK</p>
-				</div>
-			</div>
-
-			<div className="flex gap-1 rounded-none border border-border bg-muted p-1">
-				{tabs.map((tab) => (
-					<button
-						key={tab.id}
-						onClick={() => setActiveTab(tab.id)}
-						className={`flex h-8 items-center gap-2 rounded-none px-3 text-sm font-medium transition-colors ${
-							activeTab === tab.id
-								? "bg-background text-foreground border border-border"
-								: "text-muted-foreground hover:text-foreground"
-						}`}
-					>
-						{tab.icon}
-						{tab.label}
-					</button>
-				))}
-			</div>
-
-			{activeTab === "apps" && (
-				<div className="rounded-lg border border-border">
-					<div className="px-5 py-4 border-b border-border">
-						<h2 className="text-sm font-semibold tracking-wider text-muted-foreground uppercase">Registered apps</h2>
-					</div>
-					{connectApps.loading && connectApps.apps.length === 0 ? (
-						<div className="py-16 flex items-center justify-center">
-							<Loader2Icon className="size-6 animate-spin text-muted-foreground" />
-						</div>
-					) : connectApps.apps.length === 0 ? (
-						<div>
-							<EmptyState
-								title="No Connect apps"
-								description="Register an app to start issuing scoped, auditable access tokens for your users."
-							/>
-							<div className="flex justify-center pb-6">
-								<Button variant="outline" size="sm" onClick={() => setShowCreateModal(true)}>
-									<PlusIcon className="size-3.5 me-1.5" />
-									Create app
-								</Button>
-							</div>
-						</div>
-					) : (
-						<ConnectAppsTable
-							apps={connectApps.apps}
-							loading={connectApps.loading}
-							onDelete={(id, name) => setDeleteTarget({ id, name })}
-						/>
-					)}
-				</div>
-			)}
-
-			{activeTab === "providers" && <ProvidersTab />}
 
 			<Modal open={showCreateModal} onClose={() => { setShowCreateModal(false); setCError(""); }} title="Create Connect app">
 				<form onSubmit={handleCreate} className="grid gap-5">
