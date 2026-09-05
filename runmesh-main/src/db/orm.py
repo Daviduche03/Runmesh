@@ -38,10 +38,14 @@ class Model:
         else:
             return result
     
-    async def find_many(self, table: str, where: str = "1=1", *params, limit: int = 0) -> List[Dict[str, Any]]:
+    async def find_many(self, table: str, where: str = "1=1", *params, limit: int = 0, offset: int = 0) -> List[Dict[str, Any]]:
         query = f"SELECT * FROM {table} WHERE {where}"
         if limit:
             query += f" LIMIT {limit}"
+            if offset:
+                query += f" OFFSET {offset}"
+        elif offset:
+            query += f" LIMIT -1 OFFSET {offset}"
         result = await self.db.prepare(query).bind(*params).all()
         if not result:
             return []

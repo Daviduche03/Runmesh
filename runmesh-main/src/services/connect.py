@@ -1,6 +1,9 @@
 import hmac
+import json
 import re
 import secrets
+import time
+from collections import Counter
 from datetime import datetime, timedelta, timezone
 from html import escape as html_escape
 from urllib.parse import urlencode, urlparse, urlunparse, parse_qsl
@@ -90,6 +93,10 @@ VALID_SESSION_MODES = {mode.value for mode in ConnectSessionMode}
 VALID_CONSENT_ACTIONS = {"approve", "deny"}
 GRANT_ACCESS_PREFIX = "rct_"
 OTP_ISSUE_MAX_PER_HOUR = 5
+
+# Observability — in-memory counters/histograms, no new table
+CONNECT_METRICS = Counter()
+CONNECT_LATENCY = []  # simple list for p50/p99, capped
 
 
 def OTP_ISSUE_WINDOW_START() -> str:
@@ -1376,12 +1383,14 @@ async def exchange_connect_token(
             raise HTTPException(status_code=400, detail="Grant does not belong to this app")
         
         if grant.approval_status == "denied":
+            CONNECT_METRICS["token_blocked_denied"] += 1
             raise HTTPException(status_code=403, detail=json.dumps({
                 "error": "grant_denied",
                 "message": "Grant has been denied and cannot be used",
                 "grant_id": grant.id,
             }))
         if grant.approval_status != "approved":
+            CONNECT_METRICS["token_blocked_pending"] += 1
             raise HTTPException(status_code=403, detail=json.dumps({
                 "error": "grant_pending_approval",
                 "message": "Grant is awaiting approval",
@@ -1395,6 +1404,7 @@ async def exchange_connect_token(
         if grant.valid_from:
             valid_from = datetime.fromisoformat(grant.valid_from.replace('Z', '+00:00'))
             if now < valid_from:
+                CONNECT_METRICS["token_blocked_not_yet_valid"] += 1
                 raise HTTPException(status_code=403, detail=json.dumps({
                     "error": "grant_not_yet_valid",
                     "message": "Grant is not yet valid",
@@ -1404,6 +1414,7 @@ async def exchange_connect_token(
         if grant.valid_until:
             valid_until = datetime.fromisoformat(grant.valid_until.replace('Z', '+00:00'))
             if now > valid_until:
+                CONNECT_METRICS["token_blocked_expired"] += 1
                 raise HTTPException(status_code=403, detail=json.dumps({
                     "error": "grant_expired",
                     "message": "Grant validity window has passed",
@@ -1411,12 +1422,26 @@ async def exchange_connect_token(
                     "valid_until": grant.valid_until,
                 }))
         if grant.max_uses is not None and grant.use_count >= grant.max_uses:
+            CONNECT_METRICS["token_blocked_exhausted"] += 1
             raise HTTPException(status_code=403, detail=json.dumps({
                 "error": "grant_exhausted",
                 "message": "Grant has reached max uses",
                 "grant_id": grant.id,
             }))
+        # P2 enforcement: resource_filters is stored JSON, validate shape
+        if grant.resource_filters is not None:
+            rf = grant.resource_filters
+            if not isinstance(rf, dict):
+                CONNECT_METRICS["token_blocked_bad_filter"] += 1
+                raise HTTPException(status_code=400, detail=json.dumps({"error": "invalid_resource_filters", "grant_id": grant.id}))
+            # minimal shape check — github repos must be list of strings if present
+            gh = rf.get("github")
+            if gh is not None:
+                if not isinstance(gh, dict) or not isinstance(gh.get("repos", []), list):
+                    CONNECT_METRICS["token_blocked_bad_filter"] += 1
+                    raise HTTPException(status_code=400, detail=json.dumps({"error": "invalid_resource_filters", "grant_id": grant.id}))
         
+        t0 = time.monotonic()
         result["grant_access_token"] = _build_grant_access_token(
             jwt_secret,
             grant=grant,
@@ -1427,6 +1452,10 @@ async def exchange_connect_token(
         result["grant_access_expires_in"] = GRANT_ACCESS_TTL_MINUTES * 60
         if grant.max_uses is not None:
             await grant_model.update_grant(grant.id, {"use_count": grant.use_count + 1})
+        CONNECT_METRICS["token_issued"] += 1
+        CONNECT_LATENCY.append(time.monotonic() - t0)
+        if len(CONNECT_LATENCY) > 1000:
+            CONNECT_LATENCY[:] = CONNECT_LATENCY[-1000:]
         # NEW: Echo agentic context and approval info in response (P0/P1)
         result["task_id"] = req.task_id
         result["workflow_run_id"] = req.workflow_run_id
@@ -1721,6 +1750,15 @@ async def approve_grant(
             "message": f"No grant found with id: {grant_id}",
             "grant_id": grant_id,
         }))
+    if env is not None:
+        from db.connect_orm import ConnectAppModel
+        app = await ConnectAppModel(env.DB).find_by_id(grant.connect_app_id)
+        if not app or app.developer_user_id != approved_by_user_id:
+            raise HTTPException(status_code=403, detail=json.dumps({
+                "error": "unauthorized",
+                "message": "Only the app owner can approve this grant",
+                "grant_id": grant_id,
+            }))
     
     # Can only approve pending grants
     if grant.approval_status != "pending_approval":
@@ -1743,7 +1781,7 @@ async def approve_grant(
     await _audit(
         audit_model,
         event_type=ConnectAuditEventType.GRANT_APPROVED,
-        actor_type=ConnectAuditActorType.USER,
+        actor_type=ConnectAuditActorType.CONNECT_USER,
         actor_id=approved_by_user_id,
         connect_app_id=grant.connect_app_id,
         resource_type=ConnectResourceType.CONNECT_GRANT,
@@ -1791,6 +1829,15 @@ async def deny_grant(
             "grant_id": grant_id,
         }))
     
+    if env is not None:
+        from db.connect_orm import ConnectAppModel
+        app = await ConnectAppModel(env.DB).find_by_id(grant.connect_app_id)
+        if not app or app.developer_user_id != denied_by_user_id:
+            raise HTTPException(status_code=403, detail=json.dumps({
+                "error": "unauthorized",
+                "message": "Only the app owner can deny this grant",
+                "grant_id": grant_id,
+            }))
     if grant.approval_status != "pending_approval":
         raise HTTPException(status_code=409, detail=json.dumps({
             "error": "grant_invalid_state",
@@ -1811,7 +1858,7 @@ async def deny_grant(
     await _audit(
         audit_model,
         event_type=ConnectAuditEventType.GRANT_DENIED,
-        actor_type=ConnectAuditActorType.USER,
+        actor_type=ConnectAuditActorType.CONNECT_USER,
         actor_id=denied_by_user_id,
         connect_app_id=grant.connect_app_id,
         resource_type=ConnectResourceType.CONNECT_GRANT,
@@ -1885,7 +1932,12 @@ async def get_connect_metrics(env, workspace_user_id: str):
         if e.created_at and e.created_at >= twenty_four_hours_ago
     ]
     
+    p50 = sorted(CONNECT_LATENCY)[len(CONNECT_LATENCY)//2] if CONNECT_LATENCY else 0
+    p99 = sorted(CONNECT_LATENCY)[int(len(CONNECT_LATENCY)*0.99)] if CONNECT_LATENCY else 0
     return success({
         "pending_approvals": pending_count,
         "token_requests_24h": len(recent_tokens),
+        "metrics": dict(CONNECT_METRICS),
+        "latency_p50_ms": round(p50*1000, 2),
+        "latency_p99_ms": round(p99*1000, 2),
     })
