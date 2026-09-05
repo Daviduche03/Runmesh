@@ -800,6 +800,25 @@ async def api_deny_grant(
         return error(e.status_code, e.detail)
 
 
+@app.get("/api/v1/tasks/{task_id}/grant_status")
+async def api_task_grant_status(
+    task_id: str,
+    request: Request,
+    current_user: dict = Depends(require_auth("read")),
+):
+    env = request.scope["env"]
+    task = await TaskModel(env.DB).find_by_id(task_id)
+    if not task or task.get("user_id") != current_user["id"]:
+        return error(404, "Task not found")
+    grant_id = task.get("connect_grant_id")
+    if not grant_id:
+        return success({"task_id": task_id, "grant_id": None, "approval_status": None})
+    grant = await ConnectGrantModel(env.DB).find_by_id(grant_id)
+    if not grant:
+        return success({"task_id": task_id, "grant_id": grant_id, "approval_status": "not_found"})
+    return success({"task_id": task_id, "grant_id": grant_id, "approval_status": grant.approval_status, "agent_id": grant.agent_id})
+
+
 @app.get("/api/v1/connect/metrics")
 async def api_get_connect_metrics(
     request: Request,

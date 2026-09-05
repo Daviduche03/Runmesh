@@ -143,9 +143,16 @@ async def create_task(task: TaskPublish, env, user_id: str) -> dict:
     }
     if task.signing_secret:
         task_data["signing_secret"] = task.signing_secret
+    if task.connect_grant_id:
+        task_data["connect_grant_id"] = task.connect_grant_id
     if idempotency_key:
         task_data["idempotency_key"] = idempotency_key
     apply_task_templates(task_data, task.payload_template, task.url_template)
+    if task.connect_grant_id:
+        from db.connect_orm import ConnectGrantModel
+        grant = await ConnectGrantModel(env.DB).find_by_id(task.connect_grant_id)
+        if grant and grant.approval_status != "approved":
+            task_data["status"] = "waiting_for_grant"
     if task.workflow_id:
         workflow_model = WorkflowModel(env.DB)
         workflow = await workflow_model.find_by_id(task.workflow_id)
@@ -155,8 +162,10 @@ async def create_task(task: TaskPublish, env, user_id: str) -> dict:
         task_data["workflow_id"] = task.workflow_id
         task_data["step_order"] = len(existing)
     task_id = await task_model.create(task_data)
-    await env.TASK_QUEUE.send({"task_id": task_id})
-    return success({"task_id": task_id}, message="Task queued")
+    if task_data.get("status") != "waiting_for_grant":
+        await env.TASK_QUEUE.send({"task_id": task_id})
+        return success({"task_id": task_id}, message="Task queued")
+    return success({"task_id": task_id}, message="Task waiting for grant approval")
 
 async def create_workflow(workflow: WorkflowCreate, env, user_id: str) -> dict:
     description = (workflow.description or "").strip()

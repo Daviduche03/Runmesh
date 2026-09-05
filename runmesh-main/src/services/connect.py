@@ -1410,6 +1410,12 @@ async def exchange_connect_token(
                     "grant_id": grant.id,
                     "valid_until": grant.valid_until,
                 }))
+        if grant.max_uses is not None and grant.use_count >= grant.max_uses:
+            raise HTTPException(status_code=403, detail=json.dumps({
+                "error": "grant_exhausted",
+                "message": "Grant has reached max uses",
+                "grant_id": grant.id,
+            }))
         
         result["grant_access_token"] = _build_grant_access_token(
             jwt_secret,
@@ -1419,6 +1425,8 @@ async def exchange_connect_token(
             workspace_project_id=req.workspace_project_id,
         )
         result["grant_access_expires_in"] = GRANT_ACCESS_TTL_MINUTES * 60
+        if grant.max_uses is not None:
+            await grant_model.update_grant(grant.id, {"use_count": grant.use_count + 1})
         # NEW: Echo agentic context and approval info in response (P0/P1)
         result["task_id"] = req.task_id
         result["workflow_run_id"] = req.workflow_run_id
@@ -1749,6 +1757,13 @@ async def approve_grant(
             "approved_at": now,
         },
     )
+    if env and hasattr(env, "TASK_QUEUE"):
+        from db.orm import TaskModel
+        task_model = TaskModel(env.DB)
+        waiting = await task_model.find_many("tasks", "connect_grant_id = ? AND status = ?", grant_id, "waiting_for_grant")
+        for t in waiting:
+            await task_model.update("tasks", "id = ?", {"status": "queued", "updated_at": now}, t["id"])
+            await env.TASK_QUEUE.send({"task_id": t["id"]})
     
     # Return updated grant
     updated_grant = await grant_model.find_by_id(grant_id)
@@ -1811,6 +1826,12 @@ async def deny_grant(
             "denied_at": now,
         },
     )
+    if env and hasattr(env, "TASK_QUEUE"):
+        from db.orm import TaskModel
+        task_model = TaskModel(env.DB)
+        waiting = await task_model.find_many("tasks", "connect_grant_id = ? AND status = ?", grant_id, "waiting_for_grant")
+        for t in waiting:
+            await task_model.update("tasks", "id = ?", {"status": "failed", "updated_at": now}, t["id"])
     
     # Return updated grant
     updated_grant = await grant_model.find_by_id(grant_id)

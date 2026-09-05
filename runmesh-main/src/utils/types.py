@@ -529,6 +529,10 @@ class ConnectGrantRow(ConnectRowBase):
     valid_from: Optional[str] = None
     valid_until: Optional[str] = None
     resource_filters: Optional[Dict[str, Any]] = None
+    max_uses: Optional[int] = None
+    use_count: int = 0
+    project_id: Optional[str] = None
+    environment: Optional[str] = None
 
     @field_validator("scopes", mode="before")
     @classmethod
@@ -539,6 +543,16 @@ class ConnectGrantRow(ConnectRowBase):
     @classmethod
     def _resource_filters(cls, value: Any) -> Optional[Dict[str, Any]]:
         return parse_json_dict(value) if value else None
+
+    @field_validator("max_uses", mode="before")
+    @classmethod
+    def _max_uses(cls, value: Any) -> Optional[int]:
+        if value is None:
+            return None
+        v = int(value)
+        if v <= 0:
+            raise ValueError("max_uses must be positive")
+        return v
 
     @field_validator("status", mode="before")
     @classmethod
@@ -559,6 +573,34 @@ class ConnectGrantCreate(BaseModel):
     valid_from: Optional[str] = None
     valid_until: Optional[str] = None
     resource_filters: Optional[Dict[str, Any]] = None
+    max_uses: Optional[int] = None
+    project_id: Optional[str] = None
+    environment: Optional[str] = None
+
+    @field_validator("resource_filters", mode="before")
+    @classmethod
+    def _rf(cls, value: Any) -> Optional[Dict[str, Any]]:
+        return parse_json_dict(value) if value else None
+
+    @field_validator("max_uses", mode="before")
+    @classmethod
+    def _mu(cls, value: Any) -> Optional[int]:
+        if value is None:
+            return None
+        v = int(value)
+        if v <= 0:
+            raise ValueError("max_uses must be positive")
+        return v
+
+    @field_validator("environment", mode="before")
+    @classmethod
+    def _env(cls, value: Any) -> Optional[str]:
+        if value is None:
+            return None
+        v = str(value).strip().lower()
+        if v not in ("dev", "staging", "prod"):
+            raise ValueError("environment must be dev, staging, or prod")
+        return v
 
 
 class ConnectSessionRow(ConnectRowBase):
