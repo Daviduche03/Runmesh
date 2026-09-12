@@ -1,11 +1,11 @@
-export const container = "mx-auto w-[min(1280px,calc(100%_-_48px))]"
-export const narrowContainer = "mx-auto w-[min(1120px,calc(100%_-_48px))]"
-export const sectionPadding = "py-24 lg:py-32"
+export const container = "mx-auto w-[min(1200px,calc(100%_-_40px))]"
+export const containerWide = "mx-auto w-[min(1320px,calc(100%_-_40px))]"
+export const sectionY = "py-24 lg:py-28"
+export const hairline = "border-[#1c1d20]"
 
 export const headerNavLinks = [
-	{ label: "Agent actions", id: "task-api" },
-	{ label: "Primitives", id: "features" },
-	{ label: "Runs", id: "lifecycle" },
-	{ label: "Platform", id: "platform" },
-	{ label: "Contact", id: "contact" },
+	{ label: "Primitives", id: "primitives" },
+	{ label: "Observability", id: "observability" },
+	{ label: "Interface", id: "interface" },
+	{ label: "Technical", id: "technical" },
 ] as const

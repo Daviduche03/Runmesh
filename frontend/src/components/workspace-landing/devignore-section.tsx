@@ -1,6 +1,5 @@
-import { motion } from "framer-motion"
-import { Badge } from "./badge"
-import { container, sectionPadding } from "./constants"
+import { container } from "./constants"
+import { SectionHeading } from "@/components/landing-page/section-heading"
 
 const defaultDevignore = `# .devignore — files and directories to exclude from sync
 .git/
@@ -19,61 +18,46 @@ vendor/
 *.swp
 *.swo
 .DS_Store
-Thumbs.db
-`
+Thumbs.db`
 
 export function DevignoreSection() {
 	return (
-		<section id="devignore" className={`scroll-mt-14 border-b border-[#15181d] ${sectionPadding}`}>
+		<section id="devignore" className="scroll-mt-14 border-b border-[var(--rm-line)] py-24 lg:py-32">
 			<div className={container}>
-				<motion.div
-					initial={{ opacity: 0, y: 24 }}
-					whileInView={{ opacity: 1, y: 0 }}
-					viewport={{ once: true, margin: "-80px" }}
-					transition={{ duration: 0.7, ease: [0.21, 0.98, 0.35, 1] }}
-				>
-					<Badge>.devignore</Badge>
-					<h2 className="max-w-[640px] text-balance text-[clamp(34px,4vw,56px)] font-[590] leading-[1.04] tracking-[-0.05em] text-white">
-						Dev-aware sync for real repositories
-					</h2>
-					<p className="mt-4 max-w-[560px] text-[17px] leading-7 tracking-[-0.015em] text-[#8f949e]">
-						A <code className="rounded bg-[#161616] px-1.5 py-0.5 text-[15px] text-[#d8dce3]">.devignore</code> file in your project root uses standard gitignore syntax to keep
-						build artifacts, dependencies, secrets, and OS junk out of the cloud context agents consume.
-					</p>
-				</motion.div>
+				<SectionHeading index="02" label=".devignore" title="Dev-aware sync for real repositories">
+					A .devignore file in your project root uses standard gitignore syntax to keep build artifacts,
+					dependencies, secrets, and OS junk out of the cloud context agents consume.
+				</SectionHeading>
 
-				<motion.div
-					initial={{ opacity: 0, y: 24 }}
-					whileInView={{ opacity: 1, y: 0 }}
-					viewport={{ once: true, margin: "-80px" }}
-					transition={{ duration: 0.7, ease: [0.21, 0.98, 0.35, 1], delay: 0.15 }}
-					className="mt-12 grid gap-8 lg:grid-cols-[1fr_1.2fr] lg:items-center"
-				>
-					<div>
-						<h3 className="text-[18px] font-[590] tracking-[-0.01em] text-[#d8dce3]">Created automatically</h3>
-						<p className="mt-2 text-[15px] leading-6 text-[#8f949e]">
-							When you run <code className="rounded bg-[#161616] px-1.5 py-0.5 text-[14px] text-[#d8dce3]">runmesh link</code>, a sensible
-							default <code className="rounded bg-[#161616] px-1.5 py-0.5 text-[14px] text-[#d8dce3]">.devignore</code> is generated. Edit it
-							anytime. Patterns are applied via rclone filters during every sync operation.
-						</p>
-						<h3 className="mt-8 text-[18px] font-[590] tracking-[-0.01em] text-[#d8dce3]">Same syntax as .gitignore</h3>
-						<p className="mt-2 text-[15px] leading-6 text-[#8f949e]">
-							Wildcards, directory-only patterns, negation — everything works the way you expect.
-						</p>
+				<div className="mt-14 grid gap-10 lg:grid-cols-[1fr_1.2fr] lg:items-start lg:gap-16">
+					<div className="space-y-6 text-[15px] leading-7 text-[var(--rm-muted)]">
+						<div>
+							<h3 className="font-display text-[16px] font-medium tracking-[-0.01em] text-[var(--rm-fg)]">
+								Created automatically
+							</h3>
+							<p className="mt-2">
+								<span className="font-mono text-[13px] text-[var(--rm-accent)]">runmesh link</span> generates a
+								sensible default. Edit it anytime; patterns are applied via rclone filters on every sync.
+							</p>
+						</div>
+						<div>
+							<h3 className="font-display text-[16px] font-medium tracking-[-0.01em] text-[var(--rm-fg)]">
+								Same syntax as .gitignore
+							</h3>
+							<p className="mt-2">Wildcards, directory-only patterns, negation — everything works as expected.</p>
+						</div>
 					</div>
 
-					<div className="overflow-hidden rounded-lg border border-[#24272d] bg-[#0d0e10]">
-						<div className="flex items-center gap-2 border-b border-[#24272d] px-4 py-2.5">
-							<span className="size-2.5 rounded-full bg-[#ff5f56]" />
-							<span className="size-2.5 rounded-full bg-[#ffbd2e]" />
-							<span className="size-2.5 rounded-full bg-[#27c93f]" />
-							<span className="ml-2 text-[12px] text-[#595a5c]">.devignore</span>
+					<div className="overflow-hidden border border-[var(--rm-line)] bg-[var(--rm-panel)]">
+						<div className="flex items-center justify-between border-b border-[var(--rm-line)] px-4 py-2.5">
+							<span className="font-mono text-[11px] text-[var(--rm-faint)]">.devignore</span>
+							<span className="font-mono text-[10px] uppercase tracking-[0.16em] text-[var(--rm-faint)]">gitignore</span>
 						</div>
-						<pre className="overflow-x-auto p-4 text-[13px] leading-5 text-[#c9cdd4]">
+						<pre className="overflow-x-auto p-5 font-mono text-[12.5px] leading-6 text-[var(--rm-fg-2)]">
 							<code>{defaultDevignore}</code>
 						</pre>
 					</div>
-				</motion.div>
+				</div>
 			</div>
 		</section>
 	)

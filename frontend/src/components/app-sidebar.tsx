@@ -27,8 +27,8 @@ export function AppSidebar() {
 			<SidebarHeader className="h-12 justify-center gap-0 border-b border-sidebar-border px-2 py-0">
 				<SidebarMenuButton asChild>
 					<Link to="/dashboard" className="flex items-center gap-2">
-						<LogoIcon className="size-5 shrink-0 text-foreground" />
-						<span className="font-medium text-foreground!">Runmesh</span>
+						<LogoIcon className="size-5 shrink-0 text-primary" />
+						<span className="font-display font-medium text-foreground!">Runmesh</span>
 					</Link>
 				</SidebarMenuButton>
 			</SidebarHeader>

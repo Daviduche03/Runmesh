@@ -1,6 +1,5 @@
 import { Link, useLocation } from "react-router-dom"
 import { LogoIcon } from "@/components/logo"
-import { Button } from "@/components/ui/button"
 import { container, headerNavLinks } from "./constants"
 import { scrollToSection } from "./scroll-to-section"
 
@@ -8,18 +7,18 @@ export function Header() {
 	const { pathname } = useLocation()
 
 	return (
-		<header className="fixed inset-x-0 top-0 z-20 bg-transparent backdrop-blur-xl supports-backdrop-filter:bg-[#08090a]/20">
+		<header className="fixed inset-x-0 top-0 z-30 border-b border-[var(--rm-line)] bg-[var(--rm-bg-trans)] backdrop-blur-md">
 			<nav className={`${container} flex h-14 items-center justify-between`}>
 				<Link
 					to="/"
-					className="flex items-center gap-2.5 text-lg font-semibold tracking-tight text-white no-underline"
+					className="flex items-center gap-2.5 text-[15px] font-medium tracking-[-0.01em] text-[var(--rm-fg)] no-underline"
 					aria-label="Runmesh home"
 				>
-					<LogoIcon className="size-6" />
-					<span>Runmesh</span>
+					<LogoIcon className="size-5 text-[var(--rm-accent)]" />
+					<span className="font-display">Runmesh</span>
 				</Link>
 
-				<div className="hidden items-center gap-6 text-sm text-[#9a9da4] lg:flex">
+				<div className="hidden items-center gap-7 font-mono text-[11px] uppercase tracking-[0.16em] text-[var(--rm-muted)] lg:flex">
 					{headerNavLinks.map(({ label, id }) => (
 						<Link
 							to={`/#${id}`}
@@ -30,30 +29,30 @@ export function Header() {
 									window.history.replaceState(null, "", `/#${id}`)
 								}
 							}}
-							className="text-inherit no-underline transition-colors hover:text-white"
+							className="text-inherit no-underline transition-colors hover:text-[var(--rm-fg)]"
 							key={id}
 						>
 							{label}
 						</Link>
 					))}
-					<Link
-						to="/workspace"
-						className="text-inherit no-underline transition-colors hover:text-white"
-					>
+					<Link to="/workspace" className="text-inherit no-underline transition-colors hover:text-[var(--rm-fg)]">
 						Workspace
 					</Link>
 				</div>
 
-				<div className="flex items-center gap-4">
+				<div className="flex items-center gap-5">
 					<Link
 						to="/login"
-						className="hidden border-l border-[#24272d] pl-4 text-sm text-[#9a9da4] no-underline transition-colors hover:text-white md:block"
+						className="hidden font-mono text-[11px] uppercase tracking-[0.16em] text-[var(--rm-muted)] no-underline transition-colors hover:text-[var(--rm-fg)] md:block"
 					>
 						Log in
 					</Link>
-					<Button asChild size="sm" className="bg-[#f2f2f2] text-[#08090a] hover:bg-white">
-						<Link to="/signup">Sign up</Link>
-					</Button>
+					<Link
+						to="/signup"
+						className="inline-flex h-8 items-center rounded-[4px] bg-[var(--rm-btn-bg)] px-3.5 text-[12px] font-medium text-[var(--rm-btn-fg)] no-underline transition-colors hover:opacity-90"
+					>
+						Start building
+					</Link>
 				</div>
 			</nav>
 		</header>

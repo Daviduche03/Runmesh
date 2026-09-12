@@ -1,31 +1,30 @@
 import { Link } from "react-router-dom"
-import { Button } from "@/components/ui/button"
-import { narrowContainer, sectionPadding } from "./constants"
-import { motion } from "framer-motion"
+import { container } from "./constants"
 
 export function PreFooter() {
 	return (
-		<section id="contact" className={`scroll-mt-14 ${sectionPadding} text-center`}>
-			<div className={narrowContainer}>
-				<motion.h2
-					initial={{ opacity: 0, y: 24 }}
-					whileInView={{ opacity: 1, y: 0 }}
-					viewport={{ once: true, margin: "-80px" }}
-					transition={{ duration: 0.7, ease: [0.21, 0.98, 0.35, 1] }}
-					className="mx-auto max-w-[760px] text-balance text-[clamp(32px,5vw,56px)] font-[590] leading-[1.02] tracking-[-0.055em] text-white"
-				>
-					Build agents that can act, wait, and prove what happened
-				</motion.h2>
-				<motion.div
-					initial={{ opacity: 0, y: 24 }}
-					whileInView={{ opacity: 1, y: 0 }}
-					viewport={{ once: true, margin: "-80px" }}
-					transition={{ duration: 0.7, ease: [0.21, 0.98, 0.35, 1], delay: 0.15 }}
-				>
-					<Button asChild className="mt-6 bg-[#f2f2f2] text-sm font-medium text-[#08090a] hover:bg-white">
-						<Link to="/signup">Start building</Link>
-					</Button>
-				</motion.div>
+		<section id="contact" className="scroll-mt-14 border-b border-[var(--rm-line)] py-24 lg:py-32">
+			<div className={`${container} grid gap-10 lg:grid-cols-[minmax(0,1fr)_auto] lg:items-end`}>
+				<div>
+					<div className="font-mono text-[11px] uppercase tracking-[0.2em] text-[var(--rm-accent)]">[05] Get started</div>
+					<h2 className="mt-5 max-w-[760px] text-balance font-display text-[clamp(30px,4vw,52px)] font-medium leading-[1.04] tracking-[-0.03em] text-[var(--rm-fg)]">
+						Queue webhooks, schedule jobs, and orchestrate workflows
+					</h2>
+				</div>
+				<div className="flex items-center gap-3">
+					<Link
+						to="/signup"
+						className="inline-flex h-9 items-center rounded-[4px] bg-[var(--rm-btn-bg)] px-4 text-[13px] font-medium text-[var(--rm-btn-fg)] no-underline transition-colors hover:opacity-90"
+					>
+						Start building
+					</Link>
+					<Link
+						to="/login"
+						className="inline-flex h-9 items-center rounded-[4px] border border-[var(--rm-line-strong)] px-4 text-[13px] font-medium text-[var(--rm-fg-2)] no-underline transition-colors hover:border-[var(--rm-line-strong)] hover:text-[var(--rm-fg)]"
+					>
+						Log in
+					</Link>
+				</div>
 			</div>
 		</section>
 	)

@@ -1,64 +1,58 @@
 import { Link } from "react-router-dom"
-import { Button } from "@/components/ui/button"
-import { container, sectionPadding } from "./constants"
+import { container } from "./constants"
+import { SectionLabel } from "@/components/landing-page/section-label"
+import { WindowImage } from "@/components/landing-page/window-image"
+
+const facts = [
+	{ k: "sync", v: "up · down · watch" },
+	{ k: "secrets", v: ".env encrypted, AES-256-GCM" },
+	{ k: "ignore", v: ".devignore, gitignore syntax" },
+]
 
 export function Hero() {
 	return (
-		<section className={`relative border-b border-[#1f2227] pt-40 ${sectionPadding}`}>
+		<section className="relative border-b border-[var(--rm-line)] pt-32 pb-16 lg:pt-40 lg:pb-20">
 			<div className={container}>
-				<div className="grid items-end gap-8 lg:grid-cols-[1fr_360px]">
+				<div className="grid gap-12 lg:grid-cols-[minmax(0,1fr)_minmax(0,340px)] lg:items-end">
 					<div>
-						<h1 className="max-w-[800px] text-balance text-[clamp(40px,5vw,60px)] font-[510] leading-[1.08] tracking-[-0.055em] text-white opacity-0 animate-fade-in-up">
-							Workspace context for humans and coding agents
+						<SectionLabel index="00">Runmesh Workspace</SectionLabel>
+						<h1 className="mt-6 max-w-[760px] text-balance font-display text-[clamp(38px,5vw,64px)] font-medium leading-[1.02] tracking-[-0.03em] text-[var(--rm-fg)]">
+							Your project files, on every device
 						</h1>
-						<p className="mt-6 max-w-[720px] text-base leading-6 tracking-[-0.01em] text-[#94979f] opacity-0 animate-fade-in-up-2">
-							Runmesh Workspace syncs project files to S3-compatible storage, mounts them locally with FUSE,
-							and gives developers, devices, and agent sandboxes one shared source of truth.
+						<p className="mt-6 max-w-[560px] text-[17px] leading-7 tracking-[-0.01em] text-[var(--rm-muted)]">
+							Sync a project to S3-compatible storage — Cloudflare R2, AWS S3, Minio — keep build artifacts out
+							with .devignore, and carry your .env secrets encrypted. One CLI, no commits, no stale copies.
 						</p>
-						<div className="mt-8 flex items-center gap-3 opacity-0 animate-fade-in-up-3">
-							<Button asChild className="bg-[#f2f2f2] text-sm font-medium text-bg-primary hover:bg-white px-5">
-								<Link to="/signup">Get started</Link>
-							</Button>
-							<Button asChild variant="outline" className="border-[#24272d] text-sm font-medium text-[#d8dce3] hover:bg-[#1c1d21] px-5">
-								<Link to="/workspace#cli">Install CLI</Link>
-							</Button>
+						<div className="mt-8 flex items-center gap-3">
+							<Link
+								to="/signup"
+								className="inline-flex h-9 items-center rounded-[4px] bg-[var(--rm-btn-bg)] px-4 text-[13px] font-medium text-[var(--rm-btn-fg)] no-underline transition-opacity hover:opacity-90"
+							>
+								Get started
+							</Link>
+							<Link
+								to="/workspace#cli"
+								className="inline-flex h-9 items-center rounded-[4px] border border-[var(--rm-line-strong)] px-4 text-[13px] font-medium text-[var(--rm-fg-2)] no-underline transition-colors hover:text-[var(--rm-fg)]"
+							>
+								Install the CLI
+							</Link>
 						</div>
 					</div>
 
-					<div className="mb-1 hidden flex-col items-start gap-1.5 text-sm font-medium text-[#d8dce3] lg:flex">
-						<span className="flex items-center gap-3">
-							<span className="grid size-4 shrink-0 place-items-center rounded-md bg-[#1a3424]">
-								<span className="size-1.5 rounded-sm bg-[#4cb782]" />
-							</span>
-							<span>Shared context for agent execution</span>
-						</span>
-						<span className="font-normal text-[#747883]">runmesh watch</span>
-						<span className="mt-2 flex items-center gap-3">
-							<span className="grid size-4 shrink-0 place-items-center rounded-md bg-[#24204a]">
-								<span className="size-1.5 rounded-sm bg-[#6f7cff]" />
-							</span>
-							<span>Mount files where work happens</span>
-						</span>
-						<span className="font-normal text-[#747883]">runmesh mount ~/code</span>
-					</div>
+					<dl className="grid gap-y-4 border-t border-[var(--rm-line)] pt-6 lg:border-t-0 lg:pt-0">
+						{facts.map((fact) => (
+							<div className="flex flex-col gap-1" key={fact.k}>
+								<dt className="font-mono text-[11px] uppercase tracking-[0.16em] text-[var(--rm-faint)]">
+									{fact.k}
+								</dt>
+								<dd className="font-mono text-[13px] text-[var(--rm-fg-2)]">{fact.v}</dd>
+							</div>
+						))}
+					</dl>
 				</div>
 
-				<div className="relative mt-12 overflow-hidden rounded-t-lg border border-b-0 border-[#2b2e35] bg-[#101113] opacity-0 animate-fade-in-up-4">
-					<div className="p-4">
-						<pre className="overflow-x-auto text-[13px] leading-6 text-[#c9cdd4]">
-							<code>{`$ runmesh link midday
-Linked /Users/me/code/midday → cloud: matriq/midday
-
-$ runmesh watch
-Watching /Users/me/code/midday (push on change, pull every 8s)...
-
-$ runmesh mount ~/code --prefix midday
-Mounted matriq/midday at /Users/me/code
-
-$ ls ~/code/midday/
-src/  package.json  tsconfig.json  .devignore`}</code>
-						</pre>
-					</div>
+				<div className="mt-14 border border-[var(--rm-line)] bg-[var(--rm-panel)] p-2 lg:mt-16">
+					<WindowImage base="ui-10" alt="The runmesh CLI linking, syncing, and checking a project" />
 				</div>
 			</div>
 		</section>

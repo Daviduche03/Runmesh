@@ -30,7 +30,7 @@ export function Dashboard() {
 		<div className="grid gap-4">
 			<div className="flex flex-col gap-4 md:flex-row md:items-end md:justify-between">
 				<div>
-					<h1 className="text-xl font-semibold tracking-tight">Agent operations</h1>
+							<h1 className="font-display text-[22px] font-medium tracking-[-0.02em]">Agent operations</h1>
 					<p className="mt-1 max-w-2xl text-sm text-muted-foreground">
 						Watch durable actions, workflow runs, delegated access, and workspace activity from one control plane.
 					</p>

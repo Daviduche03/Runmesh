@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import type { ReactNode } from "react";
 import { useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -18,13 +19,6 @@ import {
 	DropdownMenuItem,
 	DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { DashboardCard } from "@/components/dashboard-card";
-import {
-	CardContent,
-	CardFooter,
-	CardHeader,
-	CardTitle,
-} from "@/components/ui/card";
 import { useConnectAppsStore, type ConnectApp } from "@/stores/connect-apps-store";
 import { apiGet } from "@/lib/api";
 import EmptyState from "@/components/empty-state";
@@ -33,7 +27,36 @@ import {
 } from "lucide-react";
 import { Bar, BarChart, XAxis } from "recharts";
 import { ChartContainer, ChartTooltip, ChartTooltipContent, type ChartConfig } from "@/components/ui/chart";
-import { CardDescription } from "@/components/ui/card";
+
+function Stat({ label, value, sub }: { label: string; value: ReactNode; sub?: string }) {
+	return (
+		<div className="bg-background p-5">
+			<dt className="font-mono text-[10.5px] uppercase tracking-[0.14em] text-muted-foreground">{label}</dt>
+			<dd className="mt-2 text-[26px] font-medium leading-none tabular-nums">{value}</dd>
+			{sub ? <div className="mt-2 text-[12px] text-muted-foreground">{sub}</div> : null}
+		</div>
+	);
+}
+
+function Panel({
+	title,
+	aside,
+	children,
+}: {
+	title: string;
+	aside?: string;
+	children: ReactNode;
+}) {
+	return (
+		<div className="border border-border bg-background">
+			<div className="flex items-baseline justify-between border-b border-border px-5 py-3">
+				<h3 className="font-mono text-[11px] uppercase tracking-[0.16em] text-muted-foreground">{title}</h3>
+				{aside ? <span className="text-[12px] text-muted-foreground">{aside}</span> : null}
+			</div>
+			<div className="p-5">{children}</div>
+		</div>
+	);
+}
 
 function ConnectAppsTable({ apps, loading, onDelete }: {
 	apps: ConnectApp[];
@@ -46,45 +69,43 @@ function ConnectAppsTable({ apps, loading, onDelete }: {
 		<Table>
 			<TableHeader>
 				<TableRow>
-					<TableHead className="ps-6">Name</TableHead>
+					<TableHead className="ps-5">Name</TableHead>
 					<TableHead>Slug</TableHead>
 					<TableHead>Providers</TableHead>
 					<TableHead>Status</TableHead>
 					<TableHead>Created</TableHead>
-					<TableHead className="pe-6 text-right">Actions</TableHead>
+					<TableHead className="pe-5 text-right">Actions</TableHead>
 				</TableRow>
 			</TableHeader>
 			<TableBody>
 				{loading ? (
 					Array.from({ length: 3 }).map((_, i) => (
 						<TableRow className="h-12" key={i}>
-							<TableCell className="ps-6"><Skeleton className="h-4 w-24" /></TableCell>
+							<TableCell className="ps-5"><Skeleton className="h-4 w-24" /></TableCell>
 							<TableCell><Skeleton className="h-4 w-20" /></TableCell>
 							<TableCell><Skeleton className="h-4 w-16" /></TableCell>
 							<TableCell><Skeleton className="h-4 w-12" /></TableCell>
 							<TableCell><Skeleton className="h-4 w-20" /></TableCell>
-							<TableCell className="pe-6"><Skeleton className="h-4 w-8 ms-auto" /></TableCell>
+							<TableCell className="pe-5"><Skeleton className="ms-auto h-4 w-8" /></TableCell>
 						</TableRow>
 					))
 				) : apps.length === 0 ? null : (
 					apps.map((app) => (
-						<TableRow 
-							className="h-12 cursor-pointer" 
+						<TableRow
+							className="h-12 cursor-pointer"
 							key={app.id}
 							onClick={() => navigate(`/connect/apps/${app.id}`)}
 						>
-							<TableCell className="ps-6 font-medium">
-								{app.name}
-							</TableCell>
-							<TableCell className="text-muted-foreground text-sm font-mono">{app.slug}</TableCell>
-							<TableCell className="text-muted-foreground text-sm">
+							<TableCell className="ps-5 font-medium">{app.name}</TableCell>
+							<TableCell className="font-mono text-[13px] text-muted-foreground">{app.slug}</TableCell>
+							<TableCell className="text-[13px] text-muted-foreground">
 								{app.allowed_providers.length ? app.allowed_providers.join(", ") : "any"}
 							</TableCell>
-							<TableCell className="text-sm">{app.status}</TableCell>
-							<TableCell className="text-muted-foreground text-sm">
+							<TableCell className="text-[13px]">{app.status}</TableCell>
+							<TableCell className="text-[13px] text-muted-foreground">
 								{app.created_at ? new Date(app.created_at).toLocaleDateString() : "—"}
 							</TableCell>
-							<TableCell className="pe-6 text-right" onClick={(e) => e.stopPropagation()}>
+							<TableCell className="pe-5 text-right" onClick={(e) => e.stopPropagation()}>
 								<DropdownMenu>
 									<DropdownMenuTrigger asChild>
 										<Button variant="ghost" size="icon-sm">
@@ -92,17 +113,15 @@ function ConnectAppsTable({ apps, loading, onDelete }: {
 										</Button>
 									</DropdownMenuTrigger>
 									<DropdownMenuContent align="end">
-										<DropdownMenuItem onClick={() => {
-											navigator.clipboard.writeText(app.id);
-										}}>
-											<CopyIcon className="size-3.5 me-2" />
+										<DropdownMenuItem onClick={() => navigator.clipboard.writeText(app.id)}>
+											<CopyIcon className="me-2 size-3.5" />
 											Copy ID
 										</DropdownMenuItem>
-										<DropdownMenuItem 
-											className="text-red-400 focus:text-red-400"
+										<DropdownMenuItem
+											className="text-destructive focus:text-destructive"
 											onClick={() => onDelete(app.id, app.name)}
 										>
-											<Trash2Icon className="size-3.5 me-2" />
+											<Trash2Icon className="me-2 size-3.5" />
 											Delete
 										</DropdownMenuItem>
 									</DropdownMenuContent>
@@ -127,7 +146,6 @@ export function ConnectPage() {
 	const [cProviders, setCProviders] = useState("google");
 	const [cError, setCError] = useState("");
 
-	// Metrics state
 	const [pendingApprovals, setPendingApprovals] = useState<number>(0);
 	const [tokenRequests24h, setTokenRequests24h] = useState<number>(0);
 	const [metrics, setMetrics] = useState<Record<string, number>>({});
@@ -135,7 +153,6 @@ export function ConnectPage() {
 
 	useEffect(() => {
 		connectApps.fetch();
-		// Fetch metrics
 		const fetchMetrics = async () => {
 			try {
 				const res = await apiGet<{ pending_approvals: number; token_requests_24h: number; metrics: Record<string, number>; latency_p99_ms: number }>("/api/v1/connect/metrics");
@@ -183,137 +200,86 @@ export function ConnectPage() {
 	};
 
 	const totalGrants = Object.values(connectApps.grantsByApp).reduce((sum, g) => sum + g.length, 0);
+	const blockedKeys = Object.keys(metrics).filter((k) => k.startsWith("token_blocked_"));
 
 	return (
 		<div className="grid gap-8">
-			<div className="flex items-center justify-between">
+			<div className="flex flex-wrap items-end justify-between gap-4">
 				<div>
-					<h1 className="text-2xl font-semibold tracking-tight">Connect</h1>
-					<p className="text-sm text-muted-foreground mt-1">
-						Manage OAuth apps that issue scoped, auditable access for agents acting on behalf of users.
+					<h1 className="font-display text-[22px] font-medium tracking-[-0.02em]">Connect</h1>
+					<p className="mt-1 max-w-2xl text-[14px] leading-6 text-muted-foreground">
+						Register OAuth apps so users can sign in with Runmesh Connect and grant scoped, auditable access
+						to the services you build.
 					</p>
 				</div>
 				<Button onClick={() => setShowCreateModal(true)}>
-					<PlusIcon className="size-4 me-1.5" />
+					<PlusIcon className="me-1.5 size-4" />
 					Create app
 				</Button>
 			</div>
 
-			<div className="grid grid-cols-1 gap-px bg-border p-px md:grid-cols-2 lg:grid-cols-4">
-				<DashboardCard>
-					<CardHeader className="flex flex-row items-center justify-between">
-						<CardTitle className="font-normal text-xs tracking-wide">Registered apps</CardTitle>
-					</CardHeader>
-					<CardContent className="flex flex-row items-center gap-2">
-						<p className="font-semibold text-xl tabular-nums">{connectApps.loading ? "..." : connectApps.apps.length}</p>
-					</CardContent>
-					<CardFooter className="gap-1 rounded-none bg-background text-xs">
-						<span className="text-muted-foreground">OAuth 2.0 enabled</span>
-					</CardFooter>
-				</DashboardCard>
+			<dl className="grid grid-cols-2 gap-px border border-border bg-border sm:grid-cols-4">
+				<Stat label="Registered apps" value={connectApps.loading ? "…" : connectApps.apps.length} sub="OAuth 2.0" />
+				<Stat label="Active grants" value={totalGrants} sub="User authorizations" />
+				<Stat label="Pending approvals" value={pendingApprovals} sub="Awaiting review" />
+				<Stat label="Token requests" value={tokenRequests24h} sub="Last 24 hours" />
+			</dl>
 
-				<DashboardCard>
-					<CardHeader className="flex flex-row items-center justify-between">
-						<CardTitle className="font-normal text-xs tracking-wide">Active grants</CardTitle>
-					</CardHeader>
-					<CardContent className="flex flex-row items-center gap-2">
-						<p className="font-semibold text-xl tabular-nums">{totalGrants}</p>
-					</CardContent>
-					<CardFooter className="gap-1 rounded-none bg-background text-xs">
-						<span className="text-muted-foreground">User authorizations</span>
-					</CardFooter>
-				</DashboardCard>
-
-				<DashboardCard>
-					<CardHeader className="flex flex-row items-center justify-between">
-						<CardTitle className="font-normal text-xs tracking-wide">Pending approvals</CardTitle>
-					</CardHeader>
-					<CardContent className="flex flex-row items-center gap-2">
-						<p className="font-semibold text-xl tabular-nums">{pendingApprovals}</p>
-					</CardContent>
-					<CardFooter className="gap-1 rounded-none bg-background text-xs">
-						<span className="text-muted-foreground">Awaiting review</span>
-					</CardFooter>
-				</DashboardCard>
-
-				<DashboardCard>
-					<CardHeader className="flex flex-row items-center justify-between">
-						<CardTitle className="font-normal text-xs tracking-wide">Token requests</CardTitle>
-					</CardHeader>
-					<CardContent className="flex flex-row items-center gap-2">
-						<p className="font-semibold text-xl tabular-nums">{tokenRequests24h}</p>
-					</CardContent>
-					<CardFooter className="gap-1 rounded-none bg-background text-xs">
-						<span className="text-muted-foreground">Last 24 hours</span>
-					</CardFooter>
-				</DashboardCard>
-
-				<DashboardCard className="gap-0 lg:col-span-2">
-					<CardHeader className="gap-2">
-						<CardTitle>Blocked breakdown</CardTitle>
-						<CardDescription>Token requests blocked by reason, last isolate.</CardDescription>
-					</CardHeader>
-					<CardContent>
-						{Object.keys(metrics).filter(k => k.startsWith("token_blocked_")).length === 0 ? (
-							<div className="flex h-40 items-center justify-center">
-								<div className="text-center">
-									<BarChart3Icon className="mx-auto size-5 text-muted-foreground" />
-									<p className="mt-2 text-sm text-muted-foreground">No blocks yet</p>
-								</div>
+			<div className="grid gap-px border border-border bg-border lg:grid-cols-2">
+				<Panel title="Blocked requests" aside="by reason">
+					{blockedKeys.length === 0 ? (
+						<div className="flex h-40 items-center justify-center">
+							<div className="text-center">
+								<BarChart3Icon className="mx-auto size-5 text-muted-foreground" />
+								<p className="mt-2 text-[13px] text-muted-foreground">No blocks yet</p>
 							</div>
-						) : (
-							<ChartContainer config={{ count: { label: "Blocked", color: "var(--chart-1)" } } satisfies ChartConfig} className="h-40 w-full">
-								<BarChart accessibilityLayer data={[
-									{ reason: "pending", count: metrics["token_blocked_pending"] || 0 },
-									{ reason: "denied", count: metrics["token_blocked_denied"] || 0 },
-									{ reason: "expired", count: metrics["token_blocked_expired"] || 0 },
-									{ reason: "exhausted", count: metrics["token_blocked_exhausted"] || 0 },
-									{ reason: "not_yet", count: metrics["token_blocked_not_yet_valid"] || 0 },
-								]}>
-									<XAxis dataKey="reason" tickLine={false} axisLine={false} tickMargin={8} />
-									<ChartTooltip content={<ChartTooltipContent hideLabel />} cursor={false} />
-									<Bar dataKey="count" fill="var(--color-count)" radius={2} />
-								</BarChart>
-							</ChartContainer>
-						)}
-					</CardContent>
-				</DashboardCard>
+						</div>
+					) : (
+						<ChartContainer config={{ count: { label: "Blocked", color: "var(--chart-1)" } } satisfies ChartConfig} className="h-40 w-full">
+							<BarChart accessibilityLayer data={[
+								{ reason: "pending", count: metrics["token_blocked_pending"] || 0 },
+								{ reason: "denied", count: metrics["token_blocked_denied"] || 0 },
+								{ reason: "expired", count: metrics["token_blocked_expired"] || 0 },
+								{ reason: "exhausted", count: metrics["token_blocked_exhausted"] || 0 },
+								{ reason: "not yet", count: metrics["token_blocked_not_yet_valid"] || 0 },
+							]}>
+								<XAxis dataKey="reason" tickLine={false} axisLine={false} tickMargin={8} />
+								<ChartTooltip content={<ChartTooltipContent hideLabel />} cursor={false} />
+								<Bar dataKey="count" fill="var(--color-count)" radius={2} />
+							</BarChart>
+						</ChartContainer>
+					)}
+				</Panel>
 
-				<DashboardCard className="gap-0 lg:col-span-2">
-					<CardHeader className="gap-2">
-						<CardTitle>Token latency</CardTitle>
-						<CardDescription>p99 token exchange latency.</CardDescription>
-					</CardHeader>
-					<CardContent>
-						{!latencyP99 ? (
-							<div className="flex h-40 items-center justify-center">
-								<div className="text-center">
-									<BarChart3Icon className="mx-auto size-5 text-muted-foreground" />
-									<p className="mt-2 text-sm text-muted-foreground">No requests yet</p>
-								</div>
+				<Panel title="Token latency" aside={latencyP99 ? `${latencyP99}ms p99` : "p99"}>
+					{!latencyP99 ? (
+						<div className="flex h-40 items-center justify-center">
+							<div className="text-center">
+								<BarChart3Icon className="mx-auto size-5 text-muted-foreground" />
+								<p className="mt-2 text-[13px] text-muted-foreground">No requests yet</p>
 							</div>
-						) : (
-							<ChartContainer config={{ latency: { label: "Latency", color: "var(--chart-2)" } } satisfies ChartConfig} className="h-40 w-full">
-								<BarChart accessibilityLayer data={[{ name: "p99", latency: latencyP99 }]}>
-									<XAxis dataKey="name" tickLine={false} axisLine={false} />
-									<ChartTooltip content={<ChartTooltipContent hideLabel />} cursor={false} />
-									<Bar dataKey="latency" fill="var(--color-latency)" radius={2} />
-								</BarChart>
-							</ChartContainer>
-						)}
-					</CardContent>
-					<CardFooter className="gap-1 rounded-none bg-background text-xs">
-						<span className="text-muted-foreground">{latencyP99 ? `${latencyP99}ms p99` : "Token exchange"}</span>
-					</CardFooter>
-				</DashboardCard>
+						</div>
+					) : (
+						<ChartContainer config={{ latency: { label: "Latency", color: "var(--chart-2)" } } satisfies ChartConfig} className="h-40 w-full">
+							<BarChart accessibilityLayer data={[{ name: "p99", latency: latencyP99 }]}>
+								<XAxis dataKey="name" tickLine={false} axisLine={false} />
+								<ChartTooltip content={<ChartTooltipContent hideLabel />} cursor={false} />
+								<Bar dataKey="latency" fill="var(--color-latency)" radius={2} />
+							</BarChart>
+						</ChartContainer>
+					)}
+				</Panel>
 			</div>
 
-			<div className="rounded-none border border-border">
-				<div className="px-5 py-4 border-b border-border">
-					<h2 className="text-sm font-semibold tracking-wider text-muted-foreground uppercase">Registered apps</h2>
+			<div className="border border-border bg-background">
+				<div className="flex items-center justify-between border-b border-border px-5 py-3">
+					<h2 className="font-mono text-[11px] uppercase tracking-[0.16em] text-muted-foreground">Registered apps</h2>
+					{connectApps.apps.length > 0 ? (
+						<span className="text-[12px] text-muted-foreground">{connectApps.apps.length} total</span>
+					) : null}
 				</div>
 				{connectApps.loading && connectApps.apps.length === 0 ? (
-					<div className="py-16 flex items-center justify-center">
+					<div className="flex items-center justify-center py-16">
 						<Loader2Icon className="size-6 animate-spin text-muted-foreground" />
 					</div>
 				) : connectApps.apps.length === 0 ? (
@@ -324,7 +290,7 @@ export function ConnectPage() {
 						/>
 						<div className="flex justify-center pb-6">
 							<Button variant="outline" size="sm" onClick={() => setShowCreateModal(true)}>
-								<PlusIcon className="size-3.5 me-1.5" />
+								<PlusIcon className="me-1.5 size-3.5" />
 								Create app
 							</Button>
 						</div>
@@ -341,21 +307,21 @@ export function ConnectPage() {
 			<Modal open={showCreateModal} onClose={() => { setShowCreateModal(false); setCError(""); }} title="Create Connect app">
 				<form onSubmit={handleCreate} className="grid gap-5">
 					<div className="grid gap-1.5">
-						<label className="text-sm font-medium">Name</label>
+						<label className="font-mono text-[10.5px] uppercase tracking-[0.14em] text-muted-foreground">Name</label>
 						<Input placeholder="e.g. TaskFlow" value={cName} onChange={(e) => setCName(e.target.value)} />
 					</div>
 					<div className="grid gap-1.5">
-						<label className="text-sm font-medium">Slug</label>
+						<label className="font-mono text-[10.5px] uppercase tracking-[0.14em] text-muted-foreground">Slug</label>
 						<Input placeholder="e.g. taskflow" value={cSlug} onChange={(e) => setCSlug(e.target.value)} />
 					</div>
 					<div className="grid gap-1.5">
-						<label className="text-sm font-medium">Redirect URI</label>
+						<label className="font-mono text-[10.5px] uppercase tracking-[0.14em] text-muted-foreground">Redirect URI</label>
 						<Input placeholder="e.g. https://taskflow.io/auth/callback" value={cRedirectUri} onChange={(e) => setCRedirectUri(e.target.value)} />
 					</div>
 					<div className="grid gap-1.5">
-						<label className="text-sm font-medium">Allowed provider</label>
+						<label className="font-mono text-[10.5px] uppercase tracking-[0.14em] text-muted-foreground">Allowed provider</label>
 						<select
-							className="flex h-9 w-full rounded-none border border-input bg-background px-3 py-1 text-sm focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
+							className="flex h-9 w-full rounded-[4px] border border-input bg-background px-3 py-1 text-sm focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
 							value={cProviders}
 							onChange={(e) => setCProviders(e.target.value)}
 						>
@@ -363,11 +329,11 @@ export function ConnectPage() {
 							<option value="">Any (user selects at runtime)</option>
 						</select>
 					</div>
-					{cError && <p className="text-sm text-red-400">{cError}</p>}
-					<div className="flex justify-end gap-3 pt-2 border-t border-border">
+					{cError && <p className="text-sm text-destructive">{cError}</p>}
+					<div className="flex justify-end gap-3 border-t border-border pt-4">
 						<Button type="button" variant="outline" onClick={() => { setShowCreateModal(false); setCError(""); }}>Cancel</Button>
 						<Button type="submit" disabled={connectApps.creating}>
-							{connectApps.creating && <Loader2Icon className="size-4 animate-spin me-1.5" />}
+							{connectApps.creating && <Loader2Icon className="me-1.5 size-4 animate-spin" />}
 							Create app
 						</Button>
 					</div>
@@ -376,14 +342,14 @@ export function ConnectPage() {
 
 			<Modal open={!!deleteTarget} onClose={() => setDeleteTarget(null)} title="Delete Connect app">
 				<div className="grid gap-5">
-					<p className="text-sm text-muted-foreground">
+					<p className="text-sm leading-6 text-muted-foreground">
 						Are you sure you want to delete <span className="font-medium text-foreground">{deleteTarget?.name}</span>?
 						All grants and active sessions for this app will be revoked.
 					</p>
-					<div className="flex justify-end gap-3 pt-2 border-t border-border">
+					<div className="flex justify-end gap-3 border-t border-border pt-4">
 						<Button variant="outline" onClick={() => setDeleteTarget(null)}>Cancel</Button>
 						<Button variant="destructive" onClick={handleDelete} disabled={connectApps.deleting}>
-							{connectApps.deleting && <Loader2Icon className="size-4 animate-spin me-1.5" />}
+							{connectApps.deleting && <Loader2Icon className="me-1.5 size-4 animate-spin" />}
 							Delete
 						</Button>
 					</div>

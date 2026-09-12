@@ -1,4 +1,5 @@
 import { useEffect, useState, useCallback } from "react";
+import type { ReactNode } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -11,13 +12,6 @@ import {
 	TableHeader,
 	TableRow,
 } from "@/components/ui/table";
-import { DashboardCard } from "@/components/dashboard-card";
-import {
-	CardContent,
-	CardFooter,
-	CardHeader,
-	CardTitle,
-} from "@/components/ui/card";
 import { useConnectAppsStore } from "@/stores/connect-apps-store";
 import { apiGet } from "@/lib/api";
 import EmptyState from "@/components/empty-state";
@@ -52,6 +46,16 @@ const auditEventTypes = [
 	{ value: "connect.token.exchanged", label: "Token exchanged" },
 ] as const;
 
+function Stat({ label, value, sub }: { label: string; value: ReactNode; sub?: string }) {
+	return (
+		<div className="bg-background p-5">
+			<dt className="font-mono text-[10.5px] uppercase tracking-[0.14em] text-muted-foreground">{label}</dt>
+			<dd className="mt-2 text-[26px] font-medium leading-none tabular-nums">{value}</dd>
+			{sub ? <div className="mt-2 text-[12px] text-muted-foreground">{sub}</div> : null}
+		</div>
+	);
+}
+
 export function ConnectAppPage() {
 	const { appId } = useParams<{ appId: string }>();
 	const navigate = useNavigate();
@@ -66,7 +70,6 @@ export function ConnectAppPage() {
 	const [page, setPage] = useState(1);
 	const limit = 20;
 
-	// Metrics state
 	const [grants, setGrants] = useState(0);
 	const [tokens, setTokens] = useState(0);
 	const [uniqueUsers, setUniqueUsers] = useState(0);
@@ -98,20 +101,14 @@ export function ConnectAppPage() {
 
 	useEffect(() => { void fetch(); }, [fetch]);
 
-	// Fetch metrics
 	useEffect(() => {
 		if (!appId) return;
 		const fetchMetrics = async () => {
 			try {
-				// Fetch grants for this app
 				const grantsRes = await apiGet<any[]>(`/api/v1/connect/grants?app_id=${appId}`);
 				setGrants(grantsRes.data?.length ?? 0);
-				
-				// Count unique users from grants
 				const users = new Set(grantsRes.data?.map((g: any) => g.connect_user_id).filter(Boolean));
 				setUniqueUsers(users.size);
-
-				// Fetch tokens for this app
 				const tokensRes = await apiGet<any[]>(`/api/v1/connect/tokens?app_id=${appId}`);
 				setTokens(tokensRes.data?.length ?? 0);
 			} catch {
@@ -126,16 +123,16 @@ export function ConnectAppPage() {
 	if (!appId) return null;
 
 	return (
-		<div className="grid gap-4">
-			<div className="flex items-center justify-between">
+		<div className="grid gap-6">
+			<div className="flex flex-wrap items-center justify-between gap-4">
 				<div className="flex items-center gap-3">
-					<Button variant="ghost" size="icon-sm" onClick={() => navigate("/connect")}>
+					<Button variant="ghost" size="icon-sm" onClick={() => navigate("/connect")} aria-label="Back to Connect">
 						<ArrowLeftIcon className="size-4" />
 					</Button>
 					<div>
-						<h1 className="text-xl font-semibold tracking-tight">{app?.name ?? "Connect app"}</h1>
+						<h1 className="font-display text-[22px] font-medium tracking-[-0.02em]">{app?.name ?? "Connect app"}</h1>
 						{app && (
-							<p className="text-sm text-muted-foreground mt-1">
+							<p className="mt-1 font-mono text-[12px] text-muted-foreground">
 								{app.slug} · {app.status}
 							</p>
 						)}
@@ -144,129 +141,99 @@ export function ConnectAppPage() {
 			</div>
 
 			{app && (
-				<div className="grid grid-cols-1 gap-px bg-border p-px md:grid-cols-2 lg:grid-cols-4">
-					<DashboardCard>
-						<CardHeader className="flex flex-row items-center justify-between">
-							<CardTitle className="font-normal text-xs tracking-wide">Active grants</CardTitle>
-						</CardHeader>
-						<CardContent className="flex flex-row items-center gap-2">
-							<p className="font-semibold text-xl tabular-nums">{grants}</p>
-						</CardContent>
-						<CardFooter className="gap-1 rounded-none bg-background text-xs">
-							<span className="text-muted-foreground">User authorizations</span>
-						</CardFooter>
-					</DashboardCard>
-
-					<DashboardCard>
-						<CardHeader className="flex flex-row items-center justify-between">
-							<CardTitle className="font-normal text-xs tracking-wide">Unique users</CardTitle>
-						</CardHeader>
-						<CardContent className="flex flex-row items-center gap-2">
-							<p className="font-semibold text-xl tabular-nums">{uniqueUsers}</p>
-						</CardContent>
-						<CardFooter className="gap-1 rounded-none bg-background text-xs">
-							<span className="text-muted-foreground">Connected accounts</span>
-						</CardFooter>
-					</DashboardCard>
-
-					<DashboardCard>
-						<CardHeader className="flex flex-row items-center justify-between">
-							<CardTitle className="font-normal text-xs tracking-wide">Tokens issued</CardTitle>
-						</CardHeader>
-						<CardContent className="flex flex-row items-center gap-2">
-							<p className="font-semibold text-xl tabular-nums">{tokens}</p>
-						</CardContent>
-						<CardFooter className="gap-1 rounded-none bg-background text-xs">
-							<span className="text-muted-foreground">All time</span>
-						</CardFooter>
-					</DashboardCard>
-
-					<DashboardCard>
-						<CardHeader className="flex flex-row items-center justify-between">
-							<CardTitle className="font-normal text-xs tracking-wide">Audit events</CardTitle>
-						</CardHeader>
-						<CardContent className="flex flex-row items-center gap-2">
-							<p className="font-semibold text-xl tabular-nums">{total}</p>
-						</CardContent>
-						<CardFooter className="gap-1 rounded-none bg-background text-xs">
-							<span className="text-muted-foreground">Activity log</span>
-						</CardFooter>
-					</DashboardCard>
-				</div>
+				<dl className="grid grid-cols-2 gap-px border border-border bg-border sm:grid-cols-4">
+					<Stat label="Active grants" value={grants} sub="User authorizations" />
+					<Stat label="Unique users" value={uniqueUsers} sub="Connected accounts" />
+					<Stat label="Tokens issued" value={tokens} sub="All time" />
+					<Stat label="Audit events" value={total} sub="Activity log" />
+				</dl>
 			)}
 
 			{app && (
-				<div className="grid gap-px bg-border p-px md:grid-cols-3">
-					<div className="bg-background p-4">
-						<div className="text-xs font-medium text-muted-foreground uppercase tracking-wide mb-2">Slug</div>
-						<code className="text-sm font-mono">{app.slug}</code>
+				<div className="border border-border bg-background">
+					<div className="border-b border-border px-5 py-3">
+						<h2 className="font-mono text-[11px] uppercase tracking-[0.16em] text-muted-foreground">Application</h2>
 					</div>
-					<div className="bg-background p-4">
-						<div className="text-xs font-medium text-muted-foreground uppercase tracking-wide mb-2">Status</div>
-						<div className="text-sm">{app.status}</div>
-					</div>
-					<div className="bg-background p-4">
-						<div className="text-xs font-medium text-muted-foreground uppercase tracking-wide mb-2">Allowed providers</div>
-						<div className="text-sm">{app.allowed_providers.length ? app.allowed_providers.join(", ") : "any"}</div>
-					</div>
+					<dl className="grid gap-px bg-border sm:grid-cols-2 lg:grid-cols-4">
+						<div className="bg-background p-5">
+							<dt className="font-mono text-[10.5px] uppercase tracking-[0.14em] text-muted-foreground">Slug</dt>
+							<dd className="mt-1.5 font-mono text-[13px]">{app.slug}</dd>
+						</div>
+						<div className="bg-background p-5">
+							<dt className="font-mono text-[10.5px] uppercase tracking-[0.14em] text-muted-foreground">Status</dt>
+							<dd className="mt-1.5 text-[13px]">{app.status}</dd>
+						</div>
+						<div className="bg-background p-5">
+							<dt className="font-mono text-[10.5px] uppercase tracking-[0.14em] text-muted-foreground">Allowed providers</dt>
+							<dd className="mt-1.5 text-[13px]">
+								{app.allowed_providers.length ? app.allowed_providers.join(", ") : "any"}
+							</dd>
+						</div>
+						<div className="bg-background p-5">
+							<dt className="font-mono text-[10.5px] uppercase tracking-[0.14em] text-muted-foreground">Created</dt>
+							<dd className="mt-1.5 text-[13px]">
+								{app.created_at ? new Date(app.created_at).toLocaleDateString() : "—"}
+							</dd>
+						</div>
+					</dl>
 				</div>
 			)}
 
-			<div className="flex items-center justify-between">
-				<h2 className="text-lg font-semibold">Activity log</h2>
-				<div className="flex items-center gap-3">
-					<div className="relative w-64">
-						<SearchIcon className="absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
-						<Input
-							placeholder="Search events..."
-							className="h-9 pl-9"
-							value={search}
-							onChange={(e) => { setSearch(e.target.value); setPage(1); }}
-						/>
+			<div className="border border-border bg-background">
+				<div className="flex flex-wrap items-center justify-between gap-3 border-b border-border px-5 py-3">
+					<h2 className="font-mono text-[11px] uppercase tracking-[0.16em] text-muted-foreground">Activity log</h2>
+					<div className="flex items-center gap-3">
+						<div className="relative w-56">
+							<SearchIcon className="absolute left-3 top-1/2 size-3.5 -translate-y-1/2 text-muted-foreground" />
+							<Input
+								placeholder="Search events..."
+								className="h-8 pl-8 text-[13px]"
+								value={search}
+								onChange={(e) => { setSearch(e.target.value); setPage(1); }}
+							/>
+						</div>
+						<DropdownMenu>
+							<DropdownMenuTrigger asChild>
+								<Button variant="outline" size="sm" className="gap-2">
+									<FilterIcon className="size-3.5" />
+									{auditEventTypes.find((t) => t.value === eventTypeFilter)?.label ?? "All events"}
+								</Button>
+							</DropdownMenuTrigger>
+							<DropdownMenuContent align="end">
+								{auditEventTypes.map((t) => (
+									<DropdownMenuItem key={t.value ?? "all"} onClick={() => { setEventTypeFilter(t.value); setPage(1); }}>
+										{t.label}
+									</DropdownMenuItem>
+								))}
+							</DropdownMenuContent>
+						</DropdownMenu>
 					</div>
-					<DropdownMenu>
-						<DropdownMenuTrigger asChild>
-							<Button variant="outline" size="sm" className="gap-2">
-								<FilterIcon className="size-3.5" />
-								{auditEventTypes.find((t) => t.value === eventTypeFilter)?.label ?? "All events"}
-							</Button>
-						</DropdownMenuTrigger>
-						<DropdownMenuContent align="end">
-							{auditEventTypes.map((t) => (
-								<DropdownMenuItem key={t.value ?? "all"} onClick={() => { setEventTypeFilter(t.value); setPage(1); }}>
-									{t.label}
-								</DropdownMenuItem>
-							))}
-						</DropdownMenuContent>
-					</DropdownMenu>
 				</div>
-			</div>
 
-			<div className="rounded-none border border-border">
 				<Table>
 					<TableHeader>
 						<TableRow>
-							<TableHead className="ps-6">Event</TableHead>
+							<TableHead className="ps-5">Event</TableHead>
 							<TableHead>Actor</TableHead>
 							<TableHead>Resource</TableHead>
 							<TableHead>Context</TableHead>
-							<TableHead className="pe-6">Timestamp</TableHead>
+							<TableHead className="pe-5">Timestamp</TableHead>
 						</TableRow>
 					</TableHeader>
 					<TableBody>
 						{loading && events.length === 0 ? (
 							Array.from({ length: 5 }).map((_, i) => (
 								<TableRow className="h-12" key={i}>
-									<TableCell className="ps-6"><Skeleton className="h-4 w-32" /></TableCell>
+									<TableCell className="ps-5"><Skeleton className="h-4 w-32" /></TableCell>
 									<TableCell><Skeleton className="h-4 w-24" /></TableCell>
 									<TableCell><Skeleton className="h-4 w-28" /></TableCell>
 									<TableCell><Skeleton className="h-4 w-20" /></TableCell>
-									<TableCell className="pe-6"><Skeleton className="h-4 w-32" /></TableCell>
+									<TableCell className="pe-5"><Skeleton className="h-4 w-32" /></TableCell>
 								</TableRow>
 							))
 						) : events.length === 0 ? (
 							<TableRow>
-								<TableCell colSpan={5} className="text-center py-12">
+								<TableCell colSpan={5} className="py-12 text-center">
 									<EmptyState
 										title="No events found"
 										description={search || eventTypeFilter ? "Try adjusting your filters" : "Activity will appear here as the app is used"}
@@ -278,45 +245,39 @@ export function ConnectAppPage() {
 								const cfg = auditEventTypes.find((t) => t.value === ev.event_type);
 								return (
 									<TableRow key={ev.id} className="h-12">
-										<TableCell className="ps-6">
-											<span className="text-sm font-medium">
-												{cfg?.label ?? ev.event_type}
-											</span>
+										<TableCell className="ps-5">
+											<span className="text-[13px] font-medium">{cfg?.label ?? ev.event_type}</span>
 										</TableCell>
-										<TableCell className="text-sm text-muted-foreground">
+										<TableCell className="text-[13px] text-muted-foreground">
 											<div className="flex items-center gap-1.5">
 												<span>{ev.actor_type}</span>
-												{ev.actor_id && (
-													<code className="text-xs font-mono">{ev.actor_id.slice(0, 8)}</code>
-												)}
+												{ev.actor_id && <code className="font-mono text-[11px]">{ev.actor_id.slice(0, 8)}</code>}
 											</div>
 										</TableCell>
-										<TableCell className="text-sm text-muted-foreground">
+										<TableCell className="text-[13px] text-muted-foreground">
 											{ev.resource_type ? (
 												<div className="flex items-center gap-1.5">
 													<span>{ev.resource_type}</span>
-													{ev.resource_id && (
-														<code className="text-xs font-mono">{ev.resource_id.slice(0, 8)}</code>
-													)}
+													{ev.resource_id && <code className="font-mono text-[11px]">{ev.resource_id.slice(0, 8)}</code>}
 												</div>
 											) : "—"}
 										</TableCell>
-										<TableCell className="text-sm text-muted-foreground">
+										<TableCell className="text-[13px] text-muted-foreground">
 											<div className="flex flex-wrap gap-1">
 												{ev.metadata.agent_id && (
-													<span className="inline-flex items-center gap-1 rounded-none border border-border bg-muted px-1.5 py-0.5 text-xs font-mono">
+													<span className="inline-flex items-center gap-1 rounded-[3px] border border-border bg-muted px-1.5 py-0.5 font-mono text-[11px]">
 														agent:{ev.metadata.agent_id.slice(0, 6)}
 													</span>
 												)}
 												{ev.metadata.task_id && (
-													<span className="inline-flex items-center gap-1 rounded-none border border-border bg-muted px-1.5 py-0.5 text-xs font-mono">
+													<span className="inline-flex items-center gap-1 rounded-[3px] border border-border bg-muted px-1.5 py-0.5 font-mono text-[11px]">
 														task:{ev.metadata.task_id.slice(0, 6)}
 													</span>
 												)}
 												{!ev.metadata.agent_id && !ev.metadata.task_id && "—"}
 											</div>
 										</TableCell>
-										<TableCell className="pe-6 text-sm text-muted-foreground tabular-nums">
+										<TableCell className="pe-5 text-[13px] tabular-nums text-muted-foreground">
 											{new Date(ev.created_at).toLocaleString()}
 										</TableCell>
 									</TableRow>
@@ -325,8 +286,9 @@ export function ConnectAppPage() {
 						)}
 					</TableBody>
 				</Table>
+
 				{total > 0 && (
-					<div className="flex items-center justify-between px-4 py-3 text-sm text-muted-foreground border-t border-border">
+					<div className="flex items-center justify-between border-t border-border px-5 py-3 text-[13px] text-muted-foreground">
 						<span>
 							{events.length === 0 ? "No events" : `${((page - 1) * limit) + 1}–${Math.min(page * limit, total)} of ${total}`}
 						</span>

@@ -52,12 +52,12 @@ export function DashboardStats({ stats, loading }: Props) {
 			{stats.map((s) => (
 				<DashboardCard className="" key={s.label}>
 					<CardHeader className="flex flex-row items-center justify-between">
-						<CardTitle className="font-normal text-xs tracking-wide">
+						<CardTitle className="font-mono text-[10.5px] font-normal uppercase tracking-[0.12em] text-muted-foreground">
 							{s.label}
 						</CardTitle>
 					</CardHeader>
 					<CardContent className="flex flex-row items-center gap-2">
-						<p className="font-semibold text-xl tabular-nums">{s.value}</p>
+						<p className="text-[22px] font-medium tabular-nums">{s.value}</p>
 					</CardContent>
 					<CardFooter className="gap-1 rounded-none bg-background text-xs">
 						<Delta value={s.delta}>

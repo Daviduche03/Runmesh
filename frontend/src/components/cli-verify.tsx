@@ -42,51 +42,49 @@ export function CliVerify() {
 
 	if (!code) {
 		return (
-			<main className="flex min-h-screen items-center justify-center bg-[#08090a]">
+			<main className="flex min-h-screen items-center justify-center bg-background font-sans text-foreground">
 				<div className="max-w-[440px] p-10 text-center">
-					<h1 className="text-[24px] font-[600] text-white">Invalid Link</h1>
-					<p className="mt-2 text-[#969799]">No verification code provided. Run <code className="rounded bg-[#1c1c1c] px-1.5 py-0.5">runmesh login</code> again.</p>
+					<h1 className="font-display text-[24px] font-medium tracking-[-0.02em]">Invalid link</h1>
+					<p className="mt-2 text-[15px] text-muted-foreground">
+						No verification code provided. Run{" "}
+						<code className="rounded-[4px] bg-muted px-1.5 py-0.5 font-mono text-[13px]">runmesh login</code>{" "}
+						again.
+					</p>
 				</div>
 			</main>
 		)
 	}
 
 	return (
-		<main className="flex min-h-screen items-center justify-center bg-[#08090a]">
+		<main className="flex min-h-screen items-center justify-center bg-background font-sans text-foreground">
 			<div className="max-w-[480px] p-10 text-center">
-				<LogoIcon className="mx-auto mb-6 size-8 text-white" />
-				<h1 className="text-[24px] font-[600] text-white">Confirm Runmesh CLI login</h1>
-				<p className="mt-2 text-[#969799]">A CLI session is requesting access to your Runmesh account.</p>
+				<LogoIcon className="mx-auto mb-6 size-8 text-primary" />
+				<h1 className="font-display text-[24px] font-medium tracking-[-0.02em]">Confirm Runmesh CLI login</h1>
+				<p className="mt-2 text-[15px] text-muted-foreground">
+					A CLI session is requesting access to your Runmesh account.
+				</p>
 
-				<div className="mx-auto my-6 inline-block rounded-xl border border-[#23252a] bg-[#1c1c1c] px-7 py-5 font-mono text-[36px] tracking-[0.15em] text-white">
+				<div className="mx-auto my-6 inline-block rounded-[6px] border border-border bg-muted px-7 py-5 font-mono text-[36px] tracking-[0.15em] text-foreground">
 					{code}
 				</div>
 
-				<p className="text-[13px] text-[#595a5c]">If this code matches your terminal, confirm below.</p>
+				<p className="font-mono text-[11px] uppercase tracking-[0.14em] text-muted-foreground">
+					If this code matches your terminal, confirm below
+				</p>
 
-				{isAuthenticated ? (
-					<div className="mt-6">
-						<Button
-							onClick={handleConfirm}
-							disabled={confirming}
-							className="h-11 px-8 bg-[#f2f2f2] text-[15px] font-medium text-[#08090a] hover:bg-white"
-						>
+				{status && <p className="mt-4 text-[14px] text-muted-foreground">{status}</p>}
+
+				<div className="mt-6">
+					{isAuthenticated ? (
+						<Button onClick={handleConfirm} disabled={confirming} className="h-10 px-6 text-[14px]">
 							{confirming ? "Confirming..." : "Confirm"}
 						</Button>
-					</div>
-				) : (
-					<div className="mt-6">
-						<Button asChild className="h-11 px-8 bg-[#f2f2f2] text-[15px] font-medium text-[#08090a] hover:bg-white">
-							<Link to={`/login?redirect_to=${encodeURIComponent(redirectTo)}`}>
-								Sign in with GitHub
-							</Link>
+					) : (
+						<Button asChild className="h-10 px-6 text-[14px]">
+							<Link to={`/login?redirect_to=${encodeURIComponent(redirectTo)}`}>Sign in with GitHub</Link>
 						</Button>
-					</div>
-				)}
-
-				{status && (
-					<p className="mt-4 text-[14px] text-[#969799]">{status}</p>
-				)}
+					)}
+				</div>
 			</div>
 		</main>
 	)

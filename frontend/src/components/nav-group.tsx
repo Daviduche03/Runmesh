@@ -23,7 +23,11 @@ export function NavGroup({ label, items }: SidebarNavGroup) {
 
 	return (
 		<SidebarGroup>
-			{label && <SidebarGroupLabel>{label}</SidebarGroupLabel>}
+			{label && (
+				<SidebarGroupLabel className="font-mono text-[10px] uppercase tracking-[0.14em] text-muted-foreground">
+					{label}
+				</SidebarGroupLabel>
+			)}
 			<SidebarMenu>
 				{items.map((item) => {
 					const isSettingsTab = item.path?.startsWith("/settings?tab=") && `${pathname}${search}` === item.path;
