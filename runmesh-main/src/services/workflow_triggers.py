@@ -4,6 +4,7 @@ from typing import Any
 from fastapi import HTTPException
 
 from db.orm import WorkflowModel
+from services.workspaces import require_row_access
 from services.workflow_runner import start_workflow_run
 from services.workflow_trigger_config import (
     is_webhook_trigger,
@@ -19,8 +20,7 @@ async def trigger_workflow_for_user(
 ) -> dict[str, Any]:
     workflow_model = WorkflowModel(env.DB)
     workflow = await workflow_model.find_by_id(workflow_id)
-    if not workflow or workflow.get("user_id") != user_id:
-        raise HTTPException(status_code=404, detail="Workflow not found")
+    await require_row_access(env.DB, user_id, workflow, not_found_detail="Workflow not found")
 
     if triggered_by == "webhook" and not is_webhook_trigger(workflow.get("trigger_type", "manual")):
         raise HTTPException(status_code=400, detail="Workflow is not configured for webhook triggers")

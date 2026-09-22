@@ -4,9 +4,10 @@ from db.orm import ApiKeyModel
 from fastapi import HTTPException
 from utils.api_auth import generate_api_key, hash_api_key, PERMISSIONS
 from utils.responses import success
+from services.workspaces import resolve_workspace_id, require_row_access
 
 
-async def create_api_key(api_key_model: ApiKeyModel, req, user_id: str) -> dict:
+async def create_api_key(api_key_model: ApiKeyModel, req, user_id: str, workspace_id: str | None = None) -> dict:
     valid_permissions = list(PERMISSIONS.keys())
     for permission in req.permissions:
         if permission not in valid_permissions:
@@ -24,10 +25,12 @@ async def create_api_key(api_key_model: ApiKeyModel, req, user_id: str) -> dict:
         except ValueError:
             raise HTTPException(status_code=400, detail="Invalid expires_at format. Use ISO datetime.")
 
+    workspace_id = await resolve_workspace_id(api_key_model.db, user_id, workspace_id)
     key_data = {
         "key_hash": key_hash,
         "name": req.name,
         "user_id": user_id,
+        "workspace_id": workspace_id,
         "permissions": json.dumps(req.permissions),
     }
     if req.expires_at:
@@ -46,8 +49,9 @@ async def create_api_key(api_key_model: ApiKeyModel, req, user_id: str) -> dict:
     )
 
 
-async def list_api_keys(api_key_model: ApiKeyModel, user_id: str) -> dict:
-    api_keys = await api_key_model.find_by_user_id(user_id)
+async def list_api_keys(api_key_model: ApiKeyModel, user_id: str, workspace_id: str | None = None) -> dict:
+    workspace_id = await resolve_workspace_id(api_key_model.db, user_id, workspace_id)
+    api_keys = await api_key_model.find_by_workspace_id(workspace_id)
     safe_keys = []
     for key in api_keys:
         safe_keys.append({
@@ -63,11 +67,10 @@ async def list_api_keys(api_key_model: ApiKeyModel, user_id: str) -> dict:
 
 async def delete_api_key(api_key_model: ApiKeyModel, key_id: str, user_id: str) -> dict:
     api_key = await api_key_model.find_by_id(key_id)
-    if not api_key or api_key.get("user_id") != user_id:
-        raise HTTPException(status_code=404, detail="API key not found")
+    await require_row_access(api_key_model.db, user_id, api_key, not_found_detail="API key not found")
 
-    success = await api_key_model.deactivate(key_id)
-    if not success:
+    deactivated = await api_key_model.deactivate(key_id)
+    if not deactivated:
         raise HTTPException(status_code=400, detail="Failed to delete API key")
 
     return success({"id": key_id}, message="API key deleted")

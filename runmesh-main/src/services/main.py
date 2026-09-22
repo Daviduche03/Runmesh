@@ -9,6 +9,7 @@ from utils.responses import success
 from utils.url_security import validate_outbound_url
 from services.templating import apply_task_templates
 from services.workflow_graph import resolve_graph
+from services.workspaces import resolve_workspace_id, require_row_access
 from services.workflow_trigger_config import normalize_trigger_config, format_trigger_config_for_api, parse_trigger_config
 
 
@@ -116,7 +117,7 @@ def public_action_metadata(row: dict) -> dict[str, Any]:
     }
 
 
-async def create_task(task: TaskPublish, env, user_id: str) -> dict:
+async def create_task(task: TaskPublish, env, user_id: str, workspace_id: Optional[str] = None) -> dict:
     task_model = TaskModel(env.DB)
     if not task.url and not task.url_template:
         raise HTTPException(status_code=400, detail="url or url_template is required")
@@ -124,11 +125,22 @@ async def create_task(task: TaskPublish, env, user_id: str) -> dict:
         # SSRF blocklist for static URLs (templated URLs are validated after render)
         validate_outbound_url(task.url)
 
+    workspace_id = await resolve_workspace_id(env.DB, user_id, workspace_id)
+
     idempotency_key = (task.idempotency_key or "").strip()
     if idempotency_key:
-        existing = await task_model.find_by_idempotency_key(user_id, idempotency_key)
+        existing = await task_model.find_by_idempotency_key(workspace_id, idempotency_key)
         if existing:
             return success({"task_id": existing["id"]}, message="Task already queued")
+
+    if task.workflow_id:
+        workflow_model = WorkflowModel(env.DB)
+        workflow = await workflow_model.find_by_id(task.workflow_id)
+        if not workflow:
+            raise HTTPException(status_code=404, detail="Workflow not found")
+        await require_row_access(env.DB, user_id, workflow, not_found_detail="Workflow not found")
+        if workflow.get("workspace_id"):
+            workspace_id = workflow["workspace_id"]
 
     task_data = {
         "type": task.type,
@@ -140,6 +152,7 @@ async def create_task(task: TaskPublish, env, user_id: str) -> dict:
         "scheduled_at": task.scheduled_at if task.scheduled_at else datetime.now(timezone.utc).isoformat(),
         "execution_type": task.execution_type,
         "user_id": user_id,
+        "workspace_id": workspace_id,
     }
     if task.signing_secret:
         task_data["signing_secret"] = task.signing_secret
@@ -155,9 +168,6 @@ async def create_task(task: TaskPublish, env, user_id: str) -> dict:
             task_data["status"] = "waiting_for_grant"
     if task.workflow_id:
         workflow_model = WorkflowModel(env.DB)
-        workflow = await workflow_model.find_by_id(task.workflow_id)
-        if not workflow or workflow.get("user_id") != user_id:
-            raise HTTPException(status_code=404, detail="Workflow not found")
         existing = await task_model.list_by_workflow_id(task.workflow_id)
         task_data["workflow_id"] = task.workflow_id
         task_data["step_order"] = len(existing)
@@ -167,7 +177,7 @@ async def create_task(task: TaskPublish, env, user_id: str) -> dict:
         return success({"task_id": task_id}, message="Task queued")
     return success({"task_id": task_id}, message="Task waiting for grant approval")
 
-async def create_workflow(workflow: WorkflowCreate, env, user_id: str) -> dict:
+async def create_workflow(workflow: WorkflowCreate, env, user_id: str, workspace_id: Optional[str] = None) -> dict:
     description = (workflow.description or "").strip()
     if len(description) < 8:
         raise HTTPException(status_code=400, detail="Description is required (at least 8 characters)")
@@ -193,6 +203,7 @@ async def create_workflow(workflow: WorkflowCreate, env, user_id: str) -> dict:
         "name": workflow.name,
         "description": description,
         "user_id": user_id,
+        "workspace_id": await resolve_workspace_id(env.DB, user_id, workspace_id),
         "status": "draft",
         "trigger_type": workflow.trigger_type,
         "trigger_config": trigger_config_str,
@@ -221,11 +232,12 @@ async def create_workflow(workflow: WorkflowCreate, env, user_id: str) -> dict:
                 "retries": 0,
                 "max_retries": 5,
                 "scheduled_at": task.scheduled_at if task.scheduled_at else datetime.now(timezone.utc).isoformat(),
-                "execution_type": task.execution_type,
-                "user_id": user_id,
-                "workflow_id": workflow_id,
-                "step_order": index,
-            }
+            "execution_type": task.execution_type,
+            "user_id": user_id,
+            "workspace_id": workflow_data["workspace_id"],
+            "workflow_id": workflow_id,
+            "step_order": index,
+        }
             apply_task_templates(task_data, task.payload_template, task.url_template)
             await task_model.create(task_data)
     except HTTPException:
@@ -286,8 +298,7 @@ async def get_workflow(env, user_id: str, workflow_id: str) -> dict:
     workflow_model = WorkflowModel(env.DB)
     task_model = TaskModel(env.DB)
     workflow = await workflow_model.find_by_id(workflow_id)
-    if not workflow or workflow.get("user_id") != user_id:
-        raise HTTPException(status_code=404, detail="Workflow not found")
+    await require_row_access(env.DB, user_id, workflow, not_found_detail="Workflow not found")
     tasks = await task_model.list_by_workflow_id(workflow_id)
     return format_workflow(workflow, tasks)
 
@@ -295,8 +306,7 @@ async def get_workflow(env, user_id: str, workflow_id: str) -> dict:
 async def update_workflow(env, user_id: str, workflow_id: str, description: Optional[str] = None, name: Optional[str] = None, trigger_type: Optional[str] = None, trigger_config: Optional[str] = None) -> dict:
     workflow_model = WorkflowModel(env.DB)
     workflow = await workflow_model.find_by_id(workflow_id)
-    if not workflow or workflow.get("user_id") != user_id:
-        raise HTTPException(status_code=404, detail="Workflow not found")
+    await require_row_access(env.DB, user_id, workflow, not_found_detail="Workflow not found")
 
     updates: dict[str, Any] = {}
 
@@ -338,8 +348,7 @@ async def delete_workflow(env, user_id: str, workflow_id: str) -> dict:
     task_model = TaskModel(env.DB)
     run_model = WorkflowRunModel(env.DB)
     workflow = await workflow_model.find_by_id(workflow_id)
-    if not workflow or workflow.get("user_id") != user_id:
-        raise HTTPException(status_code=404, detail="Workflow not found")
+    await require_row_access(env.DB, user_id, workflow, not_found_detail="Workflow not found")
 
     active = await run_model.find_active_for_workflow(workflow_id)
     if active:
@@ -362,8 +371,7 @@ async def delete_workflow(env, user_id: str, workflow_id: str) -> dict:
 async def delete_task(env, user_id: str, task_id: str) -> dict:
     task_model = TaskModel(env.DB)
     task = await task_model.find_by_id(task_id)
-    if not task or task.get("user_id") != user_id:
-        raise HTTPException(status_code=404, detail="Task not found")
+    await require_row_access(env.DB, user_id, task, not_found_detail="Task not found")
 
     workflow_id = task.get("workflow_id")
     if workflow_id:
@@ -383,10 +391,11 @@ async def delete_task(env, user_id: str, task_id: str) -> dict:
     return success({"id": task_id}, message="Task deleted")
 
 
-async def list_workflows(env, user_id: str, page: int = 1, limit: int = 50) -> list:
+async def list_workflows(env, user_id: str, workspace_id: Optional[str] = None, page: int = 1, limit: int = 50) -> list:
     workflow_model = WorkflowModel(env.DB)
     task_model = TaskModel(env.DB)
-    workflows = await workflow_model.list(user_id)
+    workspace_id = await resolve_workspace_id(env.DB, user_id, workspace_id)
+    workflows = await workflow_model.list(workspace_id)
     result = []
 
     for workflow in workflows:
@@ -405,9 +414,10 @@ def _build_task_query(where: str, params: list, fields: str = "*", order: str = 
     return q
 
 
-async def list_tasks(db, user_id: str, status: Optional[str] = None, workflow_id: Optional[str] = None, page: int = 1, limit: int = 50) -> dict:
-    where = "user_id = ?"
-    params = [user_id]
+async def list_tasks(db, user_id: str, status: Optional[str] = None, workflow_id: Optional[str] = None, page: int = 1, limit: int = 50, workspace_id: Optional[str] = None) -> dict:
+    workspace_id = await resolve_workspace_id(db, user_id, workspace_id)
+    where = "workspace_id = ?"
+    params = [workspace_id]
     if status:
         where += " AND status = ?"
         params.append(status)

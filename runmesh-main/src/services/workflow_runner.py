@@ -7,6 +7,7 @@ from fastapi import HTTPException
 from db.orm import TaskModel, WorkflowModel, WorkflowRunModel
 from services.templating import parse_stored_response
 from services.workflow_graph import resolve_graph, linear_order_from_trigger, _node_map
+from services.workspaces import require_row_access
 
 
 def _step_output_from_task(task: dict[str, Any]) -> dict[str, Any]:
@@ -92,8 +93,7 @@ async def recover_stale_workflow_runs(env) -> int:
 async def list_workflow_runs(env, user_id: str, workflow_id: str) -> list[dict[str, Any]]:
     workflow_model = WorkflowModel(env.DB)
     workflow = await workflow_model.find_by_id(workflow_id)
-    if not workflow or workflow.get("user_id") != user_id:
-        raise HTTPException(status_code=404, detail="Workflow not found")
+    await require_row_access(env.DB, user_id, workflow, not_found_detail="Workflow not found")
 
     run_model = WorkflowRunModel(env.DB)
     runs = await run_model.list_by_workflow_id(workflow_id)
@@ -111,8 +111,7 @@ async def start_workflow_run(
     run_model = WorkflowRunModel(env.DB)
 
     workflow = await workflow_model.find_by_id(workflow_id)
-    if not workflow or workflow.get("user_id") != user_id:
-        raise HTTPException(status_code=404, detail="Workflow not found")
+    await require_row_access(env.DB, user_id, workflow, not_found_detail="Workflow not found")
 
     tasks = await task_model.list_by_workflow_id(workflow_id)
     active = await run_model.find_active_for_workflow(workflow_id)
@@ -177,8 +176,7 @@ async def cancel_workflow_run(
     run_model = WorkflowRunModel(env.DB)
 
     workflow = await workflow_model.find_by_id(workflow_id)
-    if not workflow or workflow.get("user_id") != user_id:
-        raise HTTPException(status_code=404, detail="Workflow not found")
+    await require_row_access(env.DB, user_id, workflow, not_found_detail="Workflow not found")
 
     active = await run_model.find_active_for_workflow(workflow_id)
     if not active:

@@ -1,25 +1,40 @@
 # Runmesh
 
-Platform for async infrastructure — task execution, workflow automation, and Connect identity. Queue webhooks, schedule jobs, orchestrate multi-step workflows, and give users portable identity across your apps from one dashboard and API.
+**The control plane for AI agents.** Give every agent an identity and a scoped, revocable, auditable credential — run its work durably, gate the actions that matter behind approvals, and see everything it did.
 
-Built on [Cloudflare Workers](https://developers.cloudflare.com/workers/) (Python) with [D1](https://developers.cloudflare.com/d1/) for storage and [Queues](https://developers.cloudflare.com/queues/) for task and webhook dispatch.
+Observability tells you what an agent *did*. Runmesh decides what it is *allowed* to do. One layer for identity, access, approvals, execution, and audit.
+
+## Why
+
+For thirty years we built a discipline around human access: identity, least privilege, approvals, audit trails. Then a new actor showed up — one that doesn't sleep, acts thousands of times a minute, and today usually gets a long-lived API key with every scope, no expiry, and no record of what it did.
+
+The missing layer is not another tracing dashboard. It is control:
+
+- **Identity** — an agent is a principal, not a shared secret.
+- **Access** — credentials scoped to an agent, a task, a resource, and an expiry.
+- **Approvals** — a human in the loop when policy says so.
+- **Execution** — the work itself, run durably.
+- **Audit** — every action, explainable and replayable.
+
+## What you get
+
+- **Agent identity** — register agents and tie every action to the agent, task, or workflow run that requested it.
+- **Scoped grants** — mint tokens bound to a scope, a resource, and an expiry. Revoke the agent without revoking everything.
+- **Approval gates** — decide what runs freely and what waits for a person before it happens.
+- **Durable execution** — HTTP tasks, UTC scheduling, and multi-step workflows on Cloudflare Queues with retries, idempotency, and replay.
+- **Audit trail** — follow a token from request, to approval, to the action it authorized.
+- **Dashboard** — runs, workflow execution, analytics, API keys, and outbound webhooks in one place.
+- **Dual auth** — JWT for the dashboard, API keys for integrations, on `/api/v1` routes.
+
+Built on [Cloudflare Workers](https://developers.cloudflare.com/workers/) (Python) with [D1](https://developers.cloudflare.com/d1/) for storage and [Queues](https://developers.cloudflare.com/queues/) for dispatch.
 
 ## Repository layout
 
 ```
 Runmesh/
 ├── runmesh-main/     Backend — Cloudflare Worker (FastAPI + D1 + Queues)
-└── frontend/         Dashboard — React + Vite
+└── frontend/         Dashboard + landing — React + Vite
 ```
-
-## Features
-
-- **Task API** — queue and dispatch HTTP tasks to any webhook URL, with UTC scheduling and idempotency
-- **Workflows** — visual graph editor, webhook/cron triggers, linear step chains, and Jinja templates between steps
-- **Runmesh Connect** — portable user identity for third-party apps via OTP login, OAuth providers, and scoped grants
-- Dashboard with runs, workflow execution, analytics, API keys, and outbound webhooks
-- Outbound webhook retries with dead-letter storage and replay
-- Dual auth: JWT (dashboard) or API key (integrations) on `/api/v1` routes
 
 ## Prerequisites
 
@@ -102,7 +117,7 @@ wrangler queues create runmesh-webhooks --message-retention-period-secs 86400
 
 ## API overview
 
-All JSON endpoints share a [consistent response envelope](./runmesh-main/TASK_API_DOCUMENTATION.md#response-format).
+All JSON endpoints share a [consistent response envelope](./runmesh-main/TASK_API_DOCUMENTATION.md#response-format). Identity and access run through Connect; execution runs through tasks and workflows.
 
 | Route | Auth | Purpose |
 |-------|------|---------|

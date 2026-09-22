@@ -56,10 +56,18 @@ async def get_authenticated_user(
             raise HTTPException(status_code=401, detail="User not found")
 
         await api_key_model.update_last_used(api_key_data["id"])
+        key_workspace_id = api_key_data.get("workspace_id")
+        if key_workspace_id:
+            # Workspace-bound credential: dead unless its owner is still a member.
+            from services.workspaces import get_membership
+
+            if await get_membership(env.DB, user_data["id"], key_workspace_id) is None:
+                raise HTTPException(status_code=401, detail="API key is not authorized for this workspace")
         return {
             "id": user_data["id"],
             "email": user_data["email"],
             "name": user_data["name"],
+            "api_key_workspace_id": key_workspace_id,
         }
 
     auth_header = request.headers.get("Authorization")

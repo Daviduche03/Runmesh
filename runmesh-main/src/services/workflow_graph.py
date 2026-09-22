@@ -6,6 +6,7 @@ from fastapi import HTTPException
 
 from db.orm import TaskModel, WorkflowModel
 from services.templating import apply_task_templates
+from services.workspaces import require_row_access
 from services.workflow_trigger_config import normalize_trigger_config, parse_trigger_config
 
 NODE_TRIGGER = "trigger"
@@ -167,6 +168,7 @@ async def sync_graph_to_tasks(
     workflow_id: str,
     user_id: str,
     graph: dict[str, Any],
+    workspace_id: Optional[str] = None,
 ) -> dict[str, Any]:
     validate_graph(graph)
     nodes = _node_map(graph)
@@ -199,6 +201,7 @@ async def sync_graph_to_tasks(
             "scheduled_at": datetime.now(timezone.utc).isoformat(),
             "execution_type": data.get("execution_type") or "queue",
             "user_id": user_id,
+            "workspace_id": workspace_id,
             "workflow_id": workflow_id,
             "step_order": step_order,
         }
@@ -246,10 +249,9 @@ async def save_workflow_graph(
 ) -> dict[str, Any]:
     workflow_model = WorkflowModel(env.DB)
     workflow = await workflow_model.find_by_id(workflow_id)
-    if not workflow or workflow.get("user_id") != user_id:
-        raise HTTPException(status_code=404, detail="Workflow not found")
+    await require_row_access(env.DB, user_id, workflow, not_found_detail="Workflow not found")
 
-    synced = await sync_graph_to_tasks(env.DB, env.TASK_QUEUE, workflow_id, user_id, graph)
+    synced = await sync_graph_to_tasks(env.DB, env.TASK_QUEUE, workflow_id, user_id, graph, workflow.get("workspace_id"))
     now = datetime.now(timezone.utc).isoformat()
 
     trigger_node = _node_map(synced).get(TRIGGER_NODE_ID) or {}

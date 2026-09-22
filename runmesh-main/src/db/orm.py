@@ -102,8 +102,8 @@ class TaskModel(Model):
         """Find task by ID"""
         return await self.find_one('tasks', 'id = ?', task_id)
 
-    async def find_by_idempotency_key(self, user_id: str, idempotency_key: str) -> Optional[Dict[str, Any]]:
-        return await self.find_one('tasks', 'user_id = ? AND idempotency_key = ?', user_id, idempotency_key)
+    async def find_by_idempotency_key(self, workspace_id: str, idempotency_key: str) -> Optional[Dict[str, Any]]:
+        return await self.find_one('tasks', 'workspace_id = ? AND idempotency_key = ?', workspace_id, idempotency_key)
 
     async def list_by_workflow_id(self, workflow_id: str) -> List[Dict[str, Any]]:
         return await self.find_many('tasks', 'workflow_id = ? ORDER BY step_order ASC, created_at ASC', workflow_id)
@@ -189,9 +189,9 @@ class WorkflowModel(Model):
         
         return await self.insert('workflows', workflow_data)
     
-    async def list(self, user_id: str) -> List[Dict[str, Any]]:
-        """List workflows for a user"""
-        return await self.find_many('workflows', 'user_id = ?', user_id)
+    async def list(self, workspace_id: str) -> List[Dict[str, Any]]:
+        """List workflows for a workspace"""
+        return await self.find_many('workflows', 'workspace_id = ?', workspace_id)
 
     async def find_by_id(self, workflow_id: str) -> Optional[Dict[str, Any]]:
         return await self.find_one('workflows', 'id = ?', workflow_id)
@@ -289,6 +289,9 @@ class ApiKeyModel(Model):
         """Find API key by hash"""
         return await self.find_one('api_keys', 'key_hash = ? AND is_active = 1', key_hash)
     
+    async def find_by_workspace_id(self, workspace_id: str, limit: int = 50) -> List[Dict[str, Any]]:
+        return await self.find_many('api_keys', 'workspace_id = ? AND is_active = 1 ORDER BY created_at DESC', workspace_id, limit=limit)
+
     async def find_by_user_id(self, user_id: str, limit: int = 50) -> List[Dict[str, Any]]:
         """Find API keys by user ID"""
         return await self.find_many('api_keys', 'user_id = ? AND is_active = 1', user_id, limit=limit)
@@ -328,11 +331,21 @@ class WebhookModel(Model):
     async def find_by_user_id(self, user_id: str) -> list:
         return await self.find_many('webhooks', 'user_id = ? ORDER BY created_at DESC', user_id)
 
+    async def find_by_workspace_id(self, workspace_id: str) -> list:
+        return await self.find_many('webhooks', 'workspace_id = ? ORDER BY created_at DESC', workspace_id)
+
     async def find_active_by_user_id(self, user_id: str) -> list:
         return await self.find_many(
             'webhooks',
             "user_id = ? AND status = 'active' ORDER BY created_at DESC",
             user_id,
+        )
+
+    async def find_active_by_workspace_id(self, workspace_id: str) -> list:
+        return await self.find_many(
+            'webhooks',
+            "workspace_id = ? AND status = 'active' ORDER BY created_at DESC",
+            workspace_id,
         )
 
     async def find_by_id(self, webhook_id: str):
@@ -352,6 +365,19 @@ class WebhookDeadLetterModel(Model):
         if not data.get("created_at"):
             data["created_at"] = datetime.now(timezone.utc).isoformat()
         return await self.insert("webhook_dead_letters", data)
+
+    async def find_by_workspace_id(self, workspace_id: str, include_replayed: bool = False) -> list:
+        if include_replayed:
+            return await self.find_many(
+                "webhook_dead_letters",
+                "workspace_id = ? ORDER BY failed_at DESC",
+                workspace_id,
+            )
+        return await self.find_many(
+            "webhook_dead_letters",
+            "workspace_id = ? AND replayed_at IS NULL ORDER BY failed_at DESC",
+            workspace_id,
+        )
 
     async def find_by_user_id(self, user_id: str, include_replayed: bool = False) -> list:
         if include_replayed:

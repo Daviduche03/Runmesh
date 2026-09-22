@@ -69,6 +69,15 @@
   --animate-slide-in-left-2: slide-in-left 0.5s cubic-bezier(0.21, 0.98, 0.35, 1) 0.8s forwards;
   --animate-slide-in-left-3: slide-in-left 0.5s cubic-bezier(0.21, 0.98, 0.35, 1) 1.6s forwards;
   --animate-glow-pulse: glow-pulse 3s ease-in-out infinite;
+  --animate-train-loop: train-loop 24s linear infinite;
+  --animate-wheel-spin: wheel-spin 0.9s linear infinite;
+  --animate-train-smoke: train-smoke 2.4s ease-out infinite;
+  --animate-signal-blink: signal-blink 1.6s ease-in-out infinite;
+  --animate-hero-drift: hero-drift 30s ease-in-out infinite alternate;
+  --animate-row-in: row-in 240ms var(--ease-out) both;
+  --animate-row-flash: row-flash 1.2s var(--ease-out) forwards;
+  --animate-value-in: value-in 150ms var(--ease-out) both;
+  --animate-empty-in: empty-in 200ms var(--ease-out) both;
 }
 
 :root {
@@ -97,6 +106,9 @@
   --radius-24: 24px;
   --radius-32: 32px;
   --radius-rounded: 9999px;
+  --ease-out: cubic-bezier(0.23, 1, 0.32, 1);
+  --ease-in-out: cubic-bezier(0.77, 0, 0.175, 1);
+  --ease-drawer: cubic-bezier(0.32, 0.72, 0, 1);
   --bento-border: hsla(0, 0%, 100%, 0.03);
   --shadow-stack-low: 0px -1px 1px 0px rgba(0, 0, 0, 0.11) inset,
     0px 8px 2px 0px transparent,
@@ -243,6 +255,19 @@ html.light .rm-surface {
   --rm-btn-fg: #f4f1ea;
 }
 
+/* Keep browser-autofilled fields on-theme. Chrome paints its own pale
+   background for :-webkit-autofill (and ignores autocomplete="off" on
+   email fields), which is what washes inputs light. */
+.rm-surface input:-webkit-autofill,
+.rm-surface input:-webkit-autofill:hover,
+.rm-surface input:-webkit-autofill:focus,
+.rm-surface input:-webkit-autofill:active {
+  -webkit-text-fill-color: var(--rm-fg);
+  caret-color: var(--rm-fg);
+  -webkit-box-shadow: 0 0 0 1000px var(--rm-panel) inset;
+  transition: background-color 600000s ease-in-out 0s;
+}
+
 @keyframes pulse-dot {
   0%, 100% {
     opacity: 1;
@@ -285,6 +310,106 @@ html.light .rm-surface {
   }
 }
 
+@keyframes train-loop {
+  from {
+    transform: translateX(-760px);
+  }
+  to {
+    transform: translateX(760px);
+  }
+}
+
+@keyframes wheel-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+@keyframes train-smoke {
+  0% {
+    opacity: 0.55;
+    transform: translateY(0) scale(0.7);
+  }
+  100% {
+    opacity: 0;
+    transform: translateY(-46px) scale(1.5);
+  }
+}
+
+@keyframes signal-blink {
+  0%,
+  100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.25;
+  }
+}
+
+@keyframes hero-drift {
+  from {
+    transform: scale(1.02) translateX(-1.1%);
+  }
+  to {
+    transform: scale(1.05) translateX(1.1%);
+  }
+}
+
+/* Dashboard list entry: opacity-only (transforms on <tr> are unreliable).
+   Stagger is applied per-row below; capped so long tables don't feel slow. */
+@keyframes row-in {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+[data-slot="table-body"] > tr {
+  animation: var(--animate-row-in);
+}
+[data-slot="table-body"] > tr:nth-child(2) { animation-delay: 35ms; }
+[data-slot="table-body"] > tr:nth-child(3) { animation-delay: 70ms; }
+[data-slot="table-body"] > tr:nth-child(4) { animation-delay: 105ms; }
+[data-slot="table-body"] > tr:nth-child(5) { animation-delay: 140ms; }
+[data-slot="table-body"] > tr:nth-child(6) { animation-delay: 175ms; }
+[data-slot="table-body"] > tr:nth-child(7) { animation-delay: 210ms; }
+[data-slot="table-body"] > tr:nth-child(8) { animation-delay: 245ms; }
+[data-slot="table-body"] > tr:nth-child(n+9) { animation-delay: 280ms; }
+
+/* Status-change flash: brief tint decaying to transparent. */
+@keyframes row-flash {
+  from {
+    background-color: rgb(52 211 153 / 0.12);
+  }
+  to {
+    background-color: transparent;
+  }
+}
+
+/* Polled stat values crossfade instead of snapping. */
+@keyframes value-in {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+/* Empty states rise in on mount. */
+@keyframes empty-in {
+  from {
+    opacity: 0;
+    translate: 0 8px;
+  }
+  to {
+    opacity: 1;
+    translate: 0 0;
+  }
+}
+
 @media (prefers-reduced-motion: reduce) {
   .animate-fade-in-up,
   .animate-fade-in-up-2,
@@ -294,9 +419,23 @@ html.light .rm-surface {
   .animate-slide-in-left,
   .animate-slide-in-left-2,
   .animate-slide-in-left-3,
-  .animate-glow-pulse {
+  .animate-glow-pulse,
+  .animate-row-in,
+  .animate-row-flash,
+  .animate-value-in,
+  .animate-empty-in {
     animation: none;
     opacity: 1;
+  }
+  [data-slot="table-body"] > tr {
+    animation: none;
+  }
+  .animate-train-loop,
+  .animate-wheel-spin,
+  .animate-train-smoke,
+  .animate-signal-blink,
+  .hero-drift {
+    animation: none;
   }
 }
 
@@ -336,4 +475,28 @@ body::-webkit-scrollbar {
 
 .workflow-graph-shell .react-flow__panel {
   margin: 0;
+}
+
+/* Lenis — inertial smooth scroll, marketing routes only.
+   Neutralizes the global `scroll-behavior: smooth` above so the
+   two never fight; the dashboard/app keeps native scrolling. */
+html.lenis,
+html.lenis body {
+  height: auto;
+}
+
+.lenis:not(.lenis-autoToggle).lenis-stopped {
+  overflow: hidden;
+}
+
+.lenis.lenis-smooth {
+  scroll-behavior: auto !important;
+}
+
+.lenis.lenis-smooth [data-lenis-prevent] {
+  overscroll-behavior: contain;
+}
+
+.lenis.lenis-stopped {
+  overflow: hidden;
 }

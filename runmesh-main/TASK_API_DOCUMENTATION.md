@@ -273,6 +273,298 @@ Returns workflow metadata, `tasks`, and `graph` (`nodes` + `edges`) in `data`. L
 
 Phase A supports a **single linear path** from `trigger` through `http` nodes. Saving syncs HTTP nodes to `tasks` (create/update/delete) and enqueues **new** steps only.
 
+## Agents
+
+Agents are first-class principals: identity + lifecycle only. Scopes, caps,
+approvals, and expiries live in grants — never on the agent row.
+
+### List agents
+
+`GET /api/v1/agents`
+
+Returns the workspace's agents, newest first. `public_key` is never returned;
+`key_fingerprint` identifies the registered key instead.
+
+```bash
+curl https://your-domain/api/v1/agents \
+  -H "X-API-Key: rk_your_key"
+```
+
+### Create agent
+
+`POST /api/v1/agents`
+
+Registers an agent identity. `name` is required (1–64 characters);
+`environment`, when given, must be `dev`, `staging`, or `prod`;
+`parent_agent_id`, when given, must reference an agent in the same workspace.
+
+```bash
+curl -X POST https://your-domain/api/v1/agents \
+  -H "X-API-Key: rk_your_key" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "name": "Atlas",
+    "description": "Files issues",
+    "environment": "prod"
+  }'
+
+```
+
+## Grants
+
+Grants are workspace-scoped and app-less: the OAuth client row survives only
+as session config. Mint → pending by default → approve/deny → revoke when live.
+
+### List grants
+
+`GET /api/v1/grants?status=&agent_id=&provider=&page=&limit=`
+
+`status` is one of `pending`, `active`, `expired`, `revoked`, `denied`
+(derived from `status` + `approval_status` + `valid_until`).
+
+```bash
+curl "https://your-domain/api/v1/grants?status=pending" \
+  -H "X-API-Key: rk_your_key"
+```
+
+### Mint grant
+
+`POST /api/v1/grants`
+
+`connection_id` and at least one scope are required. `agent_id`, when given,
+must reference an agent in the same workspace. `environment`, when given, must
+be `dev`, `staging`, or `prod`. `approval_status` is `pending_approval` by
+default (`approved` also accepted).
+
+```bash
+curl -X POST https://your-domain/api/v1/grants \
+  -H "X-API-Key: rk_your_key" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "connection_id": "conn_abc",
+    "agent_id": "ag_abc",
+    "scopes": ["github.issue.create"],
+    "resource_filters": {"github": {"repos": ["org/payments"]}},
+    "max_uses": 10,
+    "environment": "prod"
+  }'
+
+```
+
+### Approve / deny grant
+
+`POST /api/v1/connect/grants/{id}/approve` (body `{}` or `{"reason": ...}`)
+`POST /api/v1/connect/grants/{id}/deny` (body `{"reason": ...}`)
+
+Authorized by workspace membership — no app-owner check. Only pending grants
+can be approved or denied.
+
+### Revoke grant
+
+`POST /api/v1/grants/{id}/revoke` (body `{}` or `{"reason": ...}`)
+
+Revokes an active grant. Deny is for pending grants; revoke is for live ones.
+Double revoke returns 409.
+
+## Connections
+
+Connections are workspace-scoped like grants. The OAuth callback stamps
+`workspace_id` on create and re-connect.
+
+### List connections
+
+`GET /api/v1/connections?provider=&status=&page=&limit=`
+
+Who authorized which account, newest first.
+
+```bash
+curl https://your-domain/api/v1/connections \
+  -H "X-API-Key: rk_your_key"
+```
+
+## Audit
+
+Every grant, session, connection, approval, denial, revocation, and token
+exchange writes a workspace-stamped audit event.
+
+### List audit events
+
+`GET /api/v1/connect/audit?event_type=&connect_user_id=&search=&limit=&offset=`
+
+Workspace-scoped, newest first.
+
+```bash
+curl "https://your-domain/api/v1/connect/audit?event_type=connect.grant.created" \
+  -H "X-API-Key: rk_your_key"
+```
+
+### Metrics
+
+`GET /api/v1/connect/metrics`
+
+Workspace-scoped pending approvals and 24h token counts.
+
+### Tokens
+
+`GET /api/v1/connect/tokens?task_id=&workflow_run_id=&workspace_project_id=`
+
+Workspace-scoped token exchange records.
+
+## Policies
+
+Policy rules are workspace-scoped and ordered (first match wins). Prose is the
+source of truth: conditions are stored as JSON and compiled to a Rego artifact
+on read.
+
+**Policy is enforced at grant issuance.** When a grant is minted, the engine
+evaluates the workspace's rules and the outcome decides:
+`allow` → auto-approved, `escalate`/`consent` → `pending_approval`, `deny` →
+blocked (403). A matched `log-only` rule is recorded as a shadow and never
+decides. Unmatched falls to **default deny** once the workspace has at least one
+enabled `enforce` rule; with none, issuance proceeds unchanged (policy is off
+until you enable a rule).
+
+The action identity is derived server-side from the connection (`github`), not
+from the request — a caller cannot name its own action or self-approve. Every
+evaluation is written to `policy_decisions`, which is what the oversight metrics
+on the Policies page read. Enforced decisions also emit a `policy.decision`
+audit event.
+
+`POST /api/v1/grants` returns `403` with the matched rule's reason when policy
+blocks. The consent path (`_ensure_grant`) enforces in restrictive mode: only an
+explicit enforced deny blocks, so an operator's rule can forbid a connection but
+never auto-approve one on the user's behalf.
+
+### List rules
+
+`GET /api/v1/policies/rules`
+
+Returns the workspace's rules in priority order, each with its compiled `rego`.
+
+```bash
+curl https://your-domain/api/v1/policies/rules \
+  -H "X-API-Key: rk_your_key"
+```
+
+### Create rule
+
+`POST /api/v1/policies/rules`
+
+`name` is required (1–80 characters). `action` is one of `allow`, `escalate`,
+`consent`, `deny`; `mode` is `enforce` or `log-only` (default). New rules
+append at the lowest priority and start disabled unless `enabled: true` is
+passed. Every mutation writes a `policy.updated` audit event.
+
+```bash
+curl -X POST https://your-domain/api/v1/policies/rules \
+  -H "X-API-Key: rk_your_key" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "name": "Spend-cap charges",
+    "conditions": [
+      {"field": "action", "operator": "is", "value": "stripe.charge.create"},
+      {"field": "amount", "operator": ">", "value": "50"}
+    ],
+    "action": "escalate",
+    "enabled": true
+  }'
+
+```
+
+### Update / delete rule
+
+`PATCH /api/v1/policies/rules/{id}` (any subset of fields)
+`DELETE /api/v1/policies/rules/{id}` (survivors renumber so priority stays dense)
+
+### Reorder rules
+
+`POST /api/v1/policies/rules/reorder`
+
+Body `{"ids": [...]}` must contain exactly the workspace's rule ids in the new
+order. First match wins, so order is semantics.
+
+### Evaluate (dry-run)
+
+`POST /api/v1/policies/evaluate`
+
+Walks enabled rules in priority order and returns the decision, the matched
+rule, a per-rule trace, and what would change the outcome. Unmatched requests
+fall to default-deny. No side effects.
+
+```bash
+curl -X POST https://your-domain/api/v1/policies/evaluate \
+  -H "X-API-Key: rk_your_key" \
+  -H "Content-Type: application/json" \
+  -d '{"agent": "Atlas", "action": "stripe.charge.create", "amount": "120"}'
+
+```
+
+### Changelog
+
+Rule mutations emit `policy.updated` audit events. Query them like any audit
+trail:
+
+```bash
+curl "https://your-domain/api/v1/connect/audit?event_type=policy.updated" \
+  -H "X-API-Key: rk_your_key"
+```
+
+## Telemetry collection (phase 1)
+
+Agents are registered by observation: the wrapper reports a definition and
+this layer resolves it to a canonical agent, opening a new version when the
+fingerprint changes. Runs and events record executions. Nothing here
+enforces. Payloads are size-capped and secret-shaped values are redacted
+before storage.
+
+### Resolve agent
+
+`PUT /api/v1/agents:resolve`
+
+Upsert by workspace plus `external_key` and/or `fingerprint`. Returns the
+canonical id, whether it is new, and whether the fingerprint opened a new
+version. At least one of `external_key` / `fingerprint` is required.
+
+```bash
+curl -X PUT https://your-domain/api/v1/agents:resolve \
+  -H "X-API-Key: rk_your_key" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "external_key": "atlas",
+    "fingerprint": "fp_abc123",
+    "framework": "vercel-ai-sdk",
+    "model": "claude-sonnet-4-5"
+  }'
+
+```
+
+### Start / finish run
+
+`POST /api/v1/runs` (`agent_id`, optional `parent_run_id` for subagents,
+optional `input`)
+`POST /api/v1/runs/:id/finish` (`status`: `completed` | `failed`, optional
+`usage`). Refinishing with the same status is idempotent; a conflicting
+status returns 409.
+
+### Ingest events
+
+`POST /api/v1/ingest`
+
+Batched, non-blocking by contract. `kind` is one of `tool.call`,
+`tool.result`, `model.request`, `model.response`, `policy.decision`,
+`error`, `log`. Batches cap at 200 events; each payload caps at 8KB with a
+`truncated` flag; secret-shaped values are stored as `[REDACTED]`. Sequence
+numbers are assigned server-side per run.
+
+```bash
+curl -X POST https://your-domain/api/v1/ingest \
+  -H "X-API-Key: rk_your_key" \
+  -H "Content-Type: application/json" \
+  -d '{"events": [{"run_id": "run_abc", "kind": "tool.call",
+    "name": "github_issues_get", "args": {"owner": "o"}}]}'
+
+```
+
 ## Analytics
 
 `GET /api/analytics` (JWT only)

@@ -104,6 +104,8 @@ class TaskScheduler:
         workflow_id = task_data.get("workflow_id")
         if workflow_id:
             full_task_data["workflow_id"] = workflow_id
+        if task_data.get("workspace_id"):
+            full_task_data["workspace_id"] = task_data["workspace_id"]
         if task_data.get("payload_template"):
             full_task_data["payload_template"] = task_data["payload_template"]
         if task_data.get("url_template"):
@@ -177,15 +179,17 @@ class TaskScheduler:
         self, 
         user_id: str = None,
         status: str = None,
-        limit: int = 50
+        limit: int = 50,
+        workspace_id: str = None,
     ) -> List[Dict[str, Any]]:
         """
         Get scheduled tasks with optional filtering
         
         Args:
-            user_id: Filter by user ID
+            user_id: Filter by user ID (legacy; ignored when workspace_id is set)
             status: Filter by status
             limit: Maximum number of tasks to return
+            workspace_id: Filter by workspace ID (preferred)
             
         Returns:
             List of scheduled tasks
@@ -193,7 +197,10 @@ class TaskScheduler:
         where_conditions = ["execution_type = 'scheduled'"]
         params = []
         
-        if user_id:
+        if workspace_id:
+            where_conditions.append("workspace_id = ?")
+            params.append(workspace_id)
+        elif user_id:
             where_conditions.append("user_id = ?")
             params.append(user_id)
         

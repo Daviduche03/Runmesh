@@ -9,6 +9,7 @@ from typing import Any, Callable, Awaitable, Optional
 from fastapi import HTTPException
 
 from db.orm import WebhookModel, WebhookDeadLetterModel
+from services.workspaces import resolve_workspace_id, require_row_access
 from utils.url_security import validate_outbound_url
 
 WEBHOOK_QUEUE_NAME = "runmesh-webhooks"
@@ -138,7 +139,7 @@ def format_webhook_row(row: dict[str, Any], include_secret: bool = False) -> dic
     return item
 
 
-async def create_webhook(model: WebhookModel, name: str, url: str, events: str, user_id: str) -> dict[str, Any]:
+async def create_webhook(model: WebhookModel, name: str, url: str, events: str, user_id: str, workspace_id: str | None = None) -> dict[str, Any]:
     event_list = normalize_events(events)
     now = datetime.now(timezone.utc).isoformat()
     secret = generate_webhook_secret()
@@ -149,6 +150,7 @@ async def create_webhook(model: WebhookModel, name: str, url: str, events: str, 
         "status": "active",
         "secret": secret,
         "user_id": user_id,
+        "workspace_id": await resolve_workspace_id(model.db, user_id, workspace_id),
         "created_at": now,
         "updated_at": now,
     }
@@ -156,23 +158,22 @@ async def create_webhook(model: WebhookModel, name: str, url: str, events: str, 
     return format_webhook_row({"id": webhook_id, **data}, include_secret=True)
 
 
-async def list_webhooks(model: WebhookModel, user_id: str) -> list[dict[str, Any]]:
-    rows = await model.find_by_user_id(user_id)
+async def list_webhooks(model: WebhookModel, user_id: str, workspace_id: str | None = None) -> list[dict[str, Any]]:
+    workspace_id = await resolve_workspace_id(model.db, user_id, workspace_id)
+    rows = await model.find_by_workspace_id(workspace_id)
     return [format_webhook_row(row) for row in rows]
 
 
 async def delete_webhook(model: WebhookModel, webhook_id: str, user_id: str) -> str:
     row = await model.find_by_id(webhook_id)
-    if not row or row.get("user_id") != user_id:
-        raise HTTPException(status_code=404, detail="Webhook not found")
+    await require_row_access(model.db, user_id, row, not_found_detail="Webhook not found")
     await model.delete(webhook_id)
     return webhook_id
 
 
 async def rotate_webhook_secret(model: WebhookModel, webhook_id: str, user_id: str) -> dict[str, Any]:
     row = await model.find_by_id(webhook_id)
-    if not row or row.get("user_id") != user_id:
-        raise HTTPException(status_code=404, detail="Webhook not found")
+    await require_row_access(model.db, user_id, row, not_found_detail="Webhook not found")
     secret = generate_webhook_secret()
     now = datetime.now(timezone.utc).isoformat()
     await model.update(
@@ -401,7 +402,7 @@ async def dispatch_event(
         return 0
 
     model = WebhookModel(db)
-    webhooks = await model.find_active_by_user_id(user_id)
+    webhooks = await model.find_active_by_workspace_id(task.get("workspace_id")) if task.get("workspace_id") else await model.find_active_by_user_id(user_id)
     queued = 0
 
     for webhook in webhooks:
@@ -452,6 +453,7 @@ async def record_dead_letter(
     data = {
         "webhook_id": webhook["id"],
         "user_id": webhook.get("user_id", ""),
+        "workspace_id": webhook.get("workspace_id"),
         "event": event,
         "event_id": envelope.get("id", ""),
         "body": json.dumps(envelope, separators=(",", ":")),
@@ -468,8 +470,10 @@ async def list_dead_letters(
     model: WebhookDeadLetterModel,
     user_id: str,
     include_replayed: bool = False,
+    workspace_id: str | None = None,
 ) -> list[dict[str, Any]]:
-    rows = await model.find_by_user_id(user_id, include_replayed=include_replayed)
+    workspace_id = await resolve_workspace_id(model.db, user_id, workspace_id)
+    rows = await model.find_by_workspace_id(workspace_id, include_replayed=include_replayed)
     webhook_model = WebhookModel(model.db)
     names: dict[str, str] = {}
     out = []
@@ -489,8 +493,7 @@ async def replay_dead_letter(
     user_id: str,
 ) -> dict[str, Any]:
     row = await model.find_by_id(dead_letter_id)
-    if not row or row.get("user_id") != user_id:
-        raise HTTPException(status_code=404, detail="Dead letter not found")
+    await require_row_access(model.db, user_id, row, not_found_detail="Dead letter not found")
     if row.get("replayed_at"):
         raise HTTPException(status_code=400, detail="Dead letter already replayed")
 
@@ -518,7 +521,6 @@ async def dismiss_dead_letter(
     user_id: str,
 ) -> str:
     row = await model.find_by_id(dead_letter_id)
-    if not row or row.get("user_id") != user_id:
-        raise HTTPException(status_code=404, detail="Dead letter not found")
+    await require_row_access(model.db, user_id, row, not_found_detail="Dead letter not found")
     await model.delete(dead_letter_id)
     return dead_letter_id

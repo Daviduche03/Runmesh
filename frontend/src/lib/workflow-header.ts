@@ -1,4 +1,4 @@
-import type { Workflow } from "@/stores/workflows-store";
+import type { Workflow } from "@/lib/stores/workflows-store";
 import { triggerLabel } from "@/lib/workflow-graph";
 
 export function titleCase(value: string): string {

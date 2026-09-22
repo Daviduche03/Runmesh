@@ -3,7 +3,7 @@ import { ListOrderedIcon } from "lucide-react";
 
 const EmptyState = ({ title, description, icon }: { title: string; description: string; icon?: React.ReactNode }) => {
 	return (
-		<div className="flex h-40 items-center justify-center">
+		<div className="animate-empty-in flex h-40 items-center justify-center">
 			<Empty>
 				<EmptyHeader>
 					<EmptyMedia>

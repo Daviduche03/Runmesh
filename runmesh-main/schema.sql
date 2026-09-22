@@ -25,6 +25,7 @@ CREATE TABLE IF NOT EXISTS tasks (
   created_at TEXT NOT NULL,
   updated_at TEXT NOT NULL,
   user_id TEXT NOT NULL,
+  workspace_id TEXT REFERENCES workspaces(id),
   workflow_id TEXT,
   payload_template TEXT,
   url_template TEXT,
@@ -62,6 +63,9 @@ CREATE INDEX IF NOT EXISTS idx_tasks_workspace_project
 CREATE INDEX IF NOT EXISTS idx_tasks_connect_grant
   ON tasks (user_id, connect_grant_id, created_at);
 
+CREATE INDEX IF NOT EXISTS idx_tasks_workspace
+  ON tasks (workspace_id, status, created_at);
+
 CREATE TABLE IF NOT EXISTS workflows (
   id TEXT PRIMARY KEY,
   name TEXT NOT NULL,
@@ -70,6 +74,7 @@ CREATE TABLE IF NOT EXISTS workflows (
   trigger_config TEXT,
   status TEXT NOT NULL DEFAULT 'draft',
   user_id TEXT NOT NULL,
+  workspace_id TEXT REFERENCES workspaces(id),
   created_at TEXT NOT NULL,
   updated_at TEXT NOT NULL,
   graph TEXT,
@@ -100,6 +105,9 @@ CREATE INDEX IF NOT EXISTS idx_workflows_agent
 CREATE INDEX IF NOT EXISTS idx_workflows_workspace_project
   ON workflows (user_id, workspace_project_id, created_at);
 
+CREATE INDEX IF NOT EXISTS idx_workflows_workspace
+  ON workflows (workspace_id, status);
+
 CREATE INDEX IF NOT EXISTS idx_workflow_runs_agent_session
   ON workflow_runs (user_id, agent_session_id, started_at);
 
@@ -123,11 +131,95 @@ CREATE TABLE IF NOT EXISTS agent_sessions (
   FOREIGN KEY (workspace_project_id) REFERENCES workspace_projects(id) ON DELETE SET NULL
 );
 
+CREATE TABLE IF NOT EXISTS agents (
+  id TEXT PRIMARY KEY,
+  user_id TEXT NOT NULL,
+  workspace_id TEXT REFERENCES workspaces(id),
+  name TEXT NOT NULL DEFAULT '',
+  status TEXT NOT NULL DEFAULT 'active' CHECK (status IN ('active','archived')),
+  metadata TEXT NOT NULL DEFAULT '{}',
+  created_at TEXT NOT NULL,
+  updated_at TEXT NOT NULL,
+  FOREIGN KEY (user_id) REFERENCES users(id)
+);
+
+CREATE INDEX IF NOT EXISTS idx_agents_user
+  ON agents (user_id, status, created_at);
+
+CREATE INDEX IF NOT EXISTS idx_agents_workspace
+  ON agents (workspace_id, status);
+
+CREATE TABLE IF NOT EXISTS workspaces (
+  id TEXT PRIMARY KEY,
+  name TEXT NOT NULL DEFAULT '',
+  owner_user_id TEXT NOT NULL,
+  status TEXT NOT NULL DEFAULT 'active' CHECK (status IN ('active','archived')),
+  type TEXT NOT NULL DEFAULT 'personal' CHECK (type IN ('personal','work')),
+  slug TEXT,
+  avatar_url TEXT,
+  plan TEXT NOT NULL DEFAULT 'free' CHECK (plan IN ('free','pro','enterprise')),
+  seats INTEGER NOT NULL DEFAULT 1 CHECK (seats >= 1),
+  metadata TEXT NOT NULL DEFAULT '{}',
+  created_at TEXT NOT NULL,
+  updated_at TEXT NOT NULL,
+  FOREIGN KEY (owner_user_id) REFERENCES users(id)
+);
+
+CREATE INDEX IF NOT EXISTS idx_workspaces_owner
+  ON workspaces (owner_user_id, status);
+
+CREATE UNIQUE INDEX IF NOT EXISTS idx_workspaces_owner_personal
+  ON workspaces (owner_user_id) WHERE type = 'personal';
+
+CREATE UNIQUE INDEX IF NOT EXISTS idx_workspaces_slug
+  ON workspaces (slug) WHERE slug IS NOT NULL;
+
+CREATE TABLE IF NOT EXISTS workspace_members (
+  id TEXT PRIMARY KEY,
+  workspace_id TEXT NOT NULL,
+  user_id TEXT NOT NULL,
+  role TEXT NOT NULL DEFAULT 'member' CHECK (role IN ('owner','admin','member')),
+  created_at TEXT NOT NULL,
+  updated_at TEXT NOT NULL,
+  FOREIGN KEY (workspace_id) REFERENCES workspaces(id) ON DELETE CASCADE,
+  FOREIGN KEY (user_id) REFERENCES users(id),
+  UNIQUE (workspace_id, user_id)
+);
+
+CREATE INDEX IF NOT EXISTS idx_workspace_members_user
+  ON workspace_members (user_id);
+
+CREATE TABLE IF NOT EXISTS workspace_invites (
+  id TEXT PRIMARY KEY,
+  workspace_id TEXT NOT NULL,
+  email TEXT NOT NULL,
+  role TEXT NOT NULL DEFAULT 'member' CHECK (role IN ('member','admin')),
+  status TEXT NOT NULL DEFAULT 'pending'
+    CHECK (status IN ('pending','accepted','expired','revoked')),
+  token_hash TEXT NOT NULL UNIQUE,
+  invited_by_user_id TEXT NOT NULL,
+  expires_at TEXT NOT NULL,
+  created_at TEXT NOT NULL,
+  updated_at TEXT NOT NULL,
+  FOREIGN KEY (workspace_id) REFERENCES workspaces(id) ON DELETE CASCADE,
+  FOREIGN KEY (invited_by_user_id) REFERENCES users(id)
+);
+
+CREATE INDEX IF NOT EXISTS idx_invites_workspace
+  ON workspace_invites (workspace_id, status);
+
+CREATE INDEX IF NOT EXISTS idx_invites_token
+  ON workspace_invites (token_hash);
+
+CREATE INDEX IF NOT EXISTS idx_agent_sessions_user_agent
+  ON agent_sessions (user_id, agent_id);
+
 CREATE TABLE IF NOT EXISTS api_keys (
   id TEXT PRIMARY KEY,
   key_hash TEXT NOT NULL UNIQUE,
   name TEXT NOT NULL,
   user_id TEXT NOT NULL,
+  workspace_id TEXT REFERENCES workspaces(id),
   permissions TEXT NOT NULL DEFAULT 'read',
   is_active INTEGER NOT NULL DEFAULT 1,
   last_used_at TEXT,
@@ -161,6 +253,7 @@ CREATE TABLE IF NOT EXISTS webhooks (
   status TEXT NOT NULL DEFAULT 'active',
   secret TEXT NOT NULL,
   user_id TEXT NOT NULL,
+  workspace_id TEXT REFERENCES workspaces(id),
   created_at TEXT NOT NULL,
   updated_at TEXT NOT NULL
 );
@@ -177,5 +270,15 @@ CREATE TABLE IF NOT EXISTS webhook_dead_letters (
   attempts INTEGER NOT NULL,
   failed_at TEXT NOT NULL,
   replayed_at TEXT,
+  workspace_id TEXT REFERENCES workspaces(id),
   created_at TEXT NOT NULL
 );
+
+CREATE INDEX IF NOT EXISTS idx_api_keys_workspace
+  ON api_keys (workspace_id, is_active);
+
+CREATE INDEX IF NOT EXISTS idx_webhooks_workspace
+  ON webhooks (workspace_id, status);
+
+CREATE INDEX IF NOT EXISTS idx_dead_letters_workspace
+  ON webhook_dead_letters (workspace_id);
