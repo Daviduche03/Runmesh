@@ -54,10 +54,15 @@ function toManagedResponse(outcome: ForwardOutcome): ManagedResponse {
     };
   }
   const status = REFUSAL_STATUS[outcome.decision] ?? 403;
-  const text = JSON.stringify({
+  const payload: Record<string, unknown> = {
     error: REFUSAL_ERROR[outcome.decision] ?? "policy_denied",
     reason: outcome.reason,
-  });
+  };
+  if (outcome.decision === "consent") {
+    payload["provider"] = outcome.provider;
+    payload["consent_url"] = outcome.consentUrl ?? null;
+  }
+  const text = JSON.stringify(payload);
   return {
     status,
     ok: false,
@@ -298,6 +303,7 @@ export class VercelAdapter extends BaseAdapter<VercelAgentInput> {
           error: "consent_required",
           provider: outcome.provider,
           reason: outcome.reason,
+          consent_url: outcome.consentUrl ?? null,
         };
       } catch (err) {
         return {
@@ -382,7 +388,7 @@ async function resolveCached(
 
 export type VercelRunTextConfig<TResult> = {
   /** Agent key, or full identity for first contact. */
-  agent: string | { key?: string; name?: string };
+  agent: string | { externalKey?: string; name?: string };
   /** The framework's `generateText`, injected to keep this package dependency-free. */
   generateText: (options: Record<string, unknown>) => Promise<TResult>;
   model: unknown;

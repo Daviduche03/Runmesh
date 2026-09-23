@@ -129,4 +129,5 @@ async def api_forward_passthrough(
         "error": data.get("decision"),
         "reason": data.get("reason"),
         "provider": data.get("provider"),
+        "consent_url": data.get("consent_url"),
     })

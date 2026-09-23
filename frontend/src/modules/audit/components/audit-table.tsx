@@ -40,6 +40,10 @@ export type AuditEvent = {
 	childRunId?: string | null;
 	childAgentId?: string | null;
 	childAgentName?: string | null;
+	/** Human sentence: policy denial, escalate, or consent reason. */
+	reason?: string | null;
+	/** Raw backend metadata (decision_id, rule_name, kind, …). */
+	metadata?: Record<string, unknown> | null;
 	outcome: AuditOutcome;
 	offsetMs: number;
 	durationMs: number;

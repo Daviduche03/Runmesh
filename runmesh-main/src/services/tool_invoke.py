@@ -129,6 +129,183 @@ async def _resolve_grant(model: Model, workspace_id: str, connection_id: str, ag
     )
 
 
+async def _connect_session_url(env, model: Model, workspace_id: str, user_id: str, *,
+                               provider: str, connection: dict, cid: str,
+                               frontend: str, public: str, mode: str) -> str | None:
+    """Mint (or reuse) a Connect session and return its authorize URL."""
+    from db.connect_orm import (
+        ConnectAppModel,
+        ConnectAppUserModel,
+        ConnectAuditEventModel,
+        ConnectIdentityModel,
+        ConnectOtpChallengeModel,
+        ConnectSessionModel,
+        ConnectUserModel,
+    )
+    from services.connect_apps import ensure_workspace_app
+    from services.connect_sessions import create_connect_session
+    from utils.types import ConnectSessionCreateRequest
+
+    # Reuse an open session for this account/provider/mode: repeated consent
+    # answers must not spam sessions.
+    reuse = await model.find_one(
+        "connect_sessions",
+        "workspace_id = ? AND connect_user_id = ? AND provider = ? AND mode = ? "
+        "AND status = 'pending' AND expires_at > ?",
+        workspace_id, cid, provider, mode, datetime.now(timezone.utc).isoformat(),
+    )
+    if reuse is not None:
+        return f"{public}/connect/authorize?state={reuse['state']}"
+
+    app_model = ConnectAppModel(model.db)
+    app = await app_model.find_by_workspace(workspace_id)
+    if app is None:
+        app = await ensure_workspace_app(app_model, workspace_id, user_id)
+
+    # The session must carry an external_user_id the app already maps to this
+    # connect user. Prefer the connection's own link, then the human's existing
+    # link (the embed flow's), and only then create one keyed by the connection
+    # — never clobbering a mapping that already exists.
+    app_user_model = ConnectAppUserModel(model.db)
+    linked = await app_user_model.find_by_external_user(app.id, connection["id"])
+    if linked is not None and linked.connect_user_id == cid:
+        external_user_id = connection["id"]
+    else:
+        canonical = await app_user_model.find_by_connect_user(app.id, cid)
+        if canonical is not None:
+            external_user_id = canonical.external_user_id
+        else:
+            await app_user_model.link_user(app.id, connection["id"], cid)
+            external_user_id = connection["id"]
+
+    scopes: list[str] = []
+    if mode == "connect":
+        from utils.connect_providers import normalize_requested_scopes, parse_connect_provider
+
+        scopes = normalize_requested_scopes(
+            parse_connect_provider(provider), _parse_scopes(connection.get("scopes")))
+        if not scopes:
+            return None
+
+    body = await create_connect_session(
+        env,
+        app_model,
+        ConnectSessionModel(model.db),
+        ConnectAuditEventModel(model.db),
+        ConnectUserModel(model.db),
+        ConnectIdentityModel(model.db),
+        app_user_model,
+        ConnectOtpChallengeModel(model.db),
+        ConnectSessionCreateRequest(
+            external_user_id=external_user_id,
+            connect_user_id=cid,
+            mode=mode,
+            redirect_uri=f"{frontend}/connect",
+            provider=provider,
+            scopes=scopes,
+        ),
+        user_id,
+        public,
+        workspace_id,
+    )
+    return (body.get("data") or {}).get("authorize_url")
+
+
+async def _consent_url(env, model: Model, workspace_id: str, user_id: str, *,
+                       provider: str, connection: dict | None, agent_id: str | None,
+                       reauth: bool = False) -> str | None:
+    """Where this consent can be resolved. Never raises: a consent without a
+    usable resume path still returns its reason, just without a URL.
+
+    - An approval already waiting → the Grants page (operator approves).
+    - Connection alive but no grant → end-user consent page (Connect providers)
+      or a pending grant for the operator (everything else).
+    - Dead credential → re-run the OAuth connect for that provider.
+    - No connection → no identity to start from: no URL yet.
+    """
+    try:
+        if connection is None:
+            return None
+        frontend = str(getattr(env, "FRONTEND_URL", "") or "").rstrip("/")
+        public = str(getattr(env, "PUBLIC_URL", "") or "").rstrip("/")
+        if not frontend:
+            return None
+        cid = connection.get("connect_user_id")
+        if not cid:
+            return None
+
+        if not reauth:
+            where = (
+                "workspace_id = ? AND connection_id = ? AND status = 'active' "
+                "AND approval_status = 'pending_approval'"
+            )
+            params: list = [workspace_id, connection["id"]]
+            if agent_id:
+                where += " AND (agent_id = ? OR agent_id IS NULL)"
+                params.append(agent_id)
+            else:
+                where += " AND agent_id IS NULL"
+            if await model.find_one("connect_grants", where, *params) is not None:
+                return f"{frontend}/grants"
+
+        from db.connect_orm import (
+            ConnectAuditEventModel,
+            ConnectConnectionModel,
+            ConnectGrantModel,
+            ConnectUserModel,
+        )
+        from utils.connect_providers import parse_connect_provider
+
+        try:
+            parse_connect_provider(provider)
+            connect_provider = True
+        except HTTPException:
+            connect_provider = False
+
+        url: str | None = None
+        if connect_provider and public:
+            try:
+                url = await _connect_session_url(
+                    env, model, workspace_id, user_id,
+                    provider=provider, connection=connection, cid=cid,
+                    frontend=frontend, public=public,
+                    mode="connect" if reauth else "grant",
+                )
+            except Exception:
+                # Session mint can legitimately fail (provider not enabled,
+                # identity not verified): fall through to a pending grant
+                # instead of losing the consent resume path entirely.
+                url = None
+        if url:
+            return url
+        if reauth:
+            return None
+
+        # Not Connect-manageable (or the session could not be minted): ask the
+        # operator for a grant instead of leaving the consent a dead end.
+        from services.connect_grants import create_grant
+        from utils.types import GrantCreateRequest
+
+        scopes = _parse_scopes(connection.get("scopes")) or [provider or ""]
+        await create_grant(
+            ConnectGrantModel(model.db),
+            ConnectConnectionModel(model.db),
+            ConnectUserModel(model.db),
+            ConnectAuditEventModel(model.db),
+            user_id,
+            workspace_id,
+            GrantCreateRequest(
+                connection_id=connection["id"],
+                agent_id=agent_id,
+                scopes=scopes,
+                approval_status="pending_approval",
+            ),
+        )
+        return f"{frontend}/grants"
+    except Exception:
+        return None
+
+
 async def _refusal(model: Model, workspace_id: str, tool: dict, run: dict, agent_name: str,
                    cid: str | None, user_label: str, run_id: str, resource: str,
                    decision: str, reason: str) -> dict:
@@ -279,7 +456,8 @@ async def _resolve_tool_and_run(model: Model, workspace_id: str, ref: str, run_i
 
 
 async def _prepare_call(env, model: Model, workspace_id: str, tool: dict, run: dict,
-                        agent_name: str, run_id: str, *, connect_user_id, resource: str) -> dict:
+                        agent_name: str, run_id: str, *, user_id: str,
+                        connect_user_id, resource: str) -> dict:
     """Resolve credential + policy. Returns ``{"early": response}`` to stop, or
     ``{"token", "connect_user_id", "user_label", "ledger_ok"}`` to proceed."""
     provider = tool.get("provider")
@@ -320,6 +498,7 @@ async def _prepare_call(env, model: Model, workspace_id: str, tool: dict, run: d
             "decision": "consent",
             "provider": provider,
             "reason": f"Connect {provider} to let this agent act on your behalf.",
+            "consent_url": None,
             "ledger_ok": ledger_ok,
         })}
 
@@ -368,12 +547,15 @@ async def _prepare_call(env, model: Model, workspace_id: str, tool: dict, run: d
     ledger_ok = ledger_ok and bool(outcome.get("ledger_ok", True))
 
     if outcome["decision"] != "allow":
-        return {"early": success({
+        payload = {
             "decision": outcome["decision"],
             "reason": outcome["reason"],
             "rule": (outcome.get("rule") or {}).get("name"),
             "ledger_ok": ledger_ok,
-        })}
+        }
+        if outcome["decision"] == "consent":
+            payload["consent_url"] = None
+        return {"early": success(payload)}
 
     # The grant is the agent's authority. Without one there is nothing to
     # exercise; with one, its limits are enforced rather than ignored.
@@ -398,10 +580,15 @@ async def _prepare_call(env, model: Model, workspace_id: str, tool: dict, run: d
             enforcement="proxied",
             run_id=run_id,
         )) and ledger_ok
+        consent_url = await _consent_url(
+            env, model, workspace_id, user_id,
+            provider=provider, connection=connection, agent_id=run["agent_id"],
+        )
         return {"early": success({
             "decision": "consent",
             "provider": provider,
             "reason": f"Grant {provider} access to this agent before it can act.",
+            "consent_url": consent_url,
             "ledger_ok": ledger_ok,
         })}
 
@@ -422,6 +609,22 @@ async def _prepare_call(env, model: Model, workspace_id: str, tool: dict, run: d
             model, workspace_id, tool, run, agent_name, cid, user_label, run_id, resource,
             "deny", "The grant does not cover this resource.")}
 
+    token = decrypt_connect_secret(connection.get("access_token_enc"), env.JWT_SECRET)
+    if not token:
+        # Before the use is reserved: a reconnect prompt must not consume one.
+        consent_url = await _consent_url(
+            env, model, workspace_id, user_id,
+            provider=provider, connection=connection, agent_id=run["agent_id"],
+            reauth=True,
+        )
+        return {"early": success({
+            "decision": "consent",
+            "provider": provider,
+            "reason": f"The {provider} connection has no usable credential; reconnect it.",
+            "consent_url": consent_url,
+            "ledger_ok": ledger_ok,
+        })}
+
     # Reserve a use. Best-effort so a counter write cannot veto an allowed
     # call, but the outcome is reported in ledger_ok.
     try:
@@ -431,15 +634,6 @@ async def _prepare_call(env, model: Model, workspace_id: str, tool: dict, run: d
         )
     except Exception:
         ledger_ok = False
-
-    token = decrypt_connect_secret(connection.get("access_token_enc"), env.JWT_SECRET)
-    if not token:
-        return {"early": success({
-            "decision": "consent",
-            "provider": provider,
-            "reason": f"The {provider} connection has no usable credential; reconnect it.",
-            "ledger_ok": ledger_ok,
-        })}
 
     return {
         "token": token,
@@ -453,6 +647,11 @@ async def _execute_and_record(env, model: Model, workspace_id: str, run_id: str,
                               request_args: dict, method: str, url: str, headers: dict, body,
                               token: str, idem_key: str | None, ledger_ok: bool) -> dict:
     started = _now()
+    # Managed tools skip the SDK's local interpose: record the attempt here so
+    # the thread has a tool.call before tool.result/error.
+    ledger_ok = await _kept(_record_event(
+        model, workspace_id, run_id, "tool.call", tool["name"], request_args,
+        {}, 0)) and ledger_ok
     try:
         response = await asyncio.wait_for(
             fetch(url, method=method, headers=headers, body=body),
@@ -542,7 +741,7 @@ async def invoke_tool(env, user_id: str, workspace_id: str, ref: str, req) -> di
 
     prep = await _prepare_call(
         env, model, workspace_id, tool, run, agent_name, run_id,
-        connect_user_id=req.connect_user_id, resource=resource,
+        user_id=user_id, connect_user_id=req.connect_user_id, resource=resource,
     )
     if prep.get("early") is not None:
         return prep["early"]
@@ -598,7 +797,7 @@ async def forward_tool(
 
     prep = await _prepare_call(
         env, model, workspace_id, tool, run, agent_name, resolved_run_id,
-        connect_user_id=connect_user_id, resource="",
+        user_id=user_id, connect_user_id=connect_user_id, resource="",
     )
     if prep.get("early") is not None:
         return prep["early"]

@@ -109,9 +109,9 @@ export function AuditThreadPage() {
 								<CardDescription>Thread → runs → steps. Switch between the timeline and the call tree.</CardDescription>
 							</div>
 						</CardHeader>
-						<CardContent className="px-0">
-							<TraceView runs={runs} onSelectEvent={setSelectedEvent} />
-						</CardContent>
+					<CardContent className="px-0">
+						<TraceView runs={runs} onSelectEvent={setSelectedEvent} showKinds />
+					</CardContent>
 					</Card>
 				</>
 			)}

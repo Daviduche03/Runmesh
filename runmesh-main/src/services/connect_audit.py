@@ -123,11 +123,14 @@ async def list_audit_events(
             if did:
                 decision_ids.add(did)
     decision_runs: dict[str, str | None] = {}
+    decision_reasons: dict[str, str | None] = {}
     if decision_ids:
         placeholders = ", ".join("?" for _ in decision_ids)
         for drow in await runs.find_many("policy_decisions", f"id IN ({placeholders})", *decision_ids):
             if drow.get("run_id"):
                 decision_runs[drow["id"]] = drow["run_id"]
+            if drow.get("reason"):
+                decision_reasons[drow["id"]] = drow.get("reason")
     for run_id in set(decision_runs.values()):
         if run_id not in agent_run_threads:
             arow = await runs.find_one("agent_runs", "id = ? AND workspace_id = ?", run_id, workspace_id)
@@ -139,6 +142,35 @@ async def list_audit_events(
             run_id = decision_runs.get(did) if did else None
             if run_id and run_id in agent_run_threads:
                 decision_threads[r.id] = agent_run_threads[run_id]
+
+    # Agent run telemetry (tool.call / tool.result) lives in agent_events,
+    # not connect_audit_events — merge it so a run's steps appear in one trace.
+    run_agent_ids: dict[str, str | None] = {}
+    for rid in set(agent_run_threads) | set(decision_runs.values()):
+        if rid and rid not in run_agent_ids:
+            arow = await runs.find_one("agent_runs", "id = ? AND workspace_id = ?", rid, workspace_id)
+            run_agent_ids[rid] = (arow.get("agent_id") if arow else None) or None
+            if arow is not None and rid not in agent_run_threads:
+                agent_run_threads[rid] = arow.get("thread_id")
+    for agent_id in {aid for aid in run_agent_ids.values() if aid} - set(agent_names):
+        agent = await agent_model.find_one("agents", "id = ?", agent_id)
+        if agent is not None:
+            agent_names[agent_id] = agent.get("name") or agent_id
+
+    scoped_run_ids = sorted({rid for rid in run_agent_ids if rid})
+    agent_event_rows = []
+    if scoped_run_ids:
+        run_ph = ", ".join("?" for _ in scoped_run_ids)
+        agent_event_rows = await runs.find_many(
+            "agent_events",
+            (
+                f"workspace_id = ? AND run_id IN ({run_ph}) "
+                "AND kind IN ('tool.call','tool.result','error','policy.decision') "
+                "ORDER BY created_at ASC"
+            ),
+            workspace_id,
+            *scoped_run_ids,
+        )
 
     items = []
     for r in rows:
@@ -161,6 +193,21 @@ async def list_audit_events(
         if trace_id is None and _resource_name(r.resource_type) == "agent_run" and r.resource_id in agent_run_threads:
             trace_id = r.resource_id
             thread_id = agent_run_threads[r.resource_id]
+        meta = _metadata_dict(r.metadata)
+        denial_reason = r.denial_reason
+        if r.event_type == "policy.decision":
+            did = meta.get("decision_id")
+            decision_run = decision_runs.get(did) if did else None
+            if trace_id is None and decision_run:
+                trace_id = decision_run
+            if thread_id is None and trace_id:
+                thread_id = agent_run_threads.get(trace_id) or thread_ids.get(trace_id)
+            if denial_reason is None and did and decision_reasons.get(did):
+                denial_reason = decision_reasons[did]
+            if denial_reason is None and meta.get("reason"):
+                denial_reason = str(meta["reason"])
+            if not meta.get("reason") and denial_reason:
+                meta = {**meta, "reason": denial_reason}
         if thread_id is None:
             thread_id = decision_threads.get(r.id)
         items.append({
@@ -179,11 +226,65 @@ async def list_audit_events(
             "task_id": r.task_id,
             "workflow_run_id": r.workflow_run_id,
             "result": r.result,
-            "denial_reason": r.denial_reason,
-            "metadata": r.metadata,
+            "denial_reason": denial_reason,
+            "metadata": meta,
+            "duration_ms": None,
             "created_at": r.created_at,
         })
-    return success(items, meta={"total": total, "limit": limit, "offset": offset})
+
+    agent_event_type = {
+        "tool.call": "tool",
+        "tool.result": "tool",
+        "error": "tool",
+        "policy.decision": "policy",
+    }
+    for erow in agent_event_rows:
+        rid = erow.get("run_id")
+        kind = erow.get("kind") or "log"
+        name = erow.get("name") or ""
+        agent_id = run_agent_ids.get(rid)
+        actor = agent_names.get(agent_id, (agent_id or "")[:8]) if agent_id else "agent"
+        args_raw = _metadata_dict(erow.get("args")) if isinstance(erow.get("args"), (str, dict)) else {}
+        result_raw = _metadata_dict(erow.get("result")) if isinstance(erow.get("result"), (str, dict)) else {}
+        outcome = "failed" if kind == "error" else "success"
+        if kind == "policy.decision":
+            outcome = "denied" if (result_raw.get("decision") or result_raw.get("outcome")) == "deny" else "success"
+        items.append({
+            "id": erow.get("id"),
+            "event_type": kind,
+            "actor": actor,
+            "actor_type": "agent",
+            "on_behalf_of": "—",
+            "mode": "autonomous",
+            "type": agent_event_type.get(kind, "system"),
+            "authority": "—",
+            "outcome": outcome,
+            "trace_id": rid,
+            "thread_id": agent_run_threads.get(rid),
+            "agent_id": agent_id,
+            "task_id": None,
+            "workflow_run_id": None,
+            "result": erow.get("result"),
+            "denial_reason": None,
+            "metadata": {
+                "kind": kind,
+                "name": name,
+                "seq": erow.get("seq"),
+                "args": args_raw,
+                "result": result_raw,
+            },
+            "duration_ms": erow.get("duration_ms"),
+            "created_at": erow.get("created_at"),
+        })
+
+    def _created(value) -> str:
+        return str(value or "")
+
+    items.sort(key=lambda e: _created(e.get("created_at")))
+    return success(
+        items,
+        meta={"total": total + len(agent_event_rows), "limit": limit, "offset": offset},
+    )
 
 
 # ============================================================================

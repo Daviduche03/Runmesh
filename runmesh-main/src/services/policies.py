@@ -655,6 +655,7 @@ async def enforce_grant_issuance(
             agent_id=agent_id,
             result="denied" if decision == "deny" else "success",
             workspace_id=workspace_id,
+            denial_reason=reason,
             metadata={
                 "decision": decision,
                 "decision_id": decision_id,
@@ -664,6 +665,7 @@ async def enforce_grant_issuance(
                 "scope": context["scope"],
                 "source": source,
                 "default_applied": default_applied,
+                "reason": reason,
             },
         ))
 

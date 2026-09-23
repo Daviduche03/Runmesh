@@ -3,6 +3,7 @@
 import { useState, type ReactNode } from "react";
 import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle } from "@/components/ui/sheet";
 import type { AuditEvent } from "@/modules/audit/components/audit-table";
+import { formatDuration } from "@/lib/audit";
 import { CheckIcon, CopyIcon } from "lucide-react";
 
 function CopyValue({ value }: { value: string }) {
@@ -44,7 +45,9 @@ export function AuditEventDetail({ event, onClose }: { event: AuditEvent | null;
 				{event ? (
 					<>
 						<SheetHeader>
-							<SheetTitle>{event.action}</SheetTitle>
+							<SheetTitle>
+								{event.reason && event.type === "policy" ? event.reason : event.action}
+							</SheetTitle>
 							<SheetDescription>
 								{event.outcome} · {event.time}
 							</SheetDescription>
@@ -66,6 +69,24 @@ export function AuditEventDetail({ event, onClose }: { event: AuditEvent | null;
 								<DetailRow label="On behalf of">{event.onBehalfOf}</DetailRow>
 								<DetailRow label="Mode">{event.mode}</DetailRow>
 								<DetailRow label="Authority">{event.authority}</DetailRow>
+								{event.reason ? (
+									<DetailRow label="Reason">
+										<span className="break-all text-left">{event.reason}</span>
+									</DetailRow>
+								) : null}
+								{event.metadata && Object.keys(event.metadata).length > 0 ? (
+									<DetailRow label="Details">
+										<span className="break-all text-left">
+											{Object.entries(event.metadata)
+												.filter(([, value]) => value !== null && value !== undefined && value !== "")
+												.map(([key, value]) => `${key}: ${typeof value === "object" ? JSON.stringify(value) : String(value)}`)
+												.join(" · ")}
+										</span>
+									</DetailRow>
+								) : null}
+								{event.durationMs > 0 ? (
+									<DetailRow label="Duration">{formatDuration(event.durationMs)}</DetailRow>
+								) : null}
 								{event.argsText ? (
 									<DetailRow label="Arguments">
 										<span className="break-all text-left">{event.argsText}</span>

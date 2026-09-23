@@ -26,12 +26,15 @@ export function FormSelect<T extends string>({
 	options,
 	placeholder,
 	className,
+	contentClassName,
 }: {
 	value: T;
 	onChange: (value: T) => void;
 	options: readonly FormSelectOption<T>[];
 	placeholder?: string;
 	className?: string;
+	/** Applied to option labels inside the open menu (not the trigger). */
+	contentClassName?: string;
 }) {
 	const selected = options.find((option) => option.value === value);
 	const hasGroups = options.some((option) => option.group !== undefined);
@@ -44,8 +47,8 @@ export function FormSelect<T extends string>({
 					variant="outline"
 					className={cn(
 						"h-9 w-full justify-between font-normal transition-[background-color,border-color] duration-150 ease-[var(--ease-out)] [&[data-state=open]>svg]:rotate-180",
-						selected ? "text-foreground" : "text-muted-foreground",
-						className
+						className,
+						selected ? "text-foreground" : "text-muted-foreground"
 					)}
 				>
 					<span className="truncate">{selected?.label ?? placeholder ?? "Select…"}</span>
@@ -76,7 +79,7 @@ export function FormSelect<T extends string>({
 									</div>
 								) : null}
 								<DropdownMenuRadioItem value={option.value} disabled={option.disabled}>
-									{option.label}
+									<span className={cn("min-w-0 truncate", contentClassName)}>{option.label}</span>
 								</DropdownMenuRadioItem>
 							</Fragment>
 						);

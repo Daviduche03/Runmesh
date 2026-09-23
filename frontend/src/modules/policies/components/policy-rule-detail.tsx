@@ -264,6 +264,7 @@ export function PolicyRuleDetail({
 											value={condition.value}
 											placeholder="Select value…"
 											className="font-mono text-[12px]"
+											contentClassName="font-mono text-[12px] text-muted-foreground"
 											onChange={(value) => setCondition(index, { value })}
 										/>
 									) : (

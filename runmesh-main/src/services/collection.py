@@ -289,7 +289,8 @@ async def resolve_agent(db, user_id: str, workspace_id: str, req) -> dict:
     tools = req.tools if isinstance(req.tools, list) else []
     if len(tools) > TOOLS_MAX:
         raise HTTPException(status_code=400, detail="tools is too long (max 200 entries)")
-    name = (req.name or "").strip() or "Untitled agent"
+    provided_name = (req.name or "").strip()
+    name = provided_name or "Untitled agent"
     if len(name) > 64:
         raise HTTPException(status_code=400, detail="name is too long (max 64 characters)")
 
@@ -339,6 +340,8 @@ async def resolve_agent(db, user_id: str, workspace_id: str, req) -> dict:
 
     is_new_version = fingerprint is not None and row.get("fingerprint") != fingerprint
     updates: dict = {"last_seen_at": now, "updated_at": now}
+    if provided_name:
+        updates["name"] = provided_name
     if is_new_version:
         updates["version"] = (row.get("version") or 1) + 1
         updates["fingerprint"] = fingerprint

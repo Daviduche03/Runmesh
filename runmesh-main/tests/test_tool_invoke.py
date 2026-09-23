@@ -103,6 +103,8 @@ class FakeEnv:
     def __init__(self, db):
         self.DB = db
         self.JWT_SECRET = JWT_SECRET
+        self.FRONTEND_URL = "http://localhost:5173"
+        self.PUBLIC_URL = "http://localhost:8787"
 
 
 def make_env():
@@ -161,6 +163,24 @@ def make_env():
       valid_from TEXT, valid_until TEXT, resource_filters TEXT,
       max_uses INTEGER, use_count INTEGER NOT NULL DEFAULT 0,
       project_id TEXT, environment TEXT, workspace_id TEXT
+    );
+    CREATE TABLE connect_apps (
+      id TEXT PRIMARY KEY, developer_user_id TEXT NOT NULL, name TEXT NOT NULL, slug TEXT NOT NULL,
+      client_secret_hash TEXT NOT NULL, redirect_uris TEXT NOT NULL DEFAULT '[]',
+      allowed_providers TEXT NOT NULL DEFAULT '[]', status TEXT NOT NULL DEFAULT 'active',
+      created_at TEXT NOT NULL, updated_at TEXT NOT NULL, workspace_id TEXT,
+      UNIQUE (developer_user_id, slug)
+    );
+    CREATE TABLE connect_app_users (
+      id TEXT PRIMARY KEY, connect_app_id TEXT NOT NULL, external_user_id TEXT NOT NULL,
+      connect_user_id TEXT NOT NULL, created_at TEXT NOT NULL, updated_at TEXT NOT NULL,
+      UNIQUE (connect_app_id, external_user_id), UNIQUE (connect_app_id, connect_user_id)
+    );
+    CREATE TABLE connect_sessions (
+      id TEXT PRIMARY KEY, connect_app_id TEXT NOT NULL, external_user_id TEXT, mode TEXT NOT NULL,
+      provider TEXT, scopes TEXT NOT NULL DEFAULT '[]', redirect_uri TEXT NOT NULL,
+      state TEXT NOT NULL UNIQUE, connect_user_id TEXT, status TEXT NOT NULL DEFAULT 'pending',
+      expires_at TEXT NOT NULL, completed_at TEXT, created_at TEXT NOT NULL, workspace_id TEXT
     );
     CREATE TABLE policy_rules (
       id TEXT PRIMARY KEY, workspace_id TEXT NOT NULL,
@@ -250,7 +270,8 @@ def add_connection(db, token="tok_secret_123", provider="http", scopes='["charge
         "INSERT INTO connect_connections (id, connect_user_id, provider, status, scopes, "
         "access_token_enc, metadata, created_at, updated_at, workspace_id) VALUES (?,?,?,?,?,?,?,?,?,?)",
         ("conn_1", "cu_1", provider, "active", scopes,
-         encrypt_connect_secret(token, JWT_SECRET), "{}", NOW, NOW, "ws_1"),
+         encrypt_connect_secret(token, JWT_SECRET) if token is not None else None,
+         "{}", NOW, NOW, "ws_1"),
     )
     db.conn.commit()
 
@@ -321,6 +342,12 @@ async def test_02_invoke_allows_and_injects():
     # response scrubbed: the injected token never reaches the agent
     assert "tok_secret_123" not in json.dumps(out["result"]), out["result"]
     assert out["result"]["echo"] == "[REDACTED]", out["result"]
+    from db.orm import Model
+    events = await Model(db).find_many(
+        "agent_events", "run_id = ? ORDER BY seq ASC", run_id
+    )
+    kinds = [e["kind"] for e in events]
+    assert kinds == ["tool.call", "tool.result"], kinds
     report("02 allow injects credential + scrubs response", True)
 
 
@@ -698,6 +725,7 @@ async def test_17_no_grant_is_consent():
         FakeEnv(db), "u_1", "ws_1", ref, ToolInvokeRequest(run_id=run_id, args={}))
     assert body["data"]["decision"] == "consent", body["data"]
     assert "grant" in body["data"]["reason"].lower(), body["data"]
+    assert body["data"]["consent_url"] == "http://localhost:5173/grants", body["data"]
     report("17 no grant -> consent", True)
 
 
@@ -784,6 +812,171 @@ async def test_21_resource_restricted_grant():
     report("21 resource-restricted grant enforced", True)
 
 
+async def test_22_no_grant_consent_links_pending_grant():
+    db = make_env()
+    add_connection(db)  # connection exists, no grant
+    data = await seed_agent(db, [managed_tool()])
+    ref = data["tools"][0]["ref"]
+    run_id = await start_run(db, data["id"])
+    from services import tool_invoke
+    from utils.types import ToolInvokeRequest
+
+    first = await tool_invoke.invoke_tool(
+        FakeEnv(db), "u_1", "ws_1", ref, ToolInvokeRequest(run_id=run_id, args={}))
+    assert first["data"]["decision"] == "consent", first["data"]
+    assert first["data"]["consent_url"] == "http://localhost:5173/grants", first["data"]
+    pending = db.conn.execute(
+        "SELECT id, approval_status, agent_id FROM connect_grants WHERE workspace_id='ws_1'").fetchall()
+    assert len(pending) == 1, pending
+    assert pending[0][1] == "pending_approval" and pending[0][2] == data["id"], pending
+
+    second = await tool_invoke.invoke_tool(
+        FakeEnv(db), "u_1", "ws_1", ref, ToolInvokeRequest(run_id=run_id, args={}))
+    assert second["data"]["consent_url"] == first["data"]["consent_url"], second["data"]
+    again = db.conn.execute(
+        "SELECT COUNT(*) FROM connect_grants WHERE workspace_id='ws_1'").fetchone()[0]
+    assert again == 1, "a waiting approval must be reused, not duplicated"
+    report("22 no-grant consent links a pending grant", True, pending[0][0])
+
+
+async def test_23_operator_approval_resumes_the_call():
+    global FETCH_RESPONSE
+    db = make_env()
+    add_connection(db)
+    data = await seed_agent(db, [managed_tool()])
+    ref = data["tools"][0]["ref"]
+    run_id = await start_run(db, data["id"])
+    FETCH_RESPONSE = {"status": 200, "text": "{}"}
+    from services import tool_invoke
+    from utils.types import ToolInvokeRequest
+
+    refused = await tool_invoke.invoke_tool(
+        FakeEnv(db), "u_1", "ws_1", ref, ToolInvokeRequest(run_id=run_id, args={}))
+    assert refused["data"]["decision"] == "consent", refused["data"]
+    grant_id = db.conn.execute(
+        "SELECT id FROM connect_grants WHERE workspace_id='ws_1'").fetchone()[0]
+
+    from db.connect_orm import ConnectAuditEventModel, ConnectGrantModel
+    from services.connect_grants import approve_grant
+    env = FakeEnv(db)
+    approved = await approve_grant(
+        ConnectGrantModel(db), ConnectAuditEventModel(db), grant_id, "u_1", "operator ok", env)
+    assert approved["data"]["approval_status"] == "approved", approved["data"]
+
+    allowed = await tool_invoke.invoke_tool(
+        env, "u_1", "ws_1", ref, ToolInvokeRequest(run_id=run_id, args={}))
+    assert allowed["data"]["decision"] == "allow", allowed["data"]
+    uses = db.conn.execute(
+        "SELECT use_count FROM connect_grants WHERE id=?", (grant_id,)).fetchone()[0]
+    assert uses == 1, uses
+    report("23 operator approval resumes the call", True)
+
+
+async def test_24_missing_credential_consent_links_reconnect():
+    db = make_env()
+    add_connection(db, provider="google", scopes='["gmail.readonly"]', token=None)
+    add_grant(db, approval_status="approved", scopes='["gmail.readonly"]')
+    data = await seed_agent(db, [managed_tool(provider="google")])
+    ref = data["tools"][0]["ref"]
+    run_id = await start_run(db, data["id"])
+    from services import tool_invoke
+    from utils.types import ToolInvokeRequest
+
+    body = await tool_invoke.invoke_tool(
+        FakeEnv(db), "u_1", "ws_1", ref, ToolInvokeRequest(run_id=run_id, args={}))
+    assert body["data"]["decision"] == "consent", body["data"]
+    url = body["data"].get("consent_url") or ""
+    assert "/connect/authorize?state=" in url, body["data"]
+    session = db.conn.execute(
+        "SELECT mode, provider, workspace_id FROM connect_sessions WHERE state = ?",
+        (url.split("state=", 1)[1],)).fetchone()
+    assert session == ("connect", "google", "ws_1"), session
+    links = db.conn.execute(
+        "SELECT external_user_id, connect_user_id FROM connect_app_users").fetchall()
+    assert ("conn_1", "cu_1") in [tuple(r) for r in links], links
+    report("24 missing credential -> reconnect session URL", True)
+
+
+async def test_25_consent_page_then_operator_approval_resumes():
+    global FETCH_RESPONSE
+    db = make_env()
+    add_connection(db, provider="google", scopes='["gmail.readonly"]')
+    data = await seed_agent(db, [managed_tool(provider="google")])
+    ref = data["tools"][0]["ref"]
+    run_id = await start_run(db, data["id"])
+    FETCH_RESPONSE = {"status": 200, "text": "{}"}
+    from services import tool_invoke
+    from utils.types import ToolInvokeRequest
+
+    env = FakeEnv(db)
+    refused = await tool_invoke.invoke_tool(
+        env, "u_1", "ws_1", ref, ToolInvokeRequest(run_id=run_id, args={}))
+    assert refused["data"]["decision"] == "consent", refused["data"]
+    url = refused["data"]["consent_url"] or ""
+    assert "/connect/authorize?state=" in url, refused["data"]
+    state = url.split("state=", 1)[1]
+
+    # The end user's leg: the authorize bounce lands on the consent page.
+    from db.connect_orm import (
+        ConnectAppModel, ConnectAuditEventModel, ConnectConnectionModel,
+        ConnectGrantModel, ConnectSessionModel,
+    )
+    from services.connect_oauth import get_connect_consent_page, submit_connect_consent
+    from utils.types import ConnectConsentRequest
+
+    page = await get_connect_consent_page(
+        ConnectAppModel(db), ConnectSessionModel(db), ConnectConnectionModel(db), state)
+    assert b"Approve access" in page.body, page.body[:200]
+    await submit_connect_consent(
+        env, ConnectSessionModel(db), ConnectConnectionModel(db),
+        ConnectGrantModel(db), ConnectAuditEventModel(db),
+        ConnectConsentRequest(state=state, action="approve"),
+    )
+
+    # End-user consent mints a grant that still awaits the operator.
+    rows = db.conn.execute(
+        "SELECT approval_status FROM connect_grants WHERE workspace_id='ws_1'").fetchall()
+    assert len(rows) == 1 and rows[0][0] == "pending_approval", rows
+
+    # Retry now points at the waiting approval instead of a useless loop.
+    retry = await tool_invoke.invoke_tool(
+        env, "u_1", "ws_1", ref, ToolInvokeRequest(run_id=run_id, args={}))
+    assert retry["data"]["decision"] == "consent", retry["data"]
+    assert retry["data"]["consent_url"] == "http://localhost:5173/grants", retry["data"]
+
+    from services.connect_grants import approve_grant
+    grant_id = db.conn.execute(
+        "SELECT id FROM connect_grants WHERE workspace_id='ws_1'").fetchone()[0]
+    await approve_grant(
+        ConnectGrantModel(db), ConnectAuditEventModel(db), grant_id, "u_1", None, env)
+
+    allowed = await tool_invoke.invoke_tool(
+        env, "u_1", "ws_1", ref, ToolInvokeRequest(run_id=run_id, args={}))
+    assert allowed["data"]["decision"] == "allow", allowed["data"]
+    report("25 consent page -> operator approval -> allow", True)
+
+
+async def test_26_session_mint_failure_falls_back_to_pending_grant():
+    """A Connect enum provider whose OAuth is not enabled raises 501 on session
+    mint; consent must still land on a pending grant instead of a dead null."""
+    db = make_env()
+    add_connection(db, provider="slack", scopes='["chat:write"]')
+    data = await seed_agent(db, [managed_tool(provider="slack")])
+    ref = data["tools"][0]["ref"]
+    run_id = await start_run(db, data["id"])
+    from services import tool_invoke
+    from utils.types import ToolInvokeRequest
+
+    body = await tool_invoke.invoke_tool(
+        FakeEnv(db), "u_1", "ws_1", ref, ToolInvokeRequest(run_id=run_id, args={}))
+    assert body["data"]["decision"] == "consent", body["data"]
+    assert body["data"]["consent_url"] == "http://localhost:5173/grants", body["data"]
+    pending = db.conn.execute(
+        "SELECT approval_status FROM connect_grants WHERE workspace_id='ws_1'").fetchall()
+    assert len(pending) == 1 and pending[0][0] == "pending_approval", pending
+    report("26 session-mint failure falls back to pending grant", True)
+
+
 async def main():
     await test_01_registry_classifies()
     await test_02_invoke_allows_and_injects()
@@ -806,6 +999,11 @@ async def main():
     await test_19_exhausted_grant_denied()
     await test_20_use_count_increments_on_allow()
     await test_21_resource_restricted_grant()
+    await test_22_no_grant_consent_links_pending_grant()
+    await test_23_operator_approval_resumes_the_call()
+    await test_24_missing_credential_consent_links_reconnect()
+    await test_25_consent_page_then_operator_approval_resumes()
+    await test_26_session_mint_failure_falls_back_to_pending_grant()
     failed = [name for name, passed, _ in results if not passed]
     print(f"\n{len(results) - len(failed)}/{len(results)} passed")
     if failed:

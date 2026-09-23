@@ -112,6 +112,8 @@ export function DecisionExplain() {
 						options={actionOptions}
 						value={actionValue}
 						placeholder={actionOptions.length ? "Select action…" : "No actions"}
+						className="font-mono text-[12px]"
+						contentClassName="font-mono text-[12px] text-muted-foreground"
 						onChange={(value) => patch({ action: value })}
 					/>
 				</Field>

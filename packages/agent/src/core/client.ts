@@ -154,6 +154,7 @@ export class RunmeshClient {
         decision: "consent",
         provider: (row["provider"] as string | null) ?? null,
         reason: String(row["reason"] ?? "Consent required"),
+        consentUrl: (row["consent_url"] as string | null) ?? null,
       };
     }
     return { decision: "deny", reason: `Unknown decision: ${decision}` };
@@ -204,6 +205,7 @@ export class RunmeshClient {
         decision: "consent",
         provider: (row["provider"] as string | null) ?? null,
         reason: String(row["reason"] ?? "Consent required"),
+        consentUrl: (row["consent_url"] as string | null) ?? null,
       };
     }
     return {

@@ -65,7 +65,7 @@ export type InvokeOutcome =
   | { decision: "allow"; status: number; result: unknown; upstreamError: boolean }
   | { decision: "deny"; reason: string; rule?: string | null }
   | { decision: "escalate"; reason: string; rule?: string | null }
-  | { decision: "consent"; provider: string | null; reason: string };
+  | { decision: "consent"; provider: string | null; reason: string; consentUrl?: string | null };
 
 /** Declaration for a managed tool. Without `execute`, Runmesh runs the
  *  declared request (invoke). With `execute`, the dev's code runs and its
@@ -117,7 +117,7 @@ export type ForwardOutcome =
   | { decision: "allow"; status: number; text: string; upstreamError: boolean }
   | { decision: "deny"; reason: string; rule?: string | null }
   | { decision: "escalate"; reason: string; rule?: string | null }
-  | { decision: "consent"; provider: string | null; reason: string };
+  | { decision: "consent"; provider: string | null; reason: string; consentUrl?: string | null };
 
 export type RunInfo = {
   id: string;

@@ -1,0 +1,10 @@
+{
+  "name": "acme-e2e",
+  "private": true,
+  "type": "module",
+  "dependencies": {
+    "ai": "^7.0.110",
+    "@runmesh/agent": "file:../../packages/agent",
+    "zod": "^4.3.11"
+  }
+}
