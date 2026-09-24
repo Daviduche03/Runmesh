@@ -113,7 +113,7 @@ A live end-to-end test (`pnpm test:e2e`) records a run over HTTP, replays it wit
 the engine, diffs it, and reads the replay run back. It is skipped unless
 `RUNMESH_ENDPOINT` and `RUNMESH_JWT` are set, so `pnpm test` stays hermetic. A
 second live test runs a real model through the adapter and then replays it; it
-additionally needs `ANTHROPIC_API_KEY` (see `src/replay/live-model.test.ts`).
+additionally needs `GROQ_API_KEY` (see `src/replay/live-model.test.ts`).
 
 ## Contract
 

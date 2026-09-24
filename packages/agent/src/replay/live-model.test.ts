@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { generateText, isStepCount, jsonSchema, tool } from "ai";
-import { anthropic } from "@ai-sdk/anthropic";
+import { groq } from "@ai-sdk/groq";
 import {
 	RunmeshClient,
 	replayRun,
@@ -9,23 +9,23 @@ import {
 	type ToolLike,
 } from "../index.js";
 
-/** Live-model integration test. Skipped unless ANTHROPIC_API_KEY,
+/** Live-model integration test. Skipped unless GROQ_API_KEY,
  *  RUNMESH_ENDPOINT, and RUNMESH_JWT are set, so `pnpm test` stays hermetic.
  *
  *    cd runmesh-main
  *    JWT=$(PYTHONPATH=src uv run --no-sync python ../e2e/acme/dbrunner.py jwt | tail -1)
  *    cd ../packages/agent
- *    ANTHROPIC_API_KEY=sk-ant-... RUNMESH_ENDPOINT=http://localhost:8787 RUNMESH_JWT="$JWT" \
+ *    GROQ_API_KEY=gsk_... RUNMESH_ENDPOINT=http://localhost:8787 RUNMESH_JWT="$JWT" \
  *      pnpm vitest run src/replay/live-model.test.ts
  *
  *  Runs a real model through the adapter (model I/O and tool calls recorded via
  *  the live API), replays the recording deterministically, and then re-runs a
  *  real model to show a live comparison. Creates residue in the workspace. */
 
-const key = process.env["ANTHROPIC_API_KEY"];
+const key = process.env["GROQ_API_KEY"];
 const endpoint = process.env["RUNMESH_ENDPOINT"];
 const jwt = process.env["RUNMESH_JWT"];
-const modelId = process.env["RUNMESH_TEST_MODEL"] ?? "claude-haiku-4-5";
+const modelId = process.env["RUNMESH_TEST_MODEL"] ?? "qwen/qwen3.8-27b";
 const live = describe.skipIf(!key || !endpoint || !jwt);
 
 /** Replays recorded model responses in order, executing the tool calls each
@@ -41,7 +41,8 @@ function recordedGenerateText(responses: Array<Record<string, unknown>>) {
 			: [];
 		for (const call of calls) {
 			const name = String(call["toolName"] ?? call["name"] ?? "");
-			await tools[name]?.execute?.(call["args"] ?? {});
+			const args = call["args"] ?? call["arguments"] ?? call["input"] ?? {};
+			await tools[name]?.execute?.(args);
 		}
 		return { text: (response["text"] as string | undefined) ?? "" };
 	};
@@ -74,7 +75,7 @@ live("replay with a real model", () => {
 			generateText: generateText as unknown as (
 				o: Record<string, unknown>,
 			) => Promise<Record<string, unknown>>,
-			model: anthropic(modelId),
+			model: groq(modelId),
 			system: "You are terse.",
 			tools,
 			prompt: "Call the lookup tool once with key 'alpha', then reply with the value it returned.",
@@ -120,7 +121,7 @@ live("replay with a real model", () => {
 			generateText: generateText as unknown as (
 				o: Record<string, unknown>,
 			) => Promise<Record<string, unknown>>,
-			model: anthropic(modelId),
+			model: groq(modelId),
 		});
 		console.log(
 			`[replay] live re-run: identical=${liveRerun.diff.identical} divergences=${liveRerun.diff.divergences.length}`,
