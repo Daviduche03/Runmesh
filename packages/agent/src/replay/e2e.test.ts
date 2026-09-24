@@ -30,7 +30,8 @@ function recordedGenerateText(responses: Array<Record<string, unknown>>) {
       : [];
     for (const call of calls) {
       const name = String(call["toolName"] ?? call["name"] ?? "");
-      await tools[name]?.execute?.(call["args"] ?? {});
+      const args = call["args"] ?? call["arguments"] ?? call["input"] ?? {};
+      await tools[name]?.execute?.(args);
     }
     return { text: (response["text"] as string | undefined) ?? "", usage: response["usage"] ?? {} };
   };

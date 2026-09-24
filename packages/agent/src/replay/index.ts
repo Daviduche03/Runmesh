@@ -76,7 +76,7 @@ function normalizeToolCalls(value: unknown): unknown {
       const c = call as Record<string, unknown>;
       return {
         toolName: c["toolName"] ?? c["name"] ?? null,
-        args: normalizeValue(c["args"] ?? c["arguments"] ?? null),
+        args: normalizeValue(c["args"] ?? c["arguments"] ?? c["input"] ?? null),
       };
     }
     return call;
