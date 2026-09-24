@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { generateText, isStepCount, jsonSchema, tool } from "ai";
+import { generateText, isStepCount, jsonSchema, streamText, tool } from "ai";
 import { groq } from "@ai-sdk/groq";
 import {
 	RunmeshClient,
@@ -134,5 +134,63 @@ live("replay with a real model", () => {
 		);
 
 		await client.close();
+	}, 90_000);
+
+	it("streams a real model and captures model I/O in order", async () => {
+		const client = new RunmeshClient({
+			endpoint: endpoint ?? "http://localhost:8787",
+			apiKey: jwt ?? "",
+			flushIntervalMs: 0,
+		});
+
+		const lookup = tool({
+			description: "Look up a value by key.",
+			inputSchema: jsonSchema<{ key: string }>({
+				type: "object",
+				properties: { key: { type: "string" } },
+				required: ["key"],
+				additionalProperties: false,
+			}),
+			execute: async ({ key }: { key: string }) => ({ value: `value-of-${key}` }),
+		});
+		const tools = { lookup } as unknown as Record<string, ToolLike>;
+
+		let runId = "";
+		const result = (await vercelAdapter.runStream(client, {
+			agent: "live-stream-demo",
+			streamText: streamText as unknown as (
+				o: Record<string, unknown>,
+			) => { textStream: AsyncIterable<unknown> },
+			model: groq(modelId),
+			system: "You are terse.",
+			tools,
+			prompt: "Call the lookup tool once with key 'alpha', then reply with the value it returned.",
+			onRun: (run) => {
+				runId = run.id;
+			},
+			passthrough: { temperature: 0, stopWhen: isStepCount(4) },
+		})) as { textStream: AsyncIterable<unknown> };
+
+		let text = "";
+		for await (const chunk of result.textStream) text += String(chunk);
+		console.log(`[live/stream] real model streamed: ${JSON.stringify(text)}`);
+
+		// The run closes in onFinish; poll briefly for the flushed events.
+		let events: ReplayEvent[] = [];
+		for (let i = 0; i < 30; i += 1) {
+			const detail = await client.getRun(runId);
+			events = (detail.events ?? []) as unknown as ReplayEvent[];
+			if (events.some((e) => e.kind === "tool.call")) break;
+			await new Promise((resolve) => setTimeout(resolve, 100));
+		}
+		await client.close();
+
+		expect(text).toBeTruthy();
+		expect(events.some((e) => e.kind === "model.request")).toBe(true);
+		expect(events.some((e) => e.kind === "model.response")).toBe(true);
+		const firstResponse = events.findIndex((e) => e.kind === "model.response");
+		const firstToolCall = events.findIndex((e) => e.kind === "tool.call");
+		expect(firstResponse).toBeGreaterThanOrEqual(0);
+		expect(firstResponse).toBeLessThan(firstToolCall);
 	}, 90_000);
 });
