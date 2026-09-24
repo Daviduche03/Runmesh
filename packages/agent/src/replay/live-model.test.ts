@@ -89,6 +89,8 @@ live("replay with a real model", () => {
 		console.log(`[live] real model ${modelId} replied: ${JSON.stringify(liveResult.text)}`);
 
 		const detail = await client.getRun(runId);
+		// Run-level usage is the aggregate the SDK reports across all steps.
+		expect(Number((detail.usage ?? {})["totalTokens"] ?? 0)).toBeGreaterThan(0);
 		const events = (detail.events ?? []) as unknown as ReplayEvent[];
 		const modelRequests = events.filter((e) => e.kind === "model.request");
 		const modelResponses = events.filter((e) => e.kind === "model.response");
@@ -176,16 +178,19 @@ live("replay with a real model", () => {
 		console.log(`[live/stream] real model streamed: ${JSON.stringify(text)}`);
 
 		// The run closes in onFinish; poll briefly for the flushed events.
-		let events: ReplayEvent[] = [];
+		let detail = await client.getRun(runId);
+		let events: ReplayEvent[] = (detail.events ?? []) as unknown as ReplayEvent[];
 		for (let i = 0; i < 30; i += 1) {
-			const detail = await client.getRun(runId);
-			events = (detail.events ?? []) as unknown as ReplayEvent[];
 			if (events.some((e) => e.kind === "tool.call")) break;
 			await new Promise((resolve) => setTimeout(resolve, 100));
+			detail = await client.getRun(runId);
+			events = (detail.events ?? []) as unknown as ReplayEvent[];
 		}
 		await client.close();
 
 		expect(text).toBeTruthy();
+		// The finish event's `usage` is the aggregate; the run closes with it.
+		expect(Number((detail.usage ?? {})["totalTokens"] ?? 0)).toBeGreaterThan(0);
 		expect(events.some((e) => e.kind === "model.request")).toBe(true);
 		expect(events.some((e) => e.kind === "model.response")).toBe(true);
 		const firstResponse = events.findIndex((e) => e.kind === "model.response");
