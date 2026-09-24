@@ -157,6 +157,8 @@ export type TelemetryEvent = {
 export type ClientOptions = {
   endpoint: string;
   apiKey: string;
+  /** Optional workspace scope; sent as X-Workspace-ID when set. */
+  workspaceId?: string;
   /** Events per flush. Defaults to 50. */
   batchSize?: number;
   /** Ms between background flushes. Defaults to 2000. Set 0 to disable. */
@@ -165,4 +167,28 @@ export type ClientOptions = {
   onError?: (err: unknown) => void;
   /** fetch implementation. Defaults to globalThis.fetch. */
   fetchImpl?: typeof fetch;
+};
+
+/** A run as returned by GET /api/v1/runs/{id}, including its pinned
+ *  definition version and ordered events. */
+export type RunDetail = {
+  id: string;
+  agent_id: string;
+  agent_version_id?: string | null;
+  parent_run_id?: string | null;
+  thread_id?: string | null;
+  connect_user_id?: string | null;
+  mode?: string;
+  replay_of_run_id?: string | null;
+  status: string;
+  input?: string | null;
+  usage?: Record<string, unknown>;
+  definition?: {
+    version?: number;
+    model?: string | null;
+    system_prompt?: string | null;
+    tools?: unknown;
+  } | null;
+  events?: Array<Record<string, unknown>>;
+  child_runs?: Array<Record<string, unknown>>;
 };

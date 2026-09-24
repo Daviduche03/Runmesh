@@ -5,6 +5,7 @@ import type {
   ForwardOutcome,
   InvokeOutcome,
   ResolvedAgent,
+  RunDetail,
   RunInfo,
   RunStatus,
   TelemetryEvent,
@@ -24,6 +25,7 @@ type AgnosticFetch = (url: string, init?: RequestInit) => Promise<Response>;
 export class RunmeshClient {
   private readonly endpoint: string;
   private readonly apiKey: string;
+  private readonly workspaceId: string | undefined;
   private readonly batchSize: number;
   private readonly onError: (err: unknown) => void;
   private readonly fetchImpl: AgnosticFetch;
@@ -33,6 +35,7 @@ export class RunmeshClient {
   constructor(options: ClientOptions) {
     this.endpoint = options.endpoint.replace(/\/$/, "");
     this.apiKey = options.apiKey;
+    this.workspaceId = options.workspaceId;
     this.batchSize = options.batchSize ?? 50;
     this.onError = options.onError ?? (() => {});
     this.fetchImpl = (options.fetchImpl ?? globalThis.fetch) as AgnosticFetch;
@@ -51,6 +54,7 @@ export class RunmeshClient {
     const headers: Record<string, string> = {};
     headers["Authorization"] = "Bearer " + this.apiKey;
     headers["Content-Type"] = "application" + "/" + "json";
+    if (this.workspaceId !== undefined) headers["X-Workspace-ID"] = this.workspaceId;
     const init: RequestInit = { method, headers };
     if (body !== undefined) init.body = JSON.stringify(body);
     const res = await this.fetchImpl(this.endpoint + path, init);
@@ -244,6 +248,31 @@ export class RunmeshClient {
       status: outcome?.status ?? "completed",
       usage: outcome?.usage ?? {},
     });
+  }
+
+  /** Fetch a run with its pinned definition version and ordered events. */
+  async getRun(runId: string): Promise<RunDetail> {
+    const data = await this.request<{ data: RunDetail }>(
+      `/api/v1/runs/${encodeURIComponent(runId)}`,
+      "GET",
+    );
+    return data.data;
+  }
+
+  /** Open a replay run linked to an existing one. The caller executes the
+   *  replay and reports events back; the server records lineage only. */
+  async startReplayRun(runId: string): Promise<RunInfo> {
+    const data = await this.request<{ data: Record<string, unknown> }>(
+      `/api/v1/runs/${encodeURIComponent(runId)}/replay`,
+      "POST",
+    );
+    const row = data.data;
+    return {
+      id: String(row["id"]),
+      agentId: String(row["agent_id"]),
+      parentRunId: (row["parent_run_id"] as string | null) ?? null,
+      status: String(row["status"]),
+    };
   }
 
   /** Buffer an event. Never throws. */

@@ -181,7 +181,38 @@ describe("runText", () => {
     ]);
     const finish = calls.find((c) => c.method === "finishRun");
     expect(finish?.args[1]).toEqual({ status: "completed", usage: { tokens: 9 } });
-    expect(events.map((e) => e.kind)).toEqual(["tool.call", "tool.result"]);
+    expect(events.map((e) => e.kind)).toEqual([
+      "model.request",
+      "tool.call",
+      "tool.result",
+      "model.response",
+    ]);
+  });
+
+  it("captures model I/O, one response per generation step", async () => {
+    const { events, client } = harness();
+    const generateText = async () => ({
+      text: "final",
+      usage: { tokens: 5 },
+      steps: [
+        { text: "", toolCalls: [{ toolName: "lookup", args: { q: 1 } }], finishReason: "tool-calls", usage: { tokens: 2 } },
+        { text: "final", toolCalls: [], finishReason: "stop", usage: { tokens: 3 } },
+      ],
+    });
+    await vercelAdapter.runText(client, {
+      agent: "triage",
+      generateText,
+      model: "claude-sonnet-4-5",
+      tools,
+      prompt: "hi",
+    });
+    const request = events.find((e) => e.kind === "model.request");
+    expect(request?.name).toBe("claude-sonnet-4-5");
+    expect(request?.args).toMatchObject({ model: "claude-sonnet-4-5", prompt: "hi", tools: ["lookup"] });
+    const responses = events.filter((e) => e.kind === "model.response");
+    expect(responses).toHaveLength(2);
+    expect(responses[0]?.result?.["finishReason"]).toBe("tool-calls");
+    expect(responses[1]?.result?.["text"]).toBe("final");
   });
 
   it("caches resolve per client and re-resolves on definition change", async () => {
@@ -213,7 +244,8 @@ describe("runText", () => {
     const finish = calls.find((c) => c.method === "finishRun");
     expect(finish?.args[1]).toEqual({ status: "failed" });
     expect(calls.some((c) => c.method === "flush")).toBe(true);
-    expect(events).toHaveLength(0);
+    // The request was captured; no response exists because the model threw.
+    expect(events.map((e) => e.kind)).toEqual(["model.request"]);
   });
 });
 

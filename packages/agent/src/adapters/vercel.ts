@@ -175,6 +175,17 @@ export class VercelAdapter extends BaseAdapter<VercelAgentInput> {
     if ((resolved.warnings ?? []).length > 0) ctx.warnings = resolved.warnings;
     const wrapped = this.wrapTools(tools ?? {}, ctx);
     try {
+      client.record({
+        runId: run.id,
+        kind: "model.request",
+        name: modelIdOf(model) ?? "model",
+        args: {
+          model: modelIdOf(model) ?? null,
+          system: system ?? null,
+          prompt,
+          tools: Object.keys(wrapped),
+        },
+      });
       const result = await generateText({
         model,
         ...(system !== undefined ? { system } : {}),
@@ -182,6 +193,7 @@ export class VercelAdapter extends BaseAdapter<VercelAgentInput> {
         prompt,
         ...(passthrough ?? {}),
       });
+      recordModelResponses(client, run.id, model, result);
       await client.finishRun(run.id, { status: "completed", usage: usageOf(result) });
       return result;
     } catch (err) {
@@ -419,6 +431,50 @@ function usageOf(result: unknown): Record<string, unknown> | undefined {
     }
   }
   return undefined;
+}
+
+/** Record one `model.response` per generation step, falling back to the final
+ *  result when the SDK does not expose `steps`. Deterministic replay feeds
+ *  these back to the model in order. */
+function recordModelResponses(
+  client: RunmeshClient,
+  runId: string,
+  model: unknown,
+  result: unknown,
+): void {
+  const name = modelIdOf(model) ?? "model";
+  const record = (payload: Record<string, unknown>, durationMs?: number): void => {
+    client.record({
+      runId,
+      kind: "model.response",
+      name,
+      result: toRecord(redactSecretValues(payload)),
+      ...(typeof durationMs === "number" ? { durationMs } : {}),
+    });
+  };
+  const steps = (result as { steps?: unknown } | null)?.steps;
+  if (Array.isArray(steps) && steps.length > 0) {
+    for (const step of steps) {
+      const s = step as Record<string, unknown>;
+      record(
+        {
+          text: s["text"] ?? null,
+          toolCalls: s["toolCalls"] ?? null,
+          finishReason: s["finishReason"] ?? null,
+          usage: s["usage"] ?? null,
+        },
+        typeof s["durationMs"] === "number" ? (s["durationMs"] as number) : undefined,
+      );
+    }
+    return;
+  }
+  const r = (result ?? {}) as Record<string, unknown>;
+  record({
+    text: r["text"] ?? null,
+    toolCalls: r["toolCalls"] ?? null,
+    finishReason: r["finishReason"] ?? null,
+    usage: r["usage"] ?? null,
+  });
 }
 
 export const vercelAdapter = new VercelAdapter();

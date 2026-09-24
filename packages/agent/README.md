@@ -74,6 +74,41 @@ Subagents: start the child run with `parentRunId` set to the parent run id.
 Identity convention is a path (`atlas/researcher-01`): a stable key per role
 plus a run-scoped instance, mirroring OpenTelemetry trace-to-span naming.
 
+## Replay
+
+Record-and-replay turns a run into a CI fixture. The engine is isomorphic —
+`generateText` and `model` are injected, so the same code runs in Node (CLI) and
+in the browser. Behavior is compared, not prose: tool calls, policy decisions,
+and errors.
+
+```ts
+import { replayRun } from "@runmesh/agent";
+
+const run = await client.getRun(runId);            // pinned definition + events
+const replay = await client.startReplayRun(runId);  // optional lineage record
+const outcome = await replayRun({
+  definition: { systemPrompt: run.definition?.system_prompt, tools: toolNames },
+  events: run.events,
+  generateText,       // injected: your AI SDK
+  model,              // a recorded-response mock, or a live model
+  // tools: { ... }   // real bodies override recording-derived stubs
+});
+outcome.diff.identical; // false → tool calls or decisions diverged
+```
+
+Local tools without a supplied body are stubbed from the recording, so a replay
+has no side effects. Replay is lossy by construction (payloads are size-capped
+and secrets redacted); it does not promise byte-determinism.
+
+CLI, for CI:
+
+```sh
+runmesh replay run_abc123 --module ./replay.mjs
+```
+
+`replay.mjs` exports `{ generateText, model, tools?, passthrough? }`. The CLI
+records the replay run back, prints the diff, and exits non-zero on divergence.
+
 ## Contract
 
 - `resolveAgent`, `startRun`, `finishRun` throw on transport failure, so a dead
@@ -134,6 +169,7 @@ unroutable.
 
 ## What v0 does not do
 
-Enforcement, policy gating, credential injection, model-call capture, replay
-mode, or browser runtimes (`node:crypto`, `setInterval.unref`). Those are
-phases 2-3; this package is the capture half they stand on.
+Enforcement, policy gating, credential injection, or browser runtimes for the
+client core (`node:crypto`, `setInterval.unref`). Model I/O capture and
+record-and-replay are in — see Replay above. Those remain phases 2-3; this
+package is the capture half they stand on.

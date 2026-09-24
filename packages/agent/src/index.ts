@@ -15,6 +15,20 @@ export {
 export { definitionFingerprint } from "./core/fingerprint.js";
 export { redactSecretValues, cappedJson, JSON_FIELD_MAX } from "./core/redact.js";
 export { managedTool, isManagedTool, invokeKey, type ManagedTool } from "./core/managed.js";
+export {
+  replayRun,
+  diffRuns,
+  behaviorSteps,
+  normalizeValue,
+  collectRecordedToolResults,
+  recordedPrompt,
+  type DiffResult,
+  type DiffDivergence,
+  type ReplayConfig,
+  type ReplayDefinition,
+  type ReplayEvent,
+  type ReplayOutcome,
+} from "./replay/index.js";
 export type {
   AgentDefinition,
   ClientOptions,
@@ -26,6 +40,7 @@ export type {
   ManagedResponse,
   ManagedToolSpec,
   ResolvedAgent,
+  RunDetail,
   RunInfo,
   RunStatus,
   TelemetryEvent,
