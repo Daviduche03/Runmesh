@@ -109,14 +109,22 @@ def make_env():
       created_at TEXT NOT NULL, updated_at TEXT NOT NULL,
       framework TEXT, external_key TEXT, fingerprint TEXT, model TEXT,
       system_prompt TEXT, tools TEXT NOT NULL DEFAULT '[]',
-      version INTEGER NOT NULL DEFAULT 1
+      version INTEGER NOT NULL DEFAULT 1, current_version_id TEXT
     );
     CREATE TABLE agent_runs (
       id TEXT PRIMARY KEY, workspace_id TEXT NOT NULL, agent_id TEXT NOT NULL,
-      parent_run_id TEXT, thread_id TEXT, connect_user_id TEXT, status TEXT NOT NULL DEFAULT 'running',
+      agent_version_id TEXT, parent_run_id TEXT, thread_id TEXT, connect_user_id TEXT,
+      mode TEXT NOT NULL DEFAULT 'live', replay_of_run_id TEXT,
+      status TEXT NOT NULL DEFAULT 'running',
       input TEXT, usage TEXT NOT NULL DEFAULT '{}',
       started_at TEXT NOT NULL, finished_at TEXT,
       created_at TEXT NOT NULL, updated_at TEXT NOT NULL
+    );
+    CREATE TABLE agent_versions (
+      id TEXT PRIMARY KEY, workspace_id TEXT NOT NULL, agent_id TEXT NOT NULL,
+      version INTEGER NOT NULL, framework TEXT, model TEXT, system_prompt TEXT,
+      tools TEXT NOT NULL DEFAULT '[]', fingerprint TEXT, created_at TEXT NOT NULL,
+      UNIQUE (agent_id, version)
     );
     CREATE TABLE connect_users (id TEXT PRIMARY KEY, status TEXT NOT NULL DEFAULT 'active', primary_email TEXT, primary_email_verified INTEGER NOT NULL DEFAULT 0, created_at TEXT NOT NULL, updated_at TEXT NOT NULL);
     CREATE TABLE tools (
@@ -201,6 +209,17 @@ async def test_01_resolve_creates_and_versions():
     assert evolved["data"]["id"] == data["id"], "same key must not fork identity"
     assert evolved["data"]["is_new_version"] is True and evolved["data"]["version"] == 2
     assert evolved["data"]["model"] == "claude-opus-4-5"
+
+    # Definitions are immutable: the old version survives alongside the new one.
+    from db.orm import Model
+
+    versions = await Model(db).find_many(
+        "agent_versions", "agent_id = ? ORDER BY version ASC", data["id"])
+    assert [v["version"] for v in versions] == [1, 2], versions
+    assert versions[0]["model"] == "claude-sonnet-4-5", versions[0]
+    assert versions[1]["model"] == "claude-opus-4-5", versions[1]
+    agent_row = await Model(db).find_one("agents", "id = ?", data["id"])
+    assert agent_row["current_version_id"] == versions[1]["id"], agent_row
     report("01 resolve creates + versions", True, data["id"])
 
 
@@ -236,6 +255,9 @@ async def test_03_runs_lifecycle():
     run = await collection_service.start_run(
         db, "u_1", "ws_1", RunStartRequest(agent_id=aid, input="triage inbox"))
     assert run["data"]["status"] == "running" and run["data"]["id"].startswith("run_")
+    # A run is pinned to the immutable definition version it executed.
+    assert run["data"]["agent_version_id"], run["data"]
+    assert run["data"]["mode"] == "live"
     child = await collection_service.start_run(
         db, "u_1", "ws_1", RunStartRequest(agent_id=aid, parent_run_id=run["data"]["id"]))
     assert child["data"]["parent_run_id"] == run["data"]["id"]
@@ -342,6 +364,10 @@ async def test_05_read_endpoints():
     assert len(detail["data"]["events"]) == 2, detail["data"]
     assert detail["data"]["events"][0]["kind"] == "tool.call"
     assert detail["data"]["events"][0]["args"] == {"q": 1}
+    # A run exposes the immutable definition version it executed.
+    assert detail["data"]["definition"]["version"] == 1, detail["data"]["definition"]
+    assert detail["data"]["definition"]["model"] == "claude-sonnet-4-5"
+    assert detail["data"]["mode"] == "live"
     bad, _ = await run_expect(collection_service.get_run(db, "u_9", "ws_2", rid), 404)
     assert bad, "cross-workspace run must 404"
     report("05 read endpoints + isolation", True)
@@ -425,6 +451,94 @@ async def test_07_tool_registration_warnings():
     report("07 tool registration warnings surface, never silent", True)
 
 
+async def test_08_audit_merge_filter_pagination_attribution():
+    from services import collection as collection_service
+    from services import connect_audit as audit_service
+    from db.connect_orm import ConnectAuditEventModel, ConnectUserModel
+    from db.orm import Model, TaskModel, WorkflowRunModel
+    from utils.types import IngestEventInput, IngestRequest, RunStartRequest
+
+    db = make_env()
+    db.conn.execute(
+        "INSERT INTO connect_users VALUES (?,?,?,?,?,?)",
+        ("cu_1", "active", "maya@acme.dev", 1, NOW, NOW),
+    )
+    db.conn.execute(
+        "INSERT INTO tools (id, workspace_id, name, provider, action, created_at, updated_at) "
+        "VALUES (?,?,?,?,?,?,?)",
+        ("tool_1", "ws_1", "gmail_send", "google", "google.gmail.send", NOW, NOW),
+    )
+    db.conn.commit()
+
+    agent = await collection_service.resolve_agent(db, "u_1", "ws_1", resolve_req())
+    aid = agent["data"]["id"]
+    run = await collection_service.start_run(
+        db, "u_1", "ws_1", RunStartRequest(agent_id=aid, connect_user_id="cu_1"))
+    rid = run["data"]["id"]
+
+    await collection_service.ingest_events(db, "u_1", "ws_1", IngestRequest(events=[
+        IngestEventInput(run_id=rid, kind="tool.call", name="gmail_send", args={"to": "a@b.c"}),
+        IngestEventInput(run_id=rid, kind="tool.result", name="gmail_send", result={"ok": True}),
+    ]))
+
+    audit_model = ConnectAuditEventModel(db)
+    args = (audit_model, TaskModel(db), WorkflowRunModel(db), ConnectUserModel(db), Model(db))
+
+    # A filter naming a merged kind reads agent_events, not the audit ledger.
+    body = await audit_service.list_audit_events(*args, "ws_1", event_type="tool.call")
+    assert body["meta"]["total"] == 1, body["meta"]
+    assert {e["event_type"] for e in body["data"]} == {"tool.call"}, body["data"]
+    call = body["data"][0]
+    # Attribution: the step names its principal and the connection it used.
+    assert call["on_behalf_of"] == "maya@acme.dev", call
+    assert call["trace_id"] == rid and call["thread_id"], call
+    assert call["metadata"]["provider"] == "google", call["metadata"]
+    assert call["metadata"]["action"] == "google.gmail.send", call["metadata"]
+    assert call["metadata"]["connect_user_id"] == "cu_1", call["metadata"]
+
+    # A base-kind filter must not leak merged rows.
+    body = await audit_service.list_audit_events(*args, "ws_1", event_type="agent.run.started")
+    assert {e["event_type"] for e in body["data"]} == {"agent.run.started"}, body["data"]
+
+    # Pagination spans the merged stream: pages are disjoint and cover it once.
+    full = await audit_service.list_audit_events(*args, "ws_1", limit=50)
+    assert full["meta"]["total"] == 3, full["meta"]
+    all_ids = {e["id"] for e in full["data"]}
+    assert len(all_ids) == 3, full["data"]
+    p1 = await audit_service.list_audit_events(*args, "ws_1", limit=2, offset=0)
+    p2 = await audit_service.list_audit_events(*args, "ws_1", limit=2, offset=2)
+    assert len(p1["data"]) == 2 and len(p2["data"]) == 1, (p1["meta"], p2["meta"])
+    ids1 = {e["id"] for e in p1["data"]}
+    ids2 = {e["id"] for e in p2["data"]}
+    assert not (ids1 & ids2), "pages must not overlap"
+    assert ids1 | ids2 == all_ids, "pages must cover the stream exactly"
+    assert p1["meta"]["total"] == p2["meta"]["total"] == 3
+    report("08 audit merge: filter + pagination + attribution", True)
+
+
+async def test_09_replay_lineage():
+    from services import collection as collection_service
+    from utils.types import RunStartRequest
+
+    db = make_env()
+    agent = await collection_service.resolve_agent(db, "u_1", "ws_1", resolve_req())
+    origin = await collection_service.start_run(
+        db, "u_1", "ws_1", RunStartRequest(agent_id=agent["data"]["id"], input="triage"))
+    rid = origin["data"]["id"]
+
+    bad, _ = await run_expect(
+        collection_service.start_replay_run(db, "u_1", "ws_1", "run_nope"), 404)
+    assert bad, "missing origin must 404"
+
+    replay = await collection_service.start_replay_run(db, "u_1", "ws_1", rid)
+    data = replay["data"]
+    assert data["id"] != rid and data["mode"] == "replay", data
+    assert data["replay_of_run_id"] == rid, data
+    assert data["agent_version_id"] == origin["data"]["agent_version_id"], data
+    assert data["thread_id"] == origin["data"]["thread_id"], data
+    report("09 replay lineage", True, data["id"])
+
+
 async def main():
     await test_01_resolve_creates_and_versions()
     await test_02_resolve_validation_isolation()
@@ -433,6 +547,8 @@ async def main():
     await test_05_read_endpoints()
     await test_06_run_threads_and_principals()
     await test_07_tool_registration_warnings()
+    await test_08_audit_merge_filter_pagination_attribution()
+    await test_09_replay_lineage()
     failed = [name for name, passed, _ in results if not passed]
     print(f"\n{len(results) - len(failed)}/{len(results)} passed")
     if failed:

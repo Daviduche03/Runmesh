@@ -119,6 +119,7 @@ def serialize_collected_agent(row: dict) -> dict:
         "fingerprint": row.get("fingerprint"),
         "model": row.get("model"),
         "version": row.get("version") or 1,
+        "current_version_id": row.get("current_version_id"),
         "status": row.get("status") or "active",
         "parent_agent_id": row.get("parent_agent_id"),
         "last_seen_at": row.get("last_seen_at"),
@@ -267,6 +268,53 @@ async def _register_tools(model: Model, workspace_id: str, agent_id: str, tools:
     return registered, warnings
 
 
+async def _create_agent_version(
+    model: Model,
+    workspace_id: str,
+    agent_id: str,
+    version: int,
+    framework: str | None,
+    model_name: str | None,
+    system_prompt: str | None,
+    tools: list,
+    fingerprint: str | None,
+) -> str:
+    """Insert an immutable definition version. The agent row must already exist."""
+    version_id = f"agv_{uuid.uuid4().hex[:12]}"
+    await model.insert(
+        "agent_versions",
+        {
+            "id": version_id,
+            "workspace_id": workspace_id,
+            "agent_id": agent_id,
+            "version": version,
+            "framework": framework,
+            "model": model_name,
+            "system_prompt": system_prompt,
+            "tools": json.dumps(tools),
+            "fingerprint": fingerprint,
+            "created_at": _now(),
+        },
+    )
+    return version_id
+
+
+def serialize_agent_version(row: dict | None) -> dict | None:
+    if row is None:
+        return None
+    return {
+        "id": row["id"],
+        "agent_id": row["agent_id"],
+        "version": row.get("version") or 1,
+        "framework": row.get("framework"),
+        "model": row.get("model"),
+        "system_prompt": row.get("system_prompt"),
+        "tools": _parse_json_list(row.get("tools")),
+        "fingerprint": row.get("fingerprint"),
+        "created_at": row.get("created_at"),
+    }
+
+
 async def resolve_agent(db, user_id: str, workspace_id: str, req) -> dict:
     external_key = (req.external_key or "").strip() or None
     if external_key is not None and len(external_key) > EXTERNAL_KEY_MAX:
@@ -325,11 +373,16 @@ async def resolve_agent(db, user_id: str, workspace_id: str, req) -> dict:
                 "system_prompt": system_prompt,
                 "tools": json.dumps(tools),
                 "version": 1,
+                "current_version_id": None,
                 "last_seen_at": now,
                 "created_at": now,
                 "updated_at": now,
             },
         )
+        version_id = await _create_agent_version(
+            model, workspace_id, agent_id, 1, framework, model_name, system_prompt, tools, fingerprint
+        )
+        await model.update("agents", "id = ?", {"current_version_id": version_id}, agent_id)
         created = await model.find_one("agents", "id = ?", agent_id)
         data = serialize_collected_agent(created)
         data["is_new"] = True
@@ -343,12 +396,20 @@ async def resolve_agent(db, user_id: str, workspace_id: str, req) -> dict:
     if provided_name:
         updates["name"] = provided_name
     if is_new_version:
-        updates["version"] = (row.get("version") or 1) + 1
-        updates["fingerprint"] = fingerprint
-        updates["framework"] = framework
-        updates["model"] = model_name
-        updates["system_prompt"] = system_prompt
-        updates["tools"] = json.dumps(tools)
+        new_version = (row.get("version") or 1) + 1
+        version_id = await _create_agent_version(
+            model, workspace_id, row["id"], new_version,
+            framework, model_name, system_prompt, tools, fingerprint,
+        )
+        updates.update({
+            "version": new_version,
+            "fingerprint": fingerprint,
+            "framework": framework,
+            "model": model_name,
+            "system_prompt": system_prompt,
+            "tools": json.dumps(tools),
+            "current_version_id": version_id,
+        })
     await model.update("agents", "id = ?", updates, row["id"])
     updated = await model.find_one("agents", "id = ?", row["id"])
     data = serialize_collected_agent(updated)
@@ -363,9 +424,12 @@ def serialize_run(row: dict, event_count: int = 0) -> dict:
     return {
         "id": row["id"],
         "agent_id": row["agent_id"],
+        "agent_version_id": row.get("agent_version_id"),
         "parent_run_id": row.get("parent_run_id"),
         "thread_id": row.get("thread_id"),
         "connect_user_id": row.get("connect_user_id"),
+        "mode": row.get("mode") or "live",
+        "replay_of_run_id": row.get("replay_of_run_id"),
         "status": row.get("status") or "running",
         "event_count": event_count,
         "started_at": row.get("started_at"),
@@ -424,6 +488,11 @@ async def get_run(db, user_id: str, workspace_id: str, run_id: str) -> dict:
     data = serialize_run(row, len(events))
     data["usage"] = _parse_json_dict(row.get("usage"), "usage")
     data["input"] = row.get("input")
+    version_id = row.get("agent_version_id")
+    version_row = (
+        await model.find_one("agent_versions", "id = ?", version_id) if version_id else None
+    )
+    data["definition"] = serialize_agent_version(version_row)
     data["events"] = [serialize_event(event) for event in events]
     child_rows = await model.find_many(
         "agent_runs", "parent_run_id = ? AND workspace_id = ? ORDER BY created_at ASC",
@@ -501,9 +570,11 @@ async def start_run(db, user_id: str, workspace_id: str, req) -> dict:
             "id": run_id,
             "workspace_id": workspace_id,
             "agent_id": agent_id,
+            "agent_version_id": agent.get("current_version_id"),
             "parent_run_id": parent_run_id,
             "thread_id": thread_id,
             "connect_user_id": run_connect_user_id,
+            "mode": "live",
             "status": "running",
             "input": run_input,
             "usage": "{}",
@@ -534,9 +605,11 @@ async def start_run(db, user_id: str, workspace_id: str, req) -> dict:
     return success({
         "id": row["id"],
         "agent_id": row["agent_id"],
+        "agent_version_id": row.get("agent_version_id"),
         "parent_run_id": row.get("parent_run_id"),
         "thread_id": row.get("thread_id"),
         "connect_user_id": row.get("connect_user_id"),
+        "mode": row.get("mode") or "live",
         "status": row["status"],
         "started_at": row["started_at"],
     }, message="Run started")
@@ -583,6 +656,55 @@ async def finish_run(db, user_id: str, workspace_id: str, run_id: str, req) -> d
         "status": updated["status"],
         "finished_at": updated.get("finished_at"),
     }, message="Run finished")
+
+
+async def start_replay_run(db, user_id: str, workspace_id: str, run_id: str) -> dict:
+    """Open a run that replays an existing one. Lineage only: the caller (the
+    SDK or browser) executes the replay and reports its events back, because
+    the agent's loop lives in the caller's process, not here."""
+    model = Model(db)
+    workspace_id = await resolve_workspace_id(model.db, user_id, workspace_id)
+    origin = await _get_workspace_run(model, workspace_id, run_id)
+
+    now = _now()
+    replay_id = f"run_{uuid.uuid4().hex[:12]}"
+    await model.insert(
+        "agent_runs",
+        {
+            "id": replay_id,
+            "workspace_id": workspace_id,
+            "agent_id": origin["agent_id"],
+            "agent_version_id": origin.get("agent_version_id"),
+            "parent_run_id": None,
+            "thread_id": origin.get("thread_id"),
+            "connect_user_id": origin.get("connect_user_id"),
+            "mode": "replay",
+            "replay_of_run_id": origin["id"],
+            "status": "running",
+            "input": origin.get("input"),
+            "usage": "{}",
+            "started_at": now,
+            "finished_at": None,
+            "created_at": now,
+            "updated_at": now,
+        },
+    )
+    row = await model.find_one("agent_runs", "id = ?", replay_id)
+    from db.connect_orm import ConnectAuditEventModel
+    await _audit(
+        ConnectAuditEventModel(model.db),
+        event_type=ConnectAuditEventType.RUN_STARTED,
+        actor_type=ConnectAuditActorType.CONNECT_USER,
+        actor_id=user_id,
+        connect_user_id=row.get("connect_user_id"),
+        agent_id=row["agent_id"],
+        resource_type=ConnectResourceType.AGENT_RUN,
+        resource_id=replay_id,
+        result="success",
+        workspace_id=workspace_id,
+        metadata={"replay_of_run_id": origin["id"]},
+    )
+    return success(serialize_run(row, 0), message="Replay run started")
 
 
 async def ingest_events(db, user_id: str, workspace_id: str, req) -> dict:

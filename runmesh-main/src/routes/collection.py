@@ -41,6 +41,13 @@ async def finish_run(run_id: str, req: RunFinishRequest, request: Request, curre
     return await collection_service.finish_run(env.DB, current_user["id"], workspace_id, run_id, req)
 
 
+@router.post("/api/v1/runs/{run_id}/replay")
+async def start_replay_run(run_id: str, request: Request, current_user: dict = Depends(require_auth("write"))):
+    env = request.scope["env"]
+    workspace_id = await resolve_request_workspace(request, current_user)
+    return await collection_service.start_replay_run(env.DB, current_user["id"], workspace_id, run_id)
+
+
 @router.get("/api/v1/agents/{agent_id}/runs")
 async def list_agent_runs(agent_id: str, request: Request, limit: int = 50, current_user: dict = Depends(require_auth("read"))):
     env = request.scope["env"]
