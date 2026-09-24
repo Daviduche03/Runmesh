@@ -157,20 +157,13 @@ function toTraceEvents(
 			event.kind === "policy.decision" ||
 			event.kind === "log" ||
 			event.kind === "error";
-		// A model turn carries either prose or a tool call. Surface the prose as
-		// the result (it is what the customer sees); a tool-call turn with no
-		// prose reads as "called X" rather than an empty JSON blob.
-		let action = event.name || event.kind;
+		// Keep the step's own label in the row; the model's prose (or the tool
+		// calls it made) belongs in the detail panel's Result, not the row.
+		const action = event.name || event.kind;
 		let argsText: string | null = null;
 		let resultText: string | null = null;
 		if (event.kind === "model.response") {
 			const text = typeof event.result?.text === "string" ? event.result.text.trim() : "";
-			const calls = Array.isArray(event.result?.toolCalls)
-				? (event.result.toolCalls as Array<Record<string, unknown>>)
-						.map((call) => String(call.toolName ?? call.name ?? ""))
-						.filter(Boolean)
-				: [];
-			action = text || (calls.length ? `called ${calls.join(", ")}` : "model response");
 			resultText = text || summarizeValue(event.result);
 		} else if (isResult) {
 			resultText = summarizeValue(event.result);
