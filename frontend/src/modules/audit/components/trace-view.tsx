@@ -80,6 +80,7 @@ function TypeMark({ type }: { type: AuditType }) {
 const modeOptions = [
 	{ label: "Tree", value: "tree" },
 	{ label: "Timeline", value: "timeline" },
+	{ label: "Playback", value: "playback" },
 ] as const;
 
 const focusOptions = [
@@ -198,6 +199,7 @@ export function TraceView({
 	const [focus, setFocus] = useState<(typeof focusOptions)[number]["value"]>("all");
 	const [query, setQuery] = useState("");
 	const [collapsed, setCollapsed] = useState<Set<string>>(new Set());
+	const [playIndex, setPlayIndex] = useState(0);
 
 	const visibleRuns = useMemo(() => {
 		const matches = (event: AuditEvent) => {
@@ -262,6 +264,8 @@ export function TraceView({
 	const toggleAll = () => setCollapsed(allCollapsed ? new Set() : new Set(parentIds));
 
 	const allVisible = visibleRuns.flatMap((run) => run.events);
+	const playSteps = [...allVisible].sort((a, b) => a.offsetMs - b.offsetMs);
+	const clampedIndex = playSteps.length ? Math.min(playIndex, playSteps.length - 1) : 0;
 	const minMs = allVisible.length ? Math.min(...allVisible.map((event) => event.offsetMs)) : 0;
 	const maxMs = allVisible.length ? Math.max(...allVisible.map((event) => event.offsetMs + event.durationMs)) : 1;
 	const total = Math.max(maxMs - minMs, 1);
@@ -291,6 +295,39 @@ export function TraceView({
 							/>
 						</div>
 					</div>
+				</div>
+			) : null}
+
+			{toolbar && mode === "playback" ? (
+				<div className="flex items-center gap-2 border-b border-border px-4 py-2">
+					<Button
+						variant="outline"
+						size="sm"
+						onClick={() => setPlayIndex((index) => Math.max(0, index - 1))}
+						disabled={clampedIndex <= 0}
+					>
+						Prev
+					</Button>
+					<Button
+						variant="outline"
+						size="sm"
+						onClick={() => setPlayIndex((index) => Math.min(playSteps.length - 1, index + 1))}
+						disabled={clampedIndex >= playSteps.length - 1}
+					>
+						Next
+					</Button>
+					<input
+						type="range"
+						min={0}
+						max={Math.max(0, playSteps.length - 1)}
+						value={clampedIndex}
+						onChange={(e) => setPlayIndex(Number(e.target.value))}
+						aria-label="Replay step"
+						className="flex-1 accent-foreground"
+					/>
+					<span className="shrink-0 font-mono text-[11px] text-muted-foreground tabular-nums">
+						Step {playSteps.length ? clampedIndex + 1 : 0} / {playSteps.length}
+					</span>
 				</div>
 			) : null}
 
@@ -357,6 +394,36 @@ export function TraceView({
 							</section>
 						);
 					})}
+				</div>
+			) : effectiveMode === "playback" ? (
+				<div className="divide-y divide-border">
+					{playSteps.map((event, index) => (
+						<button
+							key={event.id}
+							type="button"
+							onClick={() => {
+								setPlayIndex(index);
+								onSelectEvent?.(event);
+							}}
+							className={cn(
+								"flex w-full items-center gap-2.5 px-4 py-2 text-left transition-colors duration-150 ease-[var(--ease-out)] hover:bg-muted/40",
+								index > clampedIndex && "opacity-40",
+								index === clampedIndex && "bg-muted/50 ring-1 ring-inset ring-border"
+							)}
+						>
+							<span className="w-8 shrink-0 font-mono text-[11px] text-muted-foreground tabular-nums">{index + 1}</span>
+							<TypeMark type={event.type} />
+							<span className="truncate font-mono text-[12.5px]">{event.action}</span>
+							{showKinds && event.kindLabel ? (
+								<span className="shrink-0 font-mono text-[10.5px] text-muted-foreground/70">{event.kindLabel}</span>
+							) : null}
+							<span className="shrink-0 text-[12px] text-muted-foreground">{event.actor}</span>
+							<span className="ms-1 shrink-0 font-mono text-[11px] text-muted-foreground tabular-nums">
+								{formatDuration(event.durationMs)}
+							</span>
+							<OutcomeMark outcome={event.outcome} />
+						</button>
+					))}
 				</div>
 			) : (
 				<div>

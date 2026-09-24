@@ -417,6 +417,11 @@ export function AgentDetailPage() {
 											</TableCell>
 											<TableCell className="max-w-[220px]">
 												<span className="block truncate font-mono text-[12.5px]">{run.id}</span>
+												{run.mode === "replay" ? (
+													<span className="block truncate font-mono text-[11px] text-sky-400">
+														↻ replay of {run.replay_of_run_id ?? "—"}
+													</span>
+												) : null}
 												{run.parent_run_id ? (
 													<span className="block truncate font-mono text-[11px] text-muted-foreground">
 														↳ child of {run.parent_run_id}

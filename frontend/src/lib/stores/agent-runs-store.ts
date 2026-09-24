@@ -16,13 +16,28 @@ export type BackendRunEvent = {
 export type BackendRun = {
 	id: string;
 	agent_id: string;
+	agent_version_id?: string | null;
 	parent_run_id: string | null;
 	thread_id: string | null;
 	connect_user_id: string | null;
+	mode?: string;
+	replay_of_run_id?: string | null;
 	status: string;
 	event_count: number;
 	started_at: string;
 	finished_at: string | null;
+	created_at: string;
+};
+
+export type BackendRunDefinition = {
+	id: string;
+	agent_id: string;
+	version: number;
+	framework: string | null;
+	model: string | null;
+	system_prompt: string | null;
+	tools: unknown[];
+	fingerprint: string | null;
 	created_at: string;
 };
 
@@ -37,6 +52,7 @@ export type BackendChildRun = {
 export type BackendRunDetail = BackendRun & {
 	usage: Record<string, unknown>;
 	input: string | null;
+	definition?: BackendRunDefinition | null;
 	events: BackendRunEvent[];
 	child_runs: BackendChildRun[];
 };
