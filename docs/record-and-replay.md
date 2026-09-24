@@ -71,9 +71,12 @@ Failing on wording makes CI flaky and gets the check muted.
 
 ## Phases
 
-1. Versions (`0042`) + pin runs. **Record** model I/O in the wrapper.
-2. Replay engine in `packages/agent` + `runmesh replay` CLI (exit non-zero on divergence).
-3. Trace playback in `TraceView` (run and thread, one component).
-4. Replay runs + diff in the UI (linkage, `POST /runs/{id}/replay`, `GET /runs/{id}/diff`).
+1. ~~Versions (`0042`) + pin runs. Record model I/O.~~ Done.
+2. ~~Replay engine in `packages/agent` + `runmesh replay` CLI.~~ Done.
+3. ~~Trace playback in `TraceView` (run and thread, one component).~~ Done.
+4. ~~Replay runs + diff in the UI.~~ Done — lineage badge and a diff panel in the
+   run view. The diff travels as a `replay.diff` log event, so no separate
+   `/diff` endpoint is needed.
 5. Deferred: server-side policy re-evaluation; live replay; JS replay worker;
-   UI-triggered re-run via a user callback.
+   UI-triggered re-run via a user callback. A UI button cannot execute a replay
+   because the browser holds neither the model nor the local tool bodies.

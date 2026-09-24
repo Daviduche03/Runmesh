@@ -6,6 +6,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Skeleton } from "@/components/ui/skeleton";
 import { StatCard } from "@/modules/dashboard/components/stat-card";
 import { AgentStatus } from "@/modules/agents/components/agent-status";
+import { ReplayDiff } from "@/modules/agents/components/replay-diff";
 import { GrantsTable, type Grant } from "@/modules/grants/components/grants-table";
 import { TraceView } from "@/modules/audit/components/trace-view";
 import { AuditEventDetail } from "@/modules/audit/components/audit-event-detail";
@@ -216,6 +217,13 @@ function RunEvents({
 	}));
 	return (
 		<div className="border-t border-border">
+			{run.mode === "replay" ? (
+				<ReplayDiff
+					events={events}
+					originRunId={run.replay_of_run_id ?? null}
+					onOpenRun={(origin) => onOpenRun(origin, run.agent_id)}
+				/>
+			) : null}
 			<TraceView
 				runs={[
 					{
