@@ -27,7 +27,9 @@
     "bench": "node bench/wrap.bench.mjs"
   },
   "devDependencies": {
+    "@ai-sdk/anthropic": "^4.0.61",
     "@types/node": "^24.13.5",
+    "ai": "^7.0.112",
     "tsup": "^8.5.1",
     "typescript": "^5.9.3",
     "vitest": "^3.2.7"

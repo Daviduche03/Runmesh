@@ -8,6 +8,7 @@ import type {
   ManagedFetchInit,
   ManagedResponse,
   ResolvedAgent,
+  RunInfo,
   TelemetryEvent,
   ToolLike,
   ToolRegistration,
@@ -169,6 +170,7 @@ export class VercelAdapter extends BaseAdapter<VercelAgentInput> {
       input: prompt,
       ...(config.connectUserId !== undefined ? { connectUserId: config.connectUserId } : {}),
     });
+    config.onRun?.(run);
     const registry = new Map((resolved.tools ?? []).map((tool) => [tool.name, tool]));
     const ctx: RunContext = { client, runId: run.id, registry };
     if (config.connectUserId !== undefined) ctx.connectUserId = config.connectUserId;
@@ -410,6 +412,8 @@ export type VercelRunTextConfig<TResult> = {
   parentRunId?: string;
   /** Whose authority a delegated managed call uses. */
   connectUserId?: string;
+  /** Called with the opened run, for correlation (e.g. fetching it to replay). */
+  onRun?: (run: RunInfo) => void;
   /** Forwarded untouched: stopWhen, temperature, providerOptions, … */
   passthrough?: Record<string, unknown>;
 };
