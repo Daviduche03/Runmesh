@@ -12,6 +12,7 @@ const ROOT = path.resolve(HERE, "..", "..");
 const RM = path.join(ROOT, "runmesh-main");
 const API = process.env.RUNMESH_URL ?? "http://localhost:8787";
 const SUPPORT = process.env.SUPPORT_URL ?? "http://localhost:8791";
+const FRONTEND = process.env.FRONTEND_URL ?? "http://localhost:5173";
 const WS = "ws_2c2d5a5148e64b5cb6898b7b8772dd31";
 const CONN = "conn_e2e_support";
 
@@ -183,11 +184,23 @@ async function main() {
 
   await runScenarios();
 
-  dbrunner("cleanup", t0);
-  const after = JSON.parse(dbrunner("counts"));
-  check("residue cleaned to baseline", JSON.stringify(after) === JSON.stringify(baseline), JSON.stringify(after));
+  // Keep residue by default so the grant, rules, runs, and audit can be
+  // reviewed in the dashboard. Set SUPPORT_CLEAN=1 to reset to baseline.
+  if (process.env.SUPPORT_CLEAN === "1") {
+    dbrunner("cleanup", t0);
+    const after = JSON.parse(dbrunner("counts"));
+    check("residue cleaned to baseline", JSON.stringify(after) === JSON.stringify(baseline), JSON.stringify(after));
+    supportProc.kill("SIGTERM");
+  } else {
+    console.log(`\nkept for review — agent ${agentId}`);
+    console.log(`  agent:    ${FRONTEND}/agents/${agentId}`);
+    console.log(`  grants:   ${FRONTEND}/grants`);
+    console.log(`  policies: ${FRONTEND}/policies`);
+    console.log(`  audit:    ${FRONTEND}/audit`);
+    console.log(`  support:  ${SUPPORT}/_state`);
+    console.log("  (set SUPPORT_CLEAN=1 to clean up)");
+  }
 
-  supportProc.kill("SIGTERM");
   console.log(`\n${failures === 0 ? "ALL SUPPORT LEGS PASSED" : `${failures} FAILURE(S)`}`);
   process.exit(failures === 0 ? 0 : 1);
 }

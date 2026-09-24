@@ -43,6 +43,10 @@ GROQ_API_KEY=... SUPPORT_MODEL=qwen/qwen3.8-27b node run.mjs
 
 Pass `SUPPORT_DEBUG=1` to print each managed tool call and result.
 
+Residue is **kept by default** so you can review it in the dashboard (the grant,
+policy rules, decisions, runs, and audit). Set `SUPPORT_CLEAN=1` to reset the
+workspace to baseline.
+
 ## Note on determinism
 
 The model genuinely chooses the calls, so the driver asserts invariants (no
