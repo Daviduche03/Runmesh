@@ -159,8 +159,12 @@ describe("runText", () => {
   it("collapses the lifecycle into one call", async () => {
     const { calls, events, client } = harness();
     const generateText = async (options: Record<string, unknown>) => {
+      const start = options["onLanguageModelCallStart"] as ((e: unknown) => void) | undefined;
+      const end = options["onLanguageModelCallEnd"] as ((e: unknown) => void) | undefined;
+      start?.({ modelId: "m", callId: "c1" });
       const wrapped = options["tools"] as typeof tools;
       await wrapped.lookup.execute!({ q: 1 });
+      end?.({ modelId: "m", content: [{ type: "text", text: "done" }], finishReason: "stop" });
       return { text: "done", usage: { tokens: 9 } };
     };
     const out = await vercelAdapter.runText(client, {
@@ -189,16 +193,26 @@ describe("runText", () => {
     ]);
   });
 
-  it("captures model I/O, one response per generation step", async () => {
+  it("captures model I/O via the callbacks, response before the tool call", async () => {
     const { events, client } = harness();
-    const generateText = async () => ({
-      text: "final",
-      usage: { tokens: 5 },
-      steps: [
-        { text: "", toolCalls: [{ toolName: "lookup", args: { q: 1 } }], finishReason: "tool-calls", usage: { tokens: 2 } },
-        { text: "final", toolCalls: [], finishReason: "stop", usage: { tokens: 3 } },
-      ],
-    });
+    const generateText = async (options: Record<string, unknown>) => {
+      const start = options["onLanguageModelCallStart"] as ((e: unknown) => void) | undefined;
+      const end = options["onLanguageModelCallEnd"] as ((e: unknown) => void) | undefined;
+      start?.({ modelId: "claude-sonnet-4-5", callId: "c1", tools: [{ name: "lookup" }] });
+      end?.({
+        modelId: "claude-sonnet-4-5",
+        content: [{ type: "tool-call", toolName: "lookup", input: { q: 1 } }],
+        finishReason: "tool-calls",
+      });
+      const wrapped = options["tools"] as typeof tools;
+      await wrapped.lookup.execute!({ q: 1 });
+      end?.({
+        modelId: "claude-sonnet-4-5",
+        content: [{ type: "text", text: "final" }],
+        finishReason: "stop",
+      });
+      return { text: "final", usage: {} };
+    };
     await vercelAdapter.runText(client, {
       agent: "triage",
       generateText,
@@ -206,13 +220,55 @@ describe("runText", () => {
       tools,
       prompt: "hi",
     });
+    // The model response is recorded before the tool call it triggered.
+    expect(events.map((e) => e.kind)).toEqual([
+      "model.request",
+      "model.response",
+      "tool.call",
+      "tool.result",
+      "model.response",
+    ]);
     const request = events.find((e) => e.kind === "model.request");
     expect(request?.name).toBe("claude-sonnet-4-5");
     expect(request?.args).toMatchObject({ model: "claude-sonnet-4-5", prompt: "hi", tools: ["lookup"] });
     const responses = events.filter((e) => e.kind === "model.response");
     expect(responses).toHaveLength(2);
-    expect(responses[0]?.result?.["finishReason"]).toBe("tool-calls");
+    expect(responses[0]?.result?.["toolCalls"]).toEqual([{ toolName: "lookup", input: { q: 1 } }]);
     expect(responses[1]?.result?.["text"]).toBe("final");
+  });
+
+  it("streams: wraps tools, captures model I/O, closes the run on finish", async () => {
+    const { calls, events, client } = harness();
+    const streamText = (options: Record<string, unknown>) => {
+      return {
+        consume: async () => {
+          const start = options["onLanguageModelCallStart"] as ((e: unknown) => void) | undefined;
+          const end = options["onLanguageModelCallEnd"] as ((e: unknown) => void) | undefined;
+          const onFinish = options["onFinish"] as ((e: unknown) => Promise<void>) | undefined;
+          start?.({ modelId: "m" });
+          const wrapped = options["tools"] as typeof tools;
+          await wrapped.lookup.execute!({ q: 1 });
+          end?.({ modelId: "m", content: [{ type: "text", text: "ok" }], finishReason: "stop" });
+          await onFinish?.({ usage: { tokens: 3 } });
+        },
+      };
+    };
+    const result = await vercelAdapter.runStream(client, {
+      agent: "triage",
+      streamText,
+      model: "m",
+      tools,
+      prompt: "hi",
+    });
+    await result.consume();
+    const finish = calls.find((c) => c.method === "finishRun");
+    expect(finish?.args[1]).toEqual({ status: "completed", usage: { tokens: 3 } });
+    expect(events.map((e) => e.kind)).toEqual([
+      "model.request",
+      "tool.call",
+      "tool.result",
+      "model.response",
+    ]);
   });
 
   it("caches resolve per client and re-resolves on definition change", async () => {
@@ -244,8 +300,8 @@ describe("runText", () => {
     const finish = calls.find((c) => c.method === "finishRun");
     expect(finish?.args[1]).toEqual({ status: "failed" });
     expect(calls.some((c) => c.method === "flush")).toBe(true);
-    // The request was captured; no response exists because the model threw.
-    expect(events.map((e) => e.kind)).toEqual(["model.request"]);
+    // The model threw before any callback fired, so nothing was captured.
+    expect(events).toHaveLength(0);
   });
 });
 

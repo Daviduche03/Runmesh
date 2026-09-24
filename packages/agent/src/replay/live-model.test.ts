@@ -95,6 +95,12 @@ live("replay with a real model", () => {
 		expect(modelRequests.length).toBeGreaterThan(0);
 		expect(modelResponses.length).toBeGreaterThan(0);
 		expect(events.some((e) => e.kind === "tool.call" && e.name === "lookup")).toBe(true);
+		// Ordering: the model response that requested the tool is recorded
+		// before the tool call it triggered.
+		const firstResponse = events.findIndex((e) => e.kind === "model.response");
+		const firstToolCall = events.findIndex((e) => e.kind === "tool.call");
+		expect(firstResponse).toBeGreaterThanOrEqual(0);
+		expect(firstResponse).toBeLessThan(firstToolCall);
 
 		const definition = {
 			systemPrompt: detail.definition?.system_prompt ?? null,

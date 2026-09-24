@@ -74,6 +74,15 @@ Subagents: start the child run with `parentRunId` set to the parent run id.
 Identity convention is a path (`atlas/researcher-01`): a stable key per role
 plus a run-scoped instance, mirroring OpenTelemetry trace-to-span naming.
 
+### Streaming and custom loops
+
+`runText` wraps the framework's `generateText`. For `streamText` use `runStream`
+(same config, `streamText` injected; the run closes when the stream finishes), or
+wire capture into any loop yourself: wrap tools with `wrapTools` and spread
+`vercelAdapter.capture(client, runId)` into the `generateText`/`streamText`
+options. The callbacks record model I/O in order — the model response is logged
+*before* the tool calls it triggered execute.
+
 ## Replay
 
 Record-and-replay turns a run into a CI fixture. The engine is isomorphic —

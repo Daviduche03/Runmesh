@@ -176,26 +176,21 @@ export class VercelAdapter extends BaseAdapter<VercelAgentInput> {
     if (config.connectUserId !== undefined) ctx.connectUserId = config.connectUserId;
     if ((resolved.warnings ?? []).length > 0) ctx.warnings = resolved.warnings;
     const wrapped = this.wrapTools(tools ?? {}, ctx);
+    const capture = this.capture(client, run.id, {
+      system,
+      prompt,
+      tools: Object.keys(wrapped),
+    });
     try {
-      client.record({
-        runId: run.id,
-        kind: "model.request",
-        name: modelIdOf(model) ?? "model",
-        args: {
-          model: modelIdOf(model) ?? null,
-          system: system ?? null,
-          prompt,
-          tools: Object.keys(wrapped),
-        },
-      });
       const result = await generateText({
         model,
         ...(system !== undefined ? { system } : {}),
         tools: wrapped,
         prompt,
         ...(passthrough ?? {}),
+        onLanguageModelCallStart: capture.onLanguageModelCallStart,
+        onLanguageModelCallEnd: capture.onLanguageModelCallEnd,
       });
-      recordModelResponses(client, run.id, model, result);
       await client.finishRun(run.id, { status: "completed", usage: usageOf(result) });
       return result;
     } catch (err) {
@@ -204,6 +199,110 @@ export class VercelAdapter extends BaseAdapter<VercelAgentInput> {
     } finally {
       await client.flush();
     }
+  }
+
+  /** Streaming sibling of `runText`. Resolves, wraps tools, captures model I/O,
+   *  and closes the run when the stream finishes (or fails). The caller consumes
+   *  the returned stream. */
+  async runStream<TResult>(
+    client: RunmeshClient,
+    config: VercelRunStreamConfig<TResult>,
+  ): Promise<TResult> {
+    const { agent, streamText, model, system, tools, prompt, parentRunId, passthrough } = config;
+    const identity = typeof agent === "string" ? { externalKey: agent } : agent;
+    const resolved = await resolveCached(
+      client,
+      this,
+      {
+        ...(modelIdOf(model) !== undefined ? { model: modelIdOf(model) as string } : {}),
+        ...(system !== undefined ? { systemPrompt: system } : {}),
+        ...(tools !== undefined ? { tools } : {}),
+      },
+      identity,
+    );
+    const run = await client.startRun({
+      agentId: resolved.id,
+      parentRunId,
+      input: prompt,
+      ...(config.connectUserId !== undefined ? { connectUserId: config.connectUserId } : {}),
+    });
+    config.onRun?.(run);
+    const registry = new Map((resolved.tools ?? []).map((tool) => [tool.name, tool]));
+    const ctx: RunContext = { client, runId: run.id, registry };
+    if (config.connectUserId !== undefined) ctx.connectUserId = config.connectUserId;
+    if ((resolved.warnings ?? []).length > 0) ctx.warnings = resolved.warnings;
+    const wrapped = this.wrapTools(tools ?? {}, ctx);
+    const capture = this.capture(client, run.id, { system, prompt, tools: Object.keys(wrapped) });
+    return streamText({
+      model,
+      ...(system !== undefined ? { system } : {}),
+      tools: wrapped,
+      prompt,
+      ...(passthrough ?? {}),
+      onLanguageModelCallStart: capture.onLanguageModelCallStart,
+      onLanguageModelCallEnd: capture.onLanguageModelCallEnd,
+      onFinish: async (event: unknown) => {
+        await client.finishRun(run.id, { status: "completed", usage: usageOf(event) });
+        await client.flush();
+      },
+      onError: async () => {
+        await client.finishRun(run.id, { status: "failed" });
+        await client.flush();
+      },
+    });
+  }
+
+  /** Record model I/O via the framework's model-call callbacks. Spread these
+   *  into `generateText`/`streamText` options. Unlike reading the final result,
+   *  they fire in order — the model response is recorded before the tool calls
+   *  it triggered execute — and they work for streaming and custom loops too. */
+  capture(
+    client: RunmeshClient,
+    runId: string,
+    fallback: { system?: string | undefined; prompt?: string | undefined; tools?: string[] | undefined } = {},
+  ): ModelCapture {
+    return {
+      onLanguageModelCallStart: (event: unknown) => {
+        const e = asObject(event);
+        client.record({
+          runId,
+          kind: "model.request",
+          name: modelNameOf(e),
+          args: toRecord(redactSecretValues({
+            model: modelNameOf(e),
+            call_id: e["callId"] ?? null,
+            system: e["system"] ?? fallback.system ?? null,
+            prompt: e["prompt"] ?? fallback.prompt ?? null,
+            messages: e["messages"] ?? null,
+            tools: toolNamesFrom(e["tools"]) ?? fallback.tools ?? null,
+          })),
+        });
+      },
+      onLanguageModelCallEnd: (event: unknown) => {
+        const e = asObject(event);
+        const content = Array.isArray(e["content"]) ? (e["content"] as Array<Record<string, unknown>>) : [];
+        const text = content
+          .filter((part) => part["type"] === "text")
+          .map((part) => String(part["text"] ?? ""))
+          .join("");
+        const toolCalls = content
+          .filter((part) => part["type"] === "tool-call")
+          .map((part) => ({ toolName: part["toolName"] ?? null, input: part["input"] ?? part["args"] ?? null }));
+        const responseTime = asObject(e["performance"])["responseTimeMs"];
+        client.record({
+          runId,
+          kind: "model.response",
+          name: modelNameOf(e),
+          result: toRecord(redactSecretValues({
+            text,
+            toolCalls,
+            finishReason: e["finishReason"] ?? null,
+            usage: e["usage"] ?? null,
+          })),
+          ...(typeof responseTime === "number" ? { durationMs: Math.round(responseTime) } : {}),
+        });
+      },
+    };
   }
 
   wrapTools<T extends Record<string, ToolLike>>(tools: T, ctx: RunContext): T {
@@ -418,6 +517,49 @@ export type VercelRunTextConfig<TResult> = {
   passthrough?: Record<string, unknown>;
 };
 
+/** Streaming config; mirrors `VercelRunTextConfig` with `streamText` injected. */
+export type VercelRunStreamConfig<TResult> = {
+  agent: string | { externalKey?: string; name?: string };
+  /** The framework's `streamText`, injected to keep this package dependency-free. */
+  streamText: (options: Record<string, unknown>) => TResult;
+  model: unknown;
+  system?: string;
+  tools?: Record<string, ToolLike>;
+  prompt: string;
+  parentRunId?: string;
+  connectUserId?: string;
+  onRun?: (run: RunInfo) => void;
+  passthrough?: Record<string, unknown>;
+};
+
+/** Model I/O capture callbacks, produced by `capture()`. */
+export type ModelCapture = {
+  onLanguageModelCallStart: (event: unknown) => void;
+  onLanguageModelCallEnd: (event: unknown) => void;
+};
+
+function asObject(value: unknown): Record<string, unknown> {
+  return value !== null && typeof value === "object" && !Array.isArray(value)
+    ? (value as Record<string, unknown>)
+    : {};
+}
+
+function modelNameOf(event: Record<string, unknown>): string {
+  const id = event["modelId"];
+  return typeof id === "string" ? id : "model";
+}
+
+function toolNamesFrom(tools: unknown): string[] | null {
+  if (!Array.isArray(tools)) return null;
+  const names: string[] = [];
+  for (const entry of tools) {
+    const object = asObject(entry);
+    const name = object["name"] ?? object["toolName"] ?? asObject(object["function"])["name"];
+    if (typeof name === "string") names.push(name);
+  }
+  return names;
+}
+
 function modelIdOf(model: unknown): string | undefined {
   if (typeof model === "string") return model;
   if (model !== null && typeof model === "object") {
@@ -428,57 +570,10 @@ function modelIdOf(model: unknown): string | undefined {
 }
 
 function usageOf(result: unknown): Record<string, unknown> | undefined {
-  if (result !== null && typeof result === "object" && "usage" in result) {
-    const usage = (result as { usage?: unknown }).usage;
-    if (usage !== null && typeof usage === "object" && !Array.isArray(usage)) {
-      return usage as Record<string, unknown>;
-    }
-  }
-  return undefined;
-}
-
-/** Record one `model.response` per generation step, falling back to the final
- *  result when the SDK does not expose `steps`. Deterministic replay feeds
- *  these back to the model in order. */
-function recordModelResponses(
-  client: RunmeshClient,
-  runId: string,
-  model: unknown,
-  result: unknown,
-): void {
-  const name = modelIdOf(model) ?? "model";
-  const record = (payload: Record<string, unknown>, durationMs?: number): void => {
-    client.record({
-      runId,
-      kind: "model.response",
-      name,
-      result: toRecord(redactSecretValues(payload)),
-      ...(typeof durationMs === "number" ? { durationMs } : {}),
-    });
-  };
-  const steps = (result as { steps?: unknown } | null)?.steps;
-  if (Array.isArray(steps) && steps.length > 0) {
-    for (const step of steps) {
-      const s = step as Record<string, unknown>;
-      record(
-        {
-          text: s["text"] ?? null,
-          toolCalls: s["toolCalls"] ?? null,
-          finishReason: s["finishReason"] ?? null,
-          usage: s["usage"] ?? null,
-        },
-        typeof s["durationMs"] === "number" ? (s["durationMs"] as number) : undefined,
-      );
-    }
-    return;
-  }
-  const r = (result ?? {}) as Record<string, unknown>;
-  record({
-    text: r["text"] ?? null,
-    toolCalls: r["toolCalls"] ?? null,
-    finishReason: r["finishReason"] ?? null,
-    usage: r["usage"] ?? null,
-  });
+  const usage = asObject(result)["usage"] ?? asObject(result)["totalUsage"];
+  return usage !== null && typeof usage === "object" && !Array.isArray(usage)
+    ? (usage as Record<string, unknown>)
+    : undefined;
 }
 
 export const vercelAdapter = new VercelAdapter();

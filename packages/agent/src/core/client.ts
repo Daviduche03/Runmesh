@@ -301,7 +301,7 @@ export class RunmeshClient {
           name: event.name ?? "",
           args: event.args ?? {},
           result: event.result ?? {},
-          duration_ms: event.durationMs ?? null,
+          duration_ms: event.durationMs == null ? null : Math.round(event.durationMs),
         })),
       });
     } catch (err) {

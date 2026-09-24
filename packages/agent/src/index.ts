@@ -9,7 +9,9 @@ export {
   VercelAdapter,
   vercelAdapter,
   wrapTools,
+  type ModelCapture,
   type VercelAgentInput,
+  type VercelRunStreamConfig,
   type VercelRunTextConfig,
 } from "./adapters/vercel.js";
 export { definitionFingerprint } from "./core/fingerprint.js";
