@@ -111,7 +111,8 @@ def main() -> None:
             "tools": ["github_issues_get", "github_issues_comment"]}},
         {"run_id": rid, "kind": "model.response", "name": "claude-sonnet-4-5", "result": {
             "toolCalls": [{"toolName": "github_issues_get", "args": {"repo": "acme/api", "number": 42}}],
-            "finishReason": "tool-calls"}},
+            "finishReason": "tool-calls",
+            "usage": {"inputTokens": 290, "outputTokens": 18, "totalTokens": 308}}},
         {"run_id": rid, "kind": "tool.call", "name": "github_issues_get",
          "args": {"repo": "acme/api", "number": 42}},
         {"run_id": rid, "kind": "tool.result", "name": "github_issues_get",
@@ -119,15 +120,19 @@ def main() -> None:
         {"run_id": rid, "kind": "model.response", "name": "claude-sonnet-4-5", "result": {
             "toolCalls": [{"toolName": "github_issues_comment",
                            "args": {"repo": "acme/api", "number": 42, "body": "Looks like a cookie issue."}}],
-            "finishReason": "tool-calls"}},
+            "finishReason": "tool-calls",
+            "usage": {"inputTokens": 320, "outputTokens": 16, "totalTokens": 336}}},
         {"run_id": rid, "kind": "tool.call", "name": "github_issues_comment",
          "args": {"repo": "acme/api", "number": 42, "body": "Looks like a cookie issue."}},
         {"run_id": rid, "kind": "tool.result", "name": "github_issues_comment",
          "result": {"id": 991, "body": "Looks like a cookie issue."}, "duration_ms": 210},
         {"run_id": rid, "kind": "model.response", "name": "claude-sonnet-4-5", "result": {
-            "text": "Summarized issue 42 and commented.", "finishReason": "stop"}},
+            "text": "Summarized issue 42 and commented.", "finishReason": "stop",
+            "usage": {"inputTokens": 340, "outputTokens": 12, "totalTokens": 352}}},
     ]})
-    call("POST", f"/api/v1/runs/{rid}/finish", token, {"status": "completed", "usage": {"tokens": 812}})
+    call("POST", f"/api/v1/runs/{rid}/finish", token, {
+        "status": "completed",
+        "usage": {"inputTokens": 630, "outputTokens": 30, "totalTokens": 660}})
 
     replay = call("POST", f"/api/v1/runs/{rid}/replay", token)["data"]
     replay_id = replay["id"]
@@ -156,7 +161,9 @@ def main() -> None:
             ],
         }},
     ]})
-    call("POST", f"/api/v1/runs/{replay_id}/finish", token, {"status": "failed"})
+    call("POST", f"/api/v1/runs/{replay_id}/finish", token, {
+        "status": "failed",
+        "usage": {"inputTokens": 630, "outputTokens": 30, "totalTokens": 660}})
 
     print(f"workspace : {workspace}")
     print(f"agent     : {agent_id}")

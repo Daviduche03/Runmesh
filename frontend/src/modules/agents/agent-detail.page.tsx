@@ -17,6 +17,7 @@ import { useAgentsStore, toUiAgent } from "@/lib/stores/agents-store";
 import { useGrantsStore, type BackendGrant } from "@/lib/stores/grants-store";
 import { useAgentRunsStore, type BackendRun, type BackendRunEvent } from "@/lib/stores/agent-runs-store";
 import { copyText } from "@/lib/clipboard";
+import { estimateCost, formatCost, formatTokens, usageNumbers } from "@/lib/pricing";
 import EmptyState from "@/components/empty-state";
 import { toast } from "sonner";
 import {
@@ -150,7 +151,12 @@ function toTraceEvents(
 			}
 			childIndex += 1;
 		}
-		const isResult = event.kind === "tool.result" || event.kind === "error";
+		const isResult =
+			event.kind === "tool.result" ||
+			event.kind === "model.response" ||
+			event.kind === "policy.decision" ||
+			event.kind === "log" ||
+			event.kind === "error";
 		return {
 			id: event.id,
 			time: formatDateTime(event.created_at),
@@ -215,8 +221,34 @@ function RunEvents({
 		agent_id: child.agent_id,
 		agent_name: child.agent_name,
 	}));
+	const model = detail?.definition?.model ?? null;
+	const usage = usageNumbers(detail?.usage);
+	const cost = estimateCost(model, detail?.usage);
+	const spanMs = (() => {
+		if (!run.finished_at) return null;
+		const start = new Date(run.started_at).getTime();
+		const end = new Date(run.finished_at).getTime();
+		return Number.isNaN(start) || Number.isNaN(end) || end < start ? null : end - start;
+	})();
 	return (
 		<div className="border-t border-border">
+			<div className="flex flex-wrap items-center gap-x-4 gap-y-1 border-b border-border px-4 py-2 font-mono text-[11px] text-muted-foreground">
+				{model ? <span>{model}</span> : null}
+				{usage ? (
+					<span className="tabular-nums">
+						{formatTokens(usage.input)} in · {formatTokens(usage.output)} out · {formatTokens(usage.total)} tok
+					</span>
+				) : null}
+				{cost !== null ? (
+					<span className="tabular-nums" title="list-price estimate">
+						~{formatCost(cost)}
+					</span>
+				) : null}
+				<span className="tabular-nums">
+					{events.length} step{events.length === 1 ? "" : "s"}
+				</span>
+				{spanMs !== null ? <span className="tabular-nums">{formatDurationMs(spanMs)}</span> : null}
+			</div>
 			{run.mode === "replay" ? (
 				<ReplayDiff
 					events={events}
