@@ -44,6 +44,45 @@ def _event_outcome(event_type: str, result: str | None, error_code: str | None) 
     return "success"
 
 
+# Agent telemetry that lives in agent_events, not connect_audit_events, but
+# belongs in the same stream: a run's tool steps and transport errors.
+MERGED_KINDS = frozenset({"tool.call", "tool.result", "error"})
+AGENT_EVENT_KINDS = ("tool.call", "tool.result", "error", "policy.decision")
+
+
+def _resource_name(value) -> str:
+    return str(getattr(value, "value", value) or "")
+
+
+def _metadata_dict(value) -> dict:
+    if isinstance(value, dict):
+        return value
+    if isinstance(value, str):
+        try:
+            parsed = json.loads(value)
+        except (TypeError, ValueError):
+            return {}
+        return parsed if isinstance(parsed, dict) else {}
+    return {}
+
+
+async def _count_rows(model: Model, table: str, where: str, *params) -> int:
+    result = await model.db.prepare(
+        f"SELECT COUNT(*) AS cnt FROM {table} WHERE {where}"
+    ).bind(*params).all()
+    rows = result.results if hasattr(result, "results") else []
+    if not rows:
+        return 0
+    first = rows[0]
+    if hasattr(first, "as_py"):
+        first = first.as_py()
+    elif hasattr(first, "to_py"):
+        first = first.to_py()
+    elif not isinstance(first, dict):
+        first = dict(first)
+    return int(first.get("cnt") or 0)
+
+
 async def list_audit_events(
     audit_model: ConnectAuditEventModel,
     task_model,
@@ -57,14 +96,56 @@ async def list_audit_events(
     limit: int = 50,
     offset: int = 0,
 ) -> dict:
-    rows, total = await audit_model.list_all(
-        workspace_id,
-        event_type=event_type,
-        connect_user_id=connect_user_id,
-        search=search,
-        limit=limit,
-        offset=offset,
-    )
+    limit = max(1, min(int(limit or 50), 200))
+    offset = max(0, int(offset or 0))
+    # Two sources, one merged stream ordered by time. Fetching the top
+    # (offset + limit) of each and slicing the union yields a correct page:
+    # any item in the union's top N is within the top N of its own source.
+    need = offset + limit
+    runs = Model(task_model.db)
+
+    # A filter naming a merged kind only exists in agent_events; any other
+    # filter (or none) reads the audit ledger, optionally with merged rows.
+    wants_base = event_type is None or event_type not in MERGED_KINDS
+    wants_agent = event_type is None or event_type in MERGED_KINDS
+
+    rows = []
+    base_total = 0
+    if wants_base:
+        rows, base_total = await audit_model.list_all(
+            workspace_id,
+            event_type=event_type,
+            connect_user_id=connect_user_id,
+            search=search,
+            limit=need,
+            offset=0,
+        )
+
+    agent_event_rows = []
+    agent_total = 0
+    if wants_agent:
+        conditions = ["workspace_id = ?"]
+        params: list = [workspace_id]
+        if event_type in MERGED_KINDS:
+            conditions.append("kind = ?")
+            params.append(event_type)
+        else:
+            placeholders = ", ".join("?" for _ in AGENT_EVENT_KINDS)
+            conditions.append(f"kind IN ({placeholders})")
+            params.extend(AGENT_EVENT_KINDS)
+        if connect_user_id:
+            conditions.append(
+                "run_id IN (SELECT id FROM agent_runs WHERE workspace_id = ? AND connect_user_id = ?)"
+            )
+            params.extend([workspace_id, connect_user_id])
+        if search:
+            conditions.append("name LIKE ?")
+            params.append(f"%{search}%")
+        agent_where = " AND ".join(conditions)
+        agent_total = await _count_rows(runs, "agent_events", agent_where, *params)
+        agent_event_rows = await runs.find_many(
+            "agent_events", f"{agent_where} ORDER BY created_at DESC", *params, limit=need
+        )
 
     user_labels: dict[str, str] = {}
     for user_id in {r.connect_user_id for r in rows if r.connect_user_id}:
@@ -86,24 +167,9 @@ async def list_audit_events(
         run = await run_model.find_by_id(run_id)
         thread_ids[run_id] = run.get("thread_id") if run else None
 
-    def _resource_name(value) -> str:
-        return str(getattr(value, "value", value) or "")
-
-    def _metadata_dict(value) -> dict:
-        if isinstance(value, dict):
-            return value
-        if isinstance(value, str):
-            try:
-                parsed = json.loads(value)
-            except (TypeError, ValueError):
-                return {}
-            return parsed if isinstance(parsed, dict) else {}
-        return {}
-
     # Agent runs are traces too: a run lifecycle event chains to its run,
     # and the run carries the thread. Without this, everything the wrapper
     # and policy engine write lands in "unchained".
-    runs = Model(task_model.db)
     agent_run_threads: dict[str, str | None] = {}
     agent_run_ids = {
         r.resource_id for r in rows
@@ -142,35 +208,6 @@ async def list_audit_events(
             run_id = decision_runs.get(did) if did else None
             if run_id and run_id in agent_run_threads:
                 decision_threads[r.id] = agent_run_threads[run_id]
-
-    # Agent run telemetry (tool.call / tool.result) lives in agent_events,
-    # not connect_audit_events — merge it so a run's steps appear in one trace.
-    run_agent_ids: dict[str, str | None] = {}
-    for rid in set(agent_run_threads) | set(decision_runs.values()):
-        if rid and rid not in run_agent_ids:
-            arow = await runs.find_one("agent_runs", "id = ? AND workspace_id = ?", rid, workspace_id)
-            run_agent_ids[rid] = (arow.get("agent_id") if arow else None) or None
-            if arow is not None and rid not in agent_run_threads:
-                agent_run_threads[rid] = arow.get("thread_id")
-    for agent_id in {aid for aid in run_agent_ids.values() if aid} - set(agent_names):
-        agent = await agent_model.find_one("agents", "id = ?", agent_id)
-        if agent is not None:
-            agent_names[agent_id] = agent.get("name") or agent_id
-
-    scoped_run_ids = sorted({rid for rid in run_agent_ids if rid})
-    agent_event_rows = []
-    if scoped_run_ids:
-        run_ph = ", ".join("?" for _ in scoped_run_ids)
-        agent_event_rows = await runs.find_many(
-            "agent_events",
-            (
-                f"workspace_id = ? AND run_id IN ({run_ph}) "
-                "AND kind IN ('tool.call','tool.result','error','policy.decision') "
-                "ORDER BY created_at ASC"
-            ),
-            workspace_id,
-            *scoped_run_ids,
-        )
 
     items = []
     for r in rows:
@@ -232,6 +269,38 @@ async def list_audit_events(
             "created_at": r.created_at,
         })
 
+    # Merged agent telemetry: resolve each event's run → agent, thread, and the
+    # connection/principal it acted on behalf of, so tool steps are attributable
+    # like every other row instead of "—".
+    run_meta: dict[str, dict] = {}
+    for rid in {e.get("run_id") for e in agent_event_rows if e.get("run_id")}:
+        arow = await runs.find_one("agent_runs", "id = ? AND workspace_id = ?", rid, workspace_id)
+        if arow is not None:
+            run_meta[rid] = arow
+            if arow.get("thread_id") is not None and rid not in agent_run_threads:
+                agent_run_threads[rid] = arow.get("thread_id")
+    for agent_id in {m.get("agent_id") for m in run_meta.values() if m.get("agent_id")} - set(agent_names):
+        agent = await agent_model.find_one("agents", "id = ?", agent_id)
+        if agent is not None:
+            agent_names[agent_id] = agent.get("name") or agent_id
+    for user_id in {m.get("connect_user_id") for m in run_meta.values() if m.get("connect_user_id")} - set(user_labels):
+        user = await user_model.find_by_id(user_id)
+        if user is not None and user.primary_email:
+            user_labels[user_id] = user.primary_email
+
+    # Which provider/action a tool name maps to — the connection the step used.
+    tool_meta: dict[str, dict] = {}
+    tool_names = {e.get("name") for e in agent_event_rows if e.get("name")}
+    if tool_names:
+        placeholders = ", ".join("?" for _ in tool_names)
+        for trow in await runs.find_many(
+            "tools", f"workspace_id = ? AND name IN ({placeholders})", workspace_id, *tool_names
+        ):
+            tool_meta[trow.get("name")] = {
+                "provider": trow.get("provider") or "",
+                "action": trow.get("action") or "",
+            }
+
     agent_event_type = {
         "tool.call": "tool",
         "tool.result": "tool",
@@ -242,37 +311,49 @@ async def list_audit_events(
         rid = erow.get("run_id")
         kind = erow.get("kind") or "log"
         name = erow.get("name") or ""
-        agent_id = run_agent_ids.get(rid)
+        meta_run = run_meta.get(rid) or {}
+        agent_id = meta_run.get("agent_id")
         actor = agent_names.get(agent_id, (agent_id or "")[:8]) if agent_id else "agent"
+        # The step's own principal when recorded (managed invokes), else the run's.
+        connect_user = erow.get("connect_user_id") or meta_run.get("connect_user_id")
         args_raw = _metadata_dict(erow.get("args")) if isinstance(erow.get("args"), (str, dict)) else {}
         result_raw = _metadata_dict(erow.get("result")) if isinstance(erow.get("result"), (str, dict)) else {}
         outcome = "failed" if kind == "error" else "success"
         if kind == "policy.decision":
             outcome = "denied" if (result_raw.get("decision") or result_raw.get("outcome")) == "deny" else "success"
+        step_meta = {
+            "kind": kind,
+            "name": name,
+            "seq": erow.get("seq"),
+            "args": args_raw,
+            "result": result_raw,
+        }
+        tool_info = tool_meta.get(name) or {}
+        if tool_info.get("provider"):
+            step_meta["provider"] = tool_info["provider"]
+        if tool_info.get("action"):
+            step_meta["action"] = tool_info["action"]
+        if connect_user:
+            step_meta["connect_user_id"] = connect_user
+            step_meta["user_label"] = user_labels.get(connect_user, "")
         items.append({
             "id": erow.get("id"),
             "event_type": kind,
             "actor": actor,
             "actor_type": "agent",
-            "on_behalf_of": "—",
+            "on_behalf_of": user_labels.get(connect_user, "—") if connect_user else "—",
             "mode": "autonomous",
             "type": agent_event_type.get(kind, "system"),
             "authority": "—",
             "outcome": outcome,
             "trace_id": rid,
-            "thread_id": agent_run_threads.get(rid),
+            "thread_id": meta_run.get("thread_id"),
             "agent_id": agent_id,
             "task_id": None,
             "workflow_run_id": None,
             "result": erow.get("result"),
             "denial_reason": None,
-            "metadata": {
-                "kind": kind,
-                "name": name,
-                "seq": erow.get("seq"),
-                "args": args_raw,
-                "result": result_raw,
-            },
+            "metadata": step_meta,
             "duration_ms": erow.get("duration_ms"),
             "created_at": erow.get("created_at"),
         })
@@ -280,10 +361,14 @@ async def list_audit_events(
     def _created(value) -> str:
         return str(value or "")
 
-    items.sort(key=lambda e: _created(e.get("created_at")))
+    # Page over the merged stream (newest first), then restore the ledger's
+    # ascending display order.
+    items.sort(key=lambda e: _created(e.get("created_at")), reverse=True)
+    page = items[offset:offset + limit]
+    page.sort(key=lambda e: _created(e.get("created_at")))
     return success(
-        items,
-        meta={"total": total + len(agent_event_rows), "limit": limit, "offset": offset},
+        page,
+        meta={"total": base_total + agent_total, "limit": limit, "offset": offset},
     )
 
 

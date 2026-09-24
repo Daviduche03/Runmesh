@@ -120,6 +120,22 @@ def main() -> None:
         )
         print(token)
 
+    elif mode == "jwt_ws":
+        from utils.auth import encode_token
+
+        user = q(f"SELECT id, email, name FROM users WHERE id='{esc(sys.argv[2])}'")[0]
+        token = encode_token(
+            {
+                "id": user["id"],
+                "email": user["email"],
+                "name": user["name"],
+                "api_key_workspace_id": sys.argv[3],
+            },
+            jwt_secret(),
+            ttl_seconds=4 * 3600,
+        )
+        print(token)
+
     elif mode == "seed":
         from utils.connect_crypto import encrypt_connect_secret
 
@@ -140,9 +156,9 @@ def main() -> None:
         q(
             f"""
             DELETE FROM agent_events WHERE run_id IN (
-              SELECT id FROM agent_runs WHERE workspace_id='{WS}' AND input LIKE 'Acme e2e%'
+              SELECT id FROM agent_runs WHERE workspace_id='{WS}' AND input LIKE 'Acme %'
             );
-            DELETE FROM agent_runs WHERE workspace_id='{WS}' AND input LIKE 'Acme e2e%';
+            DELETE FROM agent_runs WHERE workspace_id='{WS}' AND input LIKE 'Acme %';
             DELETE FROM policy_decisions WHERE workspace_id='{WS}' AND created_at >= '{t0}';
             DELETE FROM connect_audit_events WHERE workspace_id='{WS}' AND created_at >= '{t0}';
             DELETE FROM policy_rules WHERE workspace_id='{WS}' AND created_at >= '{t0}';
@@ -150,7 +166,7 @@ def main() -> None:
               AND connection_id IN ('{CONN_G}','{CONN_S}');
             DELETE FROM idempotency_keys WHERE workspace_id='{WS}';
             DELETE FROM connect_sessions WHERE workspace_id='{WS}'
-              AND provider='slack' AND created_at >= '{t0}';
+              AND created_at >= '{t0}';
             DELETE FROM connect_app_users WHERE external_user_id IN ('{CONN_G}','{CONN_S}');
             DELETE FROM tools WHERE workspace_id='{WS}' AND agent_id IN (
               SELECT id FROM agents WHERE workspace_id='{WS}' AND external_key LIKE 'acme-%'

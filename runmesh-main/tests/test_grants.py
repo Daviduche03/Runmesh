@@ -170,6 +170,28 @@ def make_env():
       grant_id TEXT, reason TEXT NOT NULL DEFAULT '', run_id TEXT, created_at TEXT NOT NULL,
       enforcement TEXT NOT NULL DEFAULT 'cooperative'
     );
+    CREATE TABLE agent_runs (
+      id TEXT PRIMARY KEY, workspace_id TEXT NOT NULL, agent_id TEXT NOT NULL,
+      parent_run_id TEXT, thread_id TEXT, connect_user_id TEXT, status TEXT NOT NULL DEFAULT 'running',
+      input TEXT, usage TEXT NOT NULL DEFAULT '{}', started_at TEXT, finished_at TEXT,
+      created_at TEXT NOT NULL, updated_at TEXT NOT NULL
+    );
+    CREATE TABLE agent_events (
+      id TEXT PRIMARY KEY, workspace_id TEXT NOT NULL, run_id TEXT NOT NULL,
+      seq INTEGER NOT NULL, kind TEXT NOT NULL, name TEXT NOT NULL DEFAULT '',
+      args TEXT NOT NULL DEFAULT '{}', result TEXT NOT NULL DEFAULT '{}',
+      truncated INTEGER NOT NULL DEFAULT 0, duration_ms INTEGER,
+      created_at TEXT NOT NULL, UNIQUE (run_id, seq)
+    );
+    CREATE TABLE tools (
+      id TEXT PRIMARY KEY, workspace_id TEXT NOT NULL, agent_id TEXT, name TEXT NOT NULL,
+      kind TEXT NOT NULL DEFAULT 'local', provider TEXT, action TEXT NOT NULL DEFAULT '',
+      method TEXT NOT NULL DEFAULT 'POST', url TEXT, base_url TEXT,
+      auth_scheme TEXT NOT NULL DEFAULT 'none', auth_header TEXT NOT NULL DEFAULT 'Authorization',
+      auth_format TEXT NOT NULL DEFAULT 'Bearer {token}', resource_param TEXT,
+      schema_hash TEXT NOT NULL DEFAULT '', created_at TEXT NOT NULL, updated_at TEXT NOT NULL,
+      UNIQUE (workspace_id, name)
+    );
     """
     )
     cur.execute("INSERT INTO users VALUES (?,?,?,?,?)", ("u_1", "A", "a@x.dev", NOW, NOW))

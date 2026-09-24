@@ -9,6 +9,12 @@ const PORT = Number(process.env.MOCK_PORT || 8799);
 let hits = [];
 /** Paths that should answer 500 for the failure leg. */
 let failPaths = new Set();
+/** Tier-2 hostile-upstream controls: per-path delay ms, big-body bytes, raw text. */
+let delayMs = new Map();
+let bigBytes = new Map();
+let rawText = new Map();
+
+const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 
 function send(res, status, obj) {
   const payload = JSON.stringify(obj);
@@ -30,7 +36,40 @@ const server = http.createServer(async (req, res) => {
   if (path === "/_reset" && req.method === "POST") {
     hits = [];
     failPaths = new Set();
+    delayMs = new Map();
+    bigBytes = new Map();
+    rawText = new Map();
     send(res, 200, { ok: true });
+    return;
+  }
+  if (path === "/_delay" && req.method === "POST") {
+    try {
+      const body = JSON.parse(raw || "{}");
+      for (const [p, ms] of Object.entries(body.delays ?? {})) delayMs.set(String(p), Number(ms) || 0);
+      send(res, 200, { ok: true, delays: Object.fromEntries(delayMs) });
+    } catch {
+      send(res, 400, { error: "bad_json" });
+    }
+    return;
+  }
+  if (path === "/_big" && req.method === "POST") {
+    try {
+      const body = JSON.parse(raw || "{}");
+      for (const [p, n] of Object.entries(body.paths ?? {})) bigBytes.set(String(p), Number(n) || 0);
+      send(res, 200, { ok: true, paths: [...bigBytes.keys()] });
+    } catch {
+      send(res, 400, { error: "bad_json" });
+    }
+    return;
+  }
+  if (path === "/_raw" && req.method === "POST") {
+    try {
+      const body = JSON.parse(raw || "{}");
+      for (const [p, text] of Object.entries(body.paths ?? {})) rawText.set(String(p), String(text));
+      send(res, 200, { ok: true, paths: [...rawText.keys()] });
+    } catch {
+      send(res, 400, { error: "bad_json" });
+    }
     return;
   }
   if (path === "/_fail" && req.method === "POST") {
@@ -53,6 +92,22 @@ const server = http.createServer(async (req, res) => {
   }
   hits.push({ method: req.method ?? "GET", path, auth, body: parsedBody });
 
+  if (delayMs.has(path)) await sleep(delayMs.get(path));
+  if (bigBytes.has(path)) {
+    send(res, 200, {
+      ok: true,
+      id: `msg_${hits.length}`,
+      echoAuth: auth,
+      provider: "mock-upstream",
+      blob: "x".repeat(Math.min(bigBytes.get(path), 8 * 1024 * 1024)),
+    });
+    return;
+  }
+  if (rawText.has(path)) {
+    res.writeHead(200, { "content-type": "text/plain" });
+    res.end(rawText.get(path));
+    return;
+  }
   if (failPaths.has(path)) {
     send(res, 500, { error: "upstream_exploded", echoAuth: auth });
     return;

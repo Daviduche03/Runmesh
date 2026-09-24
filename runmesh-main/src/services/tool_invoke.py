@@ -17,6 +17,7 @@ observed, not enforced.
 """
 
 import asyncio
+import hashlib
 import json
 import uuid
 from datetime import datetime, timezone
@@ -29,6 +30,7 @@ from workers import fetch
 from db.orm import Model
 from utils.responses import success
 from utils.connect_crypto import decrypt_connect_secret
+from services.collection import _redact as _redact_secrets
 from services.workspaces import resolve_workspace_id
 from services import policies as policies_service
 
@@ -309,7 +311,11 @@ async def _consent_url(env, model: Model, workspace_id: str, user_id: str, *,
 async def _refusal(model: Model, workspace_id: str, tool: dict, run: dict, agent_name: str,
                    cid: str | None, user_label: str, run_id: str, resource: str,
                    decision: str, reason: str) -> dict:
-    ledger_ok = await _kept(policies_service.record_decision(
+    # _kept() reports only success/failure, so capture the id directly: the
+    # audit row below chains to the run through it. A ledger failure still
+    # never vetoes the refusal itself.
+    try:
+        decision_id = await policies_service.record_decision(
         db=model.db,
         workspace_id=workspace_id,
         rule_id=None,
@@ -327,12 +333,46 @@ async def _refusal(model: Model, workspace_id: str, tool: dict, run: dict, agent
         reason=reason,
         enforcement="proxied",
         run_id=run_id,
-    ))
+    )
+    except Exception:
+        decision_id = None
+    ledger_ok = bool(decision_id)
+    # A refusal is an enforced block: it must appear in the audit thread like
+    # any other policy decision, chained to the run via decision_id.
+    if decision_id:
+        from db.connect_orm import ConnectAuditEventModel
+        from services.connect_common import _audit
+        from utils.types import ConnectAuditActorType, ConnectAuditEventType, ConnectResourceType
+        ledger_ok = await _kept(_audit(
+            ConnectAuditEventModel(model.db),
+            event_type=ConnectAuditEventType.POLICY_DECISION,
+            actor_type=ConnectAuditActorType.SYSTEM,
+            actor_id=run["agent_id"] or cid or "policy",
+            connect_user_id=cid,
+            resource_type=ConnectResourceType.CONNECT_POLICY,
+            resource_id="",
+            agent_id=run["agent_id"],
+            result="denied" if decision == "deny" else "success",
+            workspace_id=workspace_id,
+            denial_reason=reason,
+            metadata={
+                "decision": decision,
+                "decision_id": decision_id,
+                "rule_id": None,
+                "rule_name": None,
+                "action": tool.get("action") or "",
+                "scope": "",
+                "source": "call",
+                "default_applied": False,
+                "reason": reason,
+            },
+        )) and ledger_ok
     return success({"decision": decision, "reason": reason, "rule": None, "ledger_ok": ledger_ok})
 
 
 async def _record_event(model: Model, workspace_id: str, run_id: str, kind: str, name: str,
-                        args: dict, result: dict, duration_ms: int) -> None:
+                        args: dict, result: dict, duration_ms: int,
+                        connect_user_id: str | None = None) -> None:
     existing = await model.find_many("agent_events", "run_id = ?", run_id)
     seq = max([row.get("seq") or 0 for row in existing], default=0) + 1
     await model.insert("agent_events", {
@@ -342,10 +382,11 @@ async def _record_event(model: Model, workspace_id: str, run_id: str, kind: str,
         "seq": seq,
         "kind": kind,
         "name": name,
-        "args": json.dumps(args or {}, default=str)[:RESPONSE_MAX],
-        "result": json.dumps(result or {}, default=str)[:RESPONSE_MAX],
+        "args": json.dumps(_redact_secrets(args or {}), default=str)[:RESPONSE_MAX],
+        "result": json.dumps(_redact_secrets(result or {}), default=str)[:RESPONSE_MAX],
         "truncated": 0,
         "duration_ms": duration_ms,
+        "connect_user_id": connect_user_id,
         "created_at": _now(),
     })
 
@@ -402,7 +443,14 @@ def _forward_url(tool: dict, path: str, query) -> str:
     return url
 
 
-async def _idempotent_hit(model: Model, workspace_id: str, key: str | None):
+def _request_fingerprint(tool_ref: str, args: dict) -> str:
+    """Bind an idempotency key to the request it was first used for. A key
+    reused with different args must never return a stale cached response."""
+    canonical = json.dumps({"ref": tool_ref or "", "args": args or {}}, sort_keys=True, default=str)
+    return hashlib.sha256(canonical.encode()).hexdigest()
+
+
+async def _idempotent_hit(model: Model, workspace_id: str, key: str | None, fingerprint: str | None = None):
     if not key:
         return None
     hit = await model.find_one(
@@ -417,25 +465,31 @@ async def _idempotent_hit(model: Model, workspace_id: str, key: str | None):
     if not isinstance(cached, dict) or not cached:
         return None
     cached = dict(cached)
+    stored_fp = cached.pop("_idem_fp", None)
+    if fingerprint is not None and stored_fp is not None and stored_fp != fingerprint:
+        raise HTTPException(status_code=400, detail="idempotency key already used for a different request")
     cached["idempotent_replay"] = True
     return success(cached)
 
 
-async def _idempotent_store(model: Model, workspace_id: str, key: str | None, payload: dict):
+async def _idempotent_store(model: Model, workspace_id: str, key: str | None, payload: dict, fingerprint: str | None = None):
     if not key:
         return None
     try:
+        stored = dict(payload)
+        if fingerprint is not None:
+            stored["_idem_fp"] = fingerprint
         await model.insert("idempotency_keys", {
             "workspace_id": workspace_id,
             "key": key,
             "status": int(payload.get("status") or 0),
-            "response": json.dumps(payload, default=str)[:RESPONSE_MAX],
+            "response": json.dumps(stored, default=str)[:RESPONSE_MAX],
             "created_at": _now(),
         })
         return None
     except Exception:
         # Lost a race: the winner's cached response is authoritative.
-        return await _idempotent_hit(model, workspace_id, key)
+        return await _idempotent_hit(model, workspace_id, key, fingerprint)
 
 
 async def _resolve_tool_and_run(model: Model, workspace_id: str, ref: str, run_id_raw: str):
@@ -645,13 +699,16 @@ async def _prepare_call(env, model: Model, workspace_id: str, tool: dict, run: d
 
 async def _execute_and_record(env, model: Model, workspace_id: str, run_id: str, tool: dict,
                               request_args: dict, method: str, url: str, headers: dict, body,
-                              token: str, idem_key: str | None, ledger_ok: bool) -> dict:
+                              token: str, idem_key: str | None, ledger_ok: bool,
+                              fingerprint: str | None = None,
+                              connect_user_id: str | None = None) -> dict:
     started = _now()
     # Managed tools skip the SDK's local interpose: record the attempt here so
-    # the thread has a tool.call before tool.result/error.
+    # the thread has a tool.call before tool.result/error. The principal is the
+    # connection identity actually used, not the run's.
     ledger_ok = await _kept(_record_event(
         model, workspace_id, run_id, "tool.call", tool["name"], request_args,
-        {}, 0)) and ledger_ok
+        {}, 0, connect_user_id)) and ledger_ok
     try:
         response = await asyncio.wait_for(
             fetch(url, method=method, headers=headers, body=body),
@@ -662,7 +719,7 @@ async def _execute_and_record(env, model: Model, workspace_id: str, run_id: str,
     except Exception as error:  # network/upstream failure is not a policy denial
         ledger_ok = await _kept(_record_event(
             model, workspace_id, run_id, "error", tool["name"], request_args,
-            {"message": str(error)}, 0)) and ledger_ok
+            {"message": str(error)}, 0, connect_user_id)) and ledger_ok
         return success({
             "decision": "allow", "status": 502, "upstream_error": True,
             "result": {"error": "upstream_unreachable", "message": str(error)},
@@ -688,7 +745,7 @@ async def _execute_and_record(env, model: Model, workspace_id: str, run_id: str,
     # success into a 500. Flag it and return the result.
     ledger_ok = await _kept(_record_event(
         model, workspace_id, run_id, "tool.result", tool["name"], request_args,
-        result, duration_ms)) and ledger_ok
+        result, duration_ms, connect_user_id)) and ledger_ok
 
     payload = {
         "decision": "allow",
@@ -698,7 +755,10 @@ async def _execute_and_record(env, model: Model, workspace_id: str, run_id: str,
         "body": scrubbed,
         "ledger_ok": ledger_ok,
     }
-    raced = await _idempotent_store(model, workspace_id, idem_key, payload)
+    raced = await _idempotent_store(
+        model, workspace_id, idem_key, payload,
+        fingerprint or _request_fingerprint(tool.get("id") or tool.get("name"), request_args),
+    )
     return raced if raced is not None else success(payload)
 
 
@@ -734,8 +794,10 @@ async def invoke_tool(env, user_id: str, workspace_id: str, ref: str, req) -> di
     resource = str(args.get(tool.get("resource_param")) or "") if tool.get("resource_param") else ""
 
     # Replay check first: a retry must not reserve a second grant use.
+    # The key is bound to this exact request: reuse with different args 400s.
     idem_key = (req.idempotency_key or "").strip() or None
-    cached = await _idempotent_hit(model, workspace_id, idem_key)
+    fp_hit = _request_fingerprint(tool.get("id") or tool.get("name"), args) if idem_key else None
+    cached = await _idempotent_hit(model, workspace_id, idem_key, fp_hit)
     if cached is not None:
         return cached
 
@@ -763,7 +825,8 @@ async def invoke_tool(env, user_id: str, workspace_id: str, ref: str, req) -> di
 
     return await _execute_and_record(
         env, model, workspace_id, run_id, tool, args, method, url, headers, body,
-        token, idem_key, ledger_ok,
+        token, idem_key, ledger_ok, fingerprint=fp_hit,
+        connect_user_id=prep["connect_user_id"],
     )
 
 
@@ -790,8 +853,12 @@ async def forward_tool(
     url = _forward_url(tool, path, query)
 
     # Replay check first: a retry must not reserve a second grant use.
+    # The key is bound to this exact request: reuse with a different
+    # method/path/body/query 400s instead of replaying stale data.
     idem_key = (idempotency_key or "").strip() or None
-    cached = await _idempotent_hit(model, workspace_id, idem_key)
+    fp_request = {"method": verb, "path": path, "body": body, "query": query}
+    fp_hit = _request_fingerprint(tool.get("id") or tool.get("name"), fp_request) if idem_key else None
+    cached = await _idempotent_hit(model, workspace_id, idem_key, fp_hit)
     if cached is not None:
         return cached
 
@@ -812,5 +879,6 @@ async def forward_tool(
     request_args = {"method": verb, "path": path}
     return await _execute_and_record(
         env, model, workspace_id, resolved_run_id, tool, request_args, verb, url,
-        outbound, _forward_body(body), token, idem_key, ledger_ok,
+        outbound, _forward_body(body), token, idem_key, ledger_ok, fingerprint=fp_hit,
+        connect_user_id=prep["connect_user_id"],
     )

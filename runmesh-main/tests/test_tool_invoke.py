@@ -142,7 +142,7 @@ def make_env():
       id TEXT PRIMARY KEY, workspace_id TEXT NOT NULL, run_id TEXT NOT NULL, seq INTEGER NOT NULL,
       kind TEXT NOT NULL, name TEXT NOT NULL DEFAULT '', args TEXT NOT NULL DEFAULT '{}',
       result TEXT NOT NULL DEFAULT '{}', truncated INTEGER NOT NULL DEFAULT 0,
-      duration_ms INTEGER, created_at TEXT NOT NULL, UNIQUE (run_id, seq)
+      duration_ms INTEGER, connect_user_id TEXT, created_at TEXT NOT NULL, UNIQUE (run_id, seq)
     );
     CREATE TABLE connect_users (id TEXT PRIMARY KEY, status TEXT NOT NULL DEFAULT 'active', primary_email TEXT, primary_email_verified INTEGER NOT NULL DEFAULT 0, created_at TEXT NOT NULL, updated_at TEXT NOT NULL);
     CREATE TABLE connect_connections (
@@ -763,6 +763,11 @@ async def test_19_exhausted_grant_denied():
         FakeEnv(db), "u_1", "ws_1", ref, ToolInvokeRequest(run_id=run_id, args={}))
     assert body["data"]["decision"] == "deny", body["data"]
     assert "uses" in body["data"]["reason"], body["data"]
+    # A refusal is an enforced block: it must land in the audit thread.
+    from db.orm import Model as OrmModel
+    audits = await OrmModel(db).find_many(
+        "connect_audit_events", "workspace_id = ? AND event_type = ?", "ws_1", "policy.decision")
+    assert len(audits) == 1 and audits[0]["denial_reason"], audits
     report("19 exhausted grant denied", True)
 
 
@@ -977,6 +982,40 @@ async def test_26_session_mint_failure_falls_back_to_pending_grant():
     report("26 session-mint failure falls back to pending grant", True)
 
 
+async def test_27_idempotency_binds_request_and_redacts_secrets():
+    global FETCH_CALLS, FETCH_RESPONSE
+    db = make_env()
+    add_connection(db)
+    add_grant(db)
+    data = await seed_agent(db, [managed_tool()])
+    ref = data["tools"][0]["ref"]
+    run_id = await start_run(db, data["id"])
+    FETCH_CALLS = []
+    FETCH_RESPONSE = {"status": 200, "text": '{"id":"ch_1"}'}
+    from services import tool_invoke
+    from utils.types import ToolInvokeRequest
+    from db.orm import Model
+
+    first = await tool_invoke.invoke_tool(
+        FakeEnv(db), "u_1", "ws_1", ref,
+        ToolInvokeRequest(run_id=run_id, args={"amount": 5, "api_key": "sk-live-XYZ"}, idempotency_key="idem_27"))
+    assert first["data"]["decision"] == "allow", first["data"]
+    # Same key, different request must 400, never a stale replay.
+    bad, exc = await run_expect(tool_invoke.invoke_tool(
+        FakeEnv(db), "u_1", "ws_1", ref,
+        ToolInvokeRequest(run_id=run_id, args={"amount": 6}, idempotency_key="idem_27")), 400)
+    assert bad and "idempotency key already used" in exc.detail, exc.detail if bad else bad
+    assert len(FETCH_CALLS) == 1, "rejected reuse must not re-execute upstream"
+    # Secret-shaped args must not land plaintext in the ledger.
+    events = await Model(db).find_many("agent_events", "run_id = ? ORDER BY seq ASC", run_id)
+    blob = json.dumps(events)
+    assert "sk-live-XYZ" not in blob, blob
+    assert "[REDACTED]" in blob, blob
+    # Each step records the principal actually used.
+    assert [e["connect_user_id"] for e in events] == ["cu_1", "cu_1"], events
+    report("27 idempotency binds request; secrets redacted in ledger", True)
+
+
 async def main():
     await test_01_registry_classifies()
     await test_02_invoke_allows_and_injects()
@@ -1004,6 +1043,7 @@ async def main():
     await test_24_missing_credential_consent_links_reconnect()
     await test_25_consent_page_then_operator_approval_resumes()
     await test_26_session_mint_failure_falls_back_to_pending_grant()
+    await test_27_idempotency_binds_request_and_redacts_secrets()
     failed = [name for name, passed, _ in results if not passed]
     print(f"\n{len(results) - len(failed)}/{len(results)} passed")
     if failed:
