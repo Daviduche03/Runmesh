@@ -23,6 +23,7 @@
     "build": "tsup",
     "typecheck": "tsc --noEmit",
     "test": "vitest run",
+    "test:e2e": "vitest run src/replay/e2e.test.ts",
     "bench": "node bench/wrap.bench.mjs"
   },
   "devDependencies": {

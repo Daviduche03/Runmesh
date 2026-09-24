@@ -109,6 +109,10 @@ runmesh replay run_abc123 --module ./replay.mjs
 `replay.mjs` exports `{ generateText, model, tools?, passthrough? }`. The CLI
 records the replay run back, prints the diff, and exits non-zero on divergence.
 
+A live end-to-end test (`pnpm test:e2e`) records a run over HTTP, replays it with
+the engine, diffs it, and reads the replay run back. It is skipped unless
+`RUNMESH_ENDPOINT` and `RUNMESH_JWT` are set, so `pnpm test` stays hermetic.
+
 ## Contract
 
 - `resolveAgent`, `startRun`, `finishRun` throw on transport failure, so a dead
