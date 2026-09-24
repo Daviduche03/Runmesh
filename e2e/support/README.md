@@ -29,6 +29,17 @@ tier-2 is adversarial against a mock; tier-3 goes online for real.
 | 3 | "Refund me the full $240." | over-limit → policy **escalate** → human; no refund |
 | 4 | "Cancel my subscription" + delete my account | **consent gate**; destructive action **denied** |
 | 5 | "Double-charged, wrong plan, I want out." | multi-step refund + note + consent-gated cancel; no double refund |
+| 6 | "Refund me for ord_1002" (free-text reason) | the reason is **classified**; policy gates on the label — `valid_billing_error` → allow, else → escalate |
+
+## Free-text classification
+
+A policy engine enforces over typed fields, so free text must become typed
+first. `classifier.mjs` turns the refund reason into a label + confidence using
+`@runmesh/agent`'s `structuredClassifier` and the model we have today (Groq/Qwen
+structured output). The agent app classifies caller-side, passes the label, and
+Runmesh enforces on it — the tool's `resource_param` is `reasonLabel`, so a rule
+matches `resource is valid_billing_error`. Swapping in Jev later is a one-line
+change behind the same interface.
 
 ## Run
 

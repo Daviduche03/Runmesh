@@ -18,6 +18,13 @@ export { definitionFingerprint } from "./core/fingerprint.js";
 export { redactSecretValues, cappedJson, JSON_FIELD_MAX } from "./core/redact.js";
 export { managedTool, isManagedTool, invokeKey, type ManagedTool } from "./core/managed.js";
 export {
+  withThreshold,
+  structuredClassifier,
+  type Classifier,
+  type ClassifierInput,
+  type ClassifierResult,
+} from "./classify.js";
+export {
   replayRun,
   diffRuns,
   behaviorSteps,

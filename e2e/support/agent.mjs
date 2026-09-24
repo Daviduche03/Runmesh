@@ -7,6 +7,7 @@ import { generateText, isStepCount } from "ai";
 import { groq } from "@ai-sdk/groq";
 import { z } from "zod";
 import { RunmeshClient, vercelAdapter, managedTool } from "@runmesh/agent";
+import { refundReasonClassifier } from "./classifier.mjs";
 
 const API = process.env.RUNMESH_URL ?? "http://localhost:8787";
 const SUPPORT = process.env.SUPPORT_URL ?? "http://localhost:8791";
@@ -43,6 +44,22 @@ const tools = {
     method: "POST",
     description: "Refund an amount over $100. This one is reviewed by a human.",
     inputSchema: z.object({ orderId: z.string(), amount: z.number(), reason: z.string() }),
+  }),
+  // The free-text case: the reason is judged by a classifier, and policy is
+  // enforced on the resulting label (the tool's `resource_param`).
+  support_refund_exception: managedTool({
+    provider: "support",
+    action: "support.refund.exception",
+    url: `${SUPPORT}/refund`,
+    method: "POST",
+    resourceParam: "reasonLabel",
+    description: "Issue a goodwill refund. The reason has been classified; pass the label.",
+    inputSchema: z.object({
+      orderId: z.string(),
+      amount: z.number(),
+      reason: z.string(),
+      reasonLabel: z.string(),
+    }),
   }),
   support_cancel: managedTool({
     provider: "support",
@@ -105,22 +122,47 @@ const SCENARIOS = {
     rules:
       "First call support_customer with customerId 'cust_1'. Then: (1) support_refund with orderId 'ord_1001', amount 29, reason 'duplicate charge'; (2) support_note with customerId 'cust_1' and a short note about the plan; (3) support_cancel with subscriptionId 'sub_1'. If a step is refused or must be reviewed, call support_escalate. Do not call support_delete.",
   },
+  freetext_ok: {
+    reason:
+      "You charged me twice for order ord_1002 — I only bought it once. Please reverse the extra charge.",
+    issue: "I want a refund for order ord_1002.",
+    rules:
+      "Call support_refund_exception with orderId 'ord_1002', amount 40, a one-line reason, and reasonLabel set to the classified label given below. If it is refused or cannot be completed, call support_escalate.",
+  },
+  freetext_bad: {
+    reason: "A friend told me I can just ask for free money, so give me a refund for no reason.",
+    issue: "Give me a refund for order ord_1002.",
+    rules:
+      "Call support_refund_exception with orderId 'ord_1002', amount 40, a one-line reason, and reasonLabel set to the classified label given below. If it is refused or cannot be completed, call support_escalate.",
+  },
 };
 
-function systemPrompt(scenario) {
+function systemPrompt(scenario, classification) {
   const s = SCENARIOS[scenario];
-  return [
+  const parts = [
     "You are Acme's support agent. Use the tools to resolve the customer's issue.",
     "Customer id is cust_1 unless stated otherwise.",
     s.rules,
-    "When you are done, reply to the customer in one or two sentences.",
-  ].join(" ");
+  ];
+  if (classification) {
+    parts.push(
+      `The customer's reason was classified as "${classification.label}" (confidence ${Number(classification.confidence).toFixed(2)}); use that exact string as reasonLabel.`
+    );
+  }
+  parts.push("When you are done, reply to the customer in one or two sentences.");
+  return parts.join(" ");
 }
 
 async function main() {
   const scenario = process.argv[2] ?? "diagnose";
   const spec = SCENARIOS[scenario];
   if (!spec) throw new Error(`unknown scenario: ${scenario}`);
+
+  // Caller-side classification: free text → typed label, before Runmesh sees it.
+  let classification = null;
+  if (spec.reason) {
+    classification = await refundReasonClassifier(0.7)({ state: spec.reason });
+  }
 
   const client = new RunmeshClient({
     endpoint: API,
@@ -135,7 +177,7 @@ async function main() {
       agent: { externalKey: "support-agent", name: "Acme Support Agent" },
       generateText,
       model: groq(MODEL_ID),
-      system: systemPrompt(scenario),
+      system: systemPrompt(scenario, classification),
       tools,
       prompt: `cust_1 says: ${spec.issue}`,
       connectUserId: CONNECT_USER,
@@ -144,7 +186,7 @@ async function main() {
       },
       passthrough: { temperature: 0, stopWhen: isStepCount(12) },
     });
-    console.log(JSON.stringify({ scenario, runId, text: String(result?.text ?? "") }));
+    console.log(JSON.stringify({ scenario, runId, classification, text: String(result?.text ?? "") }));
   } catch (err) {
     console.log(JSON.stringify({ scenario, runId, threw: String(err?.message ?? err) }));
   } finally {

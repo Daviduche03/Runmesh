@@ -116,6 +116,9 @@ const RULES = [
   { name: "Support E2E: notes allowed", action: "allow", value: "support.note.add" },
   { name: "Support E2E: escalations allowed", action: "allow", value: "support.escalate" },
   { name: "Support E2E: deletion denied", action: "deny", value: "support.account.delete" },
+  // Free-text: enforce on the classified label (the tool's resource).
+  { name: "Support E2E: goodwill refund with a valid label", action: "allow", value: "support.refund.exception", resource: "valid_billing_error" },
+  { name: "Support E2E: goodwill refund otherwise needs a human", action: "escalate", value: "support.refund.exception" },
 ];
 
 let JWT = "";
@@ -154,18 +157,20 @@ async function main() {
   check("agent registered", Boolean(agentId), JSON.stringify(resolved.body));
 
   for (const rule of RULES) {
+    const conditions = [{ field: "action", operator: "is", value: rule.value }];
+    if (rule.resource) conditions.push({ field: "resource", operator: "is", value: rule.resource });
     const res = await api("/api/v1/policies/rules", {
       method: "POST",
       body: JSON.stringify({
         name: rule.name,
         description: `Support E2E: ${rule.value}`,
-        conditions: [{ field: "action", operator: "is", value: rule.value }],
+        conditions,
         action: rule.action,
         mode: "enforce",
         enabled: true,
       }),
     });
-    check(`rule ${rule.action} ${rule.value}`, res.status === 200, `status=${res.status}`);
+    check(`rule ${rule.action} ${rule.value}${rule.resource ? ` @${rule.resource}` : ""}`, res.status === 200, `status=${res.status}`);
   }
 
   // Scopes are the issuance-time unit. Only allow-scoped ones so the grant is
@@ -255,6 +260,25 @@ async function runScenarios() {
   check("5 compound: resolved or escalated", state.refunds.length === 1 || state.escalations.length >= 1,
     JSON.stringify({ refunds: state.refunds.length, escalations: state.escalations.length }));
   check("5 compound: never cancelled without consent", state.subs.sub_1.status === "active", JSON.stringify(state.subs.sub_1));
+
+  // 6 — free text: the reason is classified, and policy is enforced on the label.
+  await support("/_reset", { method: "POST" });
+  out = runAgent("freetext_ok");
+  await dumpRun(out.runId);
+  state = await support("/_state");
+  check("6 freetext_ok: classified valid_billing_error", out.classification?.label === "valid_billing_error",
+    JSON.stringify(out.classification));
+  check("6 freetext_ok: refund issued", state.refunds.length === 1, JSON.stringify(state.refunds));
+  check("6 freetext_ok: allow decision recorded", (decisionsFor(out.runId).allow ?? 0) >= 1, JSON.stringify(out));
+
+  await support("/_reset", { method: "POST" });
+  out = runAgent("freetext_bad");
+  await dumpRun(out.runId);
+  state = await support("/_state");
+  check("6 freetext_bad: not a billing error", out.classification?.label !== "valid_billing_error",
+    JSON.stringify(out.classification));
+  check("6 freetext_bad: no refund", state.refunds.length === 0, JSON.stringify(state.refunds));
+  check("6 freetext_bad: escalated", state.escalations.length >= 1, JSON.stringify(state.escalations));
 }
 
 await main();

@@ -12,7 +12,22 @@ import re
 POLICY_ACTIONS = ("allow", "escalate", "consent", "deny")
 POLICY_MODES = ("enforce", "log-only")
 POLICY_FIELDS = ("action", "agent", "scope", "resource", "user", "amount", "time")
-POLICY_OPERATORS = ("is", "is not", "contains", ">", "<", "within")
+POLICY_OPERATORS = (
+    "is",
+    "is not",
+    "contains",
+    "not contains",
+    "matches",
+    "in",
+    "not in",
+    "starts with",
+    "ends with",
+    "length >",
+    "length <",
+    ">",
+    "<",
+    "within",
+)
 POLICY_REVERSIBILITY = ("reversible", "undoable", "irreversible")
 
 
@@ -55,6 +70,10 @@ def context_value(field: str, context: dict) -> str:
     return str(context.get(field) or "")
 
 
+def _csv(value: str) -> list[str]:
+    return [item.strip() for item in value.split(",") if item.strip()]
+
+
 def condition_matches(condition: dict, context: dict) -> bool:
     actual = context_value(condition.get("field") or "action", context)
     expected = str(condition.get("value") or "")
@@ -65,6 +84,27 @@ def condition_matches(condition: dict, context: dict) -> bool:
         return actual != expected
     if operator == "contains":
         return expected in actual
+    if operator == "not contains":
+        return expected not in actual
+    if operator == "matches":
+        try:
+            return re.search(expected, actual) is not None
+        except re.error:
+            return False
+    if operator == "in":
+        return actual in _csv(expected)
+    if operator == "not in":
+        return actual not in _csv(expected)
+    if operator == "starts with":
+        return actual.startswith(expected)
+    if operator == "ends with":
+        return actual.endswith(expected)
+    if operator in ("length >", "length <"):
+        try:
+            bound = int(expected)
+        except ValueError:
+            return False
+        return len(actual) > bound if operator == "length >" else len(actual) < bound
     if operator in (">", "<"):
         try:
             left = float(re.sub(r"[^0-9.\-]", "", actual) or "nan")
