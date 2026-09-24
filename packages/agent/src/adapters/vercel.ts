@@ -102,6 +102,30 @@ function toRecord(value: unknown): Record<string, unknown> {
   return { value };
 }
 
+type RunId = string | Promise<string>;
+
+/** Record an event, deferring until the run id is known. A plain string emits
+ *  synchronously (order preserved); a promise chains on the same promise, so
+ *  event order holds while the run opens concurrently with the model call. */
+function recordEvent(
+  client: RunmeshClient,
+  runId: RunId,
+  event: Omit<TelemetryEvent, "runId">,
+): void {
+  const emit = (id: string) => {
+    try {
+      client.record({ runId: id, ...event });
+    } catch {
+      // Telemetry never breaks the agent.
+    }
+  };
+  if (typeof runId === "string") {
+    emit(runId);
+    return;
+  }
+  void runId.then(emit).catch(() => {});
+}
+
 /** Framework-native input for Vercel AI SDK agents. */
 export type VercelAgentInput = {
   model?: string;
@@ -220,19 +244,25 @@ export class VercelAdapter extends BaseAdapter<VercelAgentInput> {
       },
       identity,
     );
-    const run = await client.startRun({
-      agentId: resolved.id,
-      parentRunId,
-      input: prompt,
-      ...(config.connectUserId !== undefined ? { connectUserId: config.connectUserId } : {}),
-    });
-    config.onRun?.(run);
+    // Open the run concurrently with the model call. Tools and recording await
+    // this id, so the run-open never sits in front of the first token.
+    const runIdPromise: Promise<string> = client
+      .startRun({
+        agentId: resolved.id,
+        parentRunId,
+        input: prompt,
+        ...(config.connectUserId !== undefined ? { connectUserId: config.connectUserId } : {}),
+      })
+      .then((run) => {
+        config.onRun?.(run);
+        return run.id;
+      });
     const registry = new Map((resolved.tools ?? []).map((tool) => [tool.name, tool]));
-    const ctx: RunContext = { client, runId: run.id, registry };
+    const ctx: RunContext = { client, runId: runIdPromise, registry };
     if (config.connectUserId !== undefined) ctx.connectUserId = config.connectUserId;
     if ((resolved.warnings ?? []).length > 0) ctx.warnings = resolved.warnings;
     const wrapped = this.wrapTools(tools ?? {}, ctx);
-    const capture = this.capture(client, run.id, { system, prompt, tools: Object.keys(wrapped) });
+    const capture = this.capture(client, runIdPromise, { system, prompt, tools: Object.keys(wrapped) });
     return streamText({
       model,
       ...(system !== undefined ? { system } : {}),
@@ -242,11 +272,19 @@ export class VercelAdapter extends BaseAdapter<VercelAgentInput> {
       onLanguageModelCallStart: capture.onLanguageModelCallStart,
       onLanguageModelCallEnd: capture.onLanguageModelCallEnd,
       onFinish: async (event: unknown) => {
-        await client.finishRun(run.id, { status: "completed", usage: usageOf(event) });
+        try {
+          await client.finishRun(await runIdPromise, { status: "completed", usage: usageOf(event) });
+        } catch {
+          // The run never opened; nothing to finish.
+        }
         await client.flush();
       },
       onError: async () => {
-        await client.finishRun(run.id, { status: "failed" });
+        try {
+          await client.finishRun(await runIdPromise, { status: "failed" });
+        } catch {
+          // The run never opened; nothing to finish.
+        }
         await client.flush();
       },
     });
@@ -258,14 +296,13 @@ export class VercelAdapter extends BaseAdapter<VercelAgentInput> {
    *  it triggered execute — and they work for streaming and custom loops too. */
   capture(
     client: RunmeshClient,
-    runId: string,
+    runId: RunId,
     fallback: { system?: string | undefined; prompt?: string | undefined; tools?: string[] | undefined } = {},
   ): ModelCapture {
     return {
       onLanguageModelCallStart: (event: unknown) => {
         const e = asObject(event);
-        client.record({
-          runId,
+        recordEvent(client, runId, {
           kind: "model.request",
           name: modelNameOf(e),
           args: toRecord(redactSecretValues({
@@ -289,8 +326,7 @@ export class VercelAdapter extends BaseAdapter<VercelAgentInput> {
           .filter((part) => part["type"] === "tool-call")
           .map((part) => ({ toolName: part["toolName"] ?? null, input: part["input"] ?? part["args"] ?? null }));
         const responseTime = asObject(e["performance"])["responseTimeMs"];
-        client.record({
-          runId,
+        recordEvent(client, runId, {
           kind: "model.response",
           name: modelNameOf(e),
           result: toRecord(redactSecretValues({
@@ -329,7 +365,7 @@ export class VercelAdapter extends BaseAdapter<VercelAgentInput> {
       if (typeof original !== "function") continue;
       wrapped[name] = {
         ...tool,
-        execute: VercelAdapter.interpose(name, tool, original, ctx.client, ctx.runId),
+        execute: VercelAdapter.interpose(name, tool, original, ctx),
       };
     }
     // Same keys, same shapes — only `execute` is added or interposed.
@@ -354,6 +390,7 @@ export class VercelAdapter extends BaseAdapter<VercelAgentInput> {
       if (!registration) {
         return { error: "runmesh_unregistered", message: `Tool "${name}" is not registered` };
       }
+      const runId = await ctx.runId;
       const routedFetch = async (path: string, init: ManagedFetchInit = {}) => {
         const method = init.method ?? "GET";
         const mutating = method !== "GET" && method !== "HEAD" && method !== "OPTIONS";
@@ -367,14 +404,14 @@ export class VercelAdapter extends BaseAdapter<VercelAgentInput> {
             ...(init.query !== undefined ? { query: init.query } : {}),
           },
           {
-            runId: ctx.runId,
+            runId,
             // Only mutating calls get an idempotency key: a replayed GET would
             // return stale data, while a retried POST must not double-execute.
             ...(mutating
               ? {
                   idempotencyKey:
                     ctx.idempotencyKey?.(name, init) ??
-                    invokeKey(ctx.runId, name, { method, path, body: init.body }),
+                    invokeKey(runId, name, { method, path, body: init.body }),
                 }
               : {}),
             ...(ctx.connectUserId !== undefined ? { connectUserId: ctx.connectUserId } : {}),
@@ -399,10 +436,11 @@ export class VercelAdapter extends BaseAdapter<VercelAgentInput> {
         return { error: "runmesh_unregistered", message: `Tool "${name}" is not registered` };
       }
       try {
+        const runId = await ctx.runId;
         const outcome = await ctx.client.invoke(registration.ref, args, {
-          runId: ctx.runId,
+          runId,
           idempotencyKey:
-            ctx.idempotencyKey?.(name, args) ?? invokeKey(ctx.runId, name, args),
+            ctx.idempotencyKey?.(name, args) ?? invokeKey(runId, name, args),
           ...(ctx.connectUserId !== undefined ? { connectUserId: ctx.connectUserId } : {}),
         });
         if (outcome.decision === "allow") return outcome.result;
@@ -431,29 +469,19 @@ export class VercelAdapter extends BaseAdapter<VercelAgentInput> {
     name: string,
     tool: ToolLike,
     original: NonNullable<ToolLike["execute"]>,
-    client: RunmeshClient,
-    runId: string,
+    ctx: RunContext,
   ) {
-    // Recording must never break execution, even against a throwing recorder.
-    const safeRecord = (event: TelemetryEvent) => {
-      try {
-        client.record(event);
-      } catch {
-        // Swallowed by contract.
-      }
-    };
     return async (args: any, context?: any) => {
+      const runId = await ctx.runId;
       const started = Date.now();
-      safeRecord({
-        runId,
+      recordEvent(ctx.client, runId, {
         kind: "tool.call",
         name,
         args: toRecord(redactSecretValues(args)),
       });
       try {
         const result = await original.call(tool, args, context);
-        safeRecord({
-          runId,
+        recordEvent(ctx.client, runId, {
           kind: "tool.result",
           name,
           result: toRecord(redactSecretValues(result)),
@@ -461,8 +489,7 @@ export class VercelAdapter extends BaseAdapter<VercelAgentInput> {
         });
         return result;
       } catch (err) {
-        safeRecord({
-          runId,
+        recordEvent(ctx.client, runId, {
           kind: "error",
           name,
           result: { message: err instanceof Error ? err.message : String(err) },

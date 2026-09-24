@@ -271,6 +271,41 @@ describe("runText", () => {
     ]);
   });
 
+  it("runStream returns before the run is opened (no first-token delay)", async () => {
+    let resolveRun: () => void = () => {};
+    let runOpened = false;
+    const client = {
+      resolveAgent: async () => ({ id: "ag_1", version: 1, isNew: false, isNewVersion: false, tools: [] }),
+      startRun: () =>
+        new Promise((res) => {
+          resolveRun = () => {
+            runOpened = true;
+            res({ id: "run_1", agentId: "ag_1", status: "running" });
+          };
+        }),
+      finishRun: async () => {},
+      flush: async () => {},
+      record: () => {},
+    } as unknown as RunmeshClient;
+    const streamText = (options: Record<string, unknown>) => ({
+      consume: async () => {
+        await (options["onFinish"] as ((e: unknown) => Promise<void>) | undefined)?.({ usage: {} });
+      },
+    });
+    const result = await vercelAdapter.runStream(client, {
+      agent: "triage",
+      streamText,
+      model: "m",
+      tools: {},
+      prompt: "hi",
+    });
+    // The stream is handed back while the run is still opening.
+    expect(runOpened).toBe(false);
+    resolveRun();
+    await result.consume();
+    expect(runOpened).toBe(true);
+  });
+
   it("caches resolve per client and re-resolves on definition change", async () => {
     const { calls, client } = harness();
     const generateText = async () => ({ text: "ok" });

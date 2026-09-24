@@ -19,7 +19,10 @@ export type NormalizedDefinition = {
 
 export type RunContext = {
   client: RunmeshClient;
-  runId: string;
+  /** The run id, or a promise of it. Callers may open the run concurrently
+   *  with the model call (streaming); tools and recording await it, so a slow
+   *  run-open never delays the first token. */
+  runId: string | Promise<string>;
   /** Server-issued refs by tool name. Managed tools need this to invoke. */
   registry?: Map<string, ToolRegistration>;
   /** Registration problems reported by the server, surfaced in failures. */
