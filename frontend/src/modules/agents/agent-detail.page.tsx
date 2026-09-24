@@ -157,6 +157,26 @@ function toTraceEvents(
 			event.kind === "policy.decision" ||
 			event.kind === "log" ||
 			event.kind === "error";
+		// A model turn carries either prose or a tool call. Surface the prose as
+		// the result (it is what the customer sees); a tool-call turn with no
+		// prose reads as "called X" rather than an empty JSON blob.
+		let action = event.name || event.kind;
+		let argsText: string | null = null;
+		let resultText: string | null = null;
+		if (event.kind === "model.response") {
+			const text = typeof event.result?.text === "string" ? event.result.text.trim() : "";
+			const calls = Array.isArray(event.result?.toolCalls)
+				? (event.result.toolCalls as Array<Record<string, unknown>>)
+						.map((call) => String(call.toolName ?? call.name ?? ""))
+						.filter(Boolean)
+				: [];
+			action = text || (calls.length ? `called ${calls.join(", ")}` : "model response");
+			resultText = text || summarizeValue(event.result);
+		} else if (isResult) {
+			resultText = summarizeValue(event.result);
+		} else {
+			argsText = summarizeValue(event.args);
+		}
 		return {
 			id: event.id,
 			time: formatDateTime(event.created_at),
@@ -170,10 +190,10 @@ function toTraceEvents(
 			mode: "autonomous" as const,
 			type: traceType[event.kind] ?? ("system" as const),
 			kindLabel: event.kind,
-			action: event.name || event.kind,
+			action,
 			authority: "—",
-			argsText: isResult ? null : summarizeValue(event.args),
-			resultText: isResult ? summarizeValue(event.result) : null,
+			argsText,
+			resultText,
 			childRunId,
 			childAgentId,
 			childAgentName,
