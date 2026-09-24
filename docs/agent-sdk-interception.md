@@ -1,6 +1,7 @@
 # Agent SDK Interception Layer
 
 Date: 2026-09-19
+Revised: 2026-09-24 (Guild analysis corrected — see below)
 Status: Design note. Not decided, not committed. Captured so the reasoning survives.
 
 ## The Idea
@@ -10,21 +11,38 @@ SDK they already use (Vercel AI SDK first) and intercept at the tool boundary. C
 tool definitions, tool calls, and tool execution as they flow through, and resolve the
 things the framework does not: credentials, delegated user consent, and attribution.
 
-Same enforcement goal as Guild. Opposite adoption cost: they own your runtime, we
-intercept the one you already run.
+Same enforcement goal as Guild — they ship "the control plane for AI agents," the same
+phrase we use. But the adoption split is not "they own your runtime, we intercept it."
 
-## Why The Correction To Guild Still Holds
+## What Guild Is (corrected 2026-09-24)
 
-Guild requires `@guildai/agents-sdk` and `zod`, forbids external imports, and blocks all
-egress except their proxy. It works and it carries $44M, but it caps adoption at
-greenfield agents written after the decision to adopt, and it leaks badly (no
-`Promise.all`, `for await` silently downgraded, async orchestrators that cannot be split
-across files, values held across an `await` failing on resume with errors that
-type-check and pass tests).
+The 2026-09-19 draft had Guild wrong. It does not force `@guildai/agents-sdk`: as of GA
+(2026-04-28) Guild markets itself model- and framework-agnostic — "bring your own agent,"
+agents built on Mastra, LangChain, CrewAI, or custom code, tools connected with no
+migration, all routed through an MCP gateway. An authored SDK exists, but it is one entry
+point, not a requirement. The "no `Promise.all` / leaks on resume" critique of that SDK may
+still hold; it is no longer a reason to dismiss the platform.
 
-The durable layer in this category is the boundary, not the authoring format. Own the
-boundary and you are compatible with every framework. Own the SDK and you are compatible
-with one.
+Guild is also broader than this note assumed: four pillars (Build, Deploy, Govern, Share)
+over four primitives (Workspaces, Sessions, Credentials, Triggers), plus model routing,
+cost visibility — their stated #1 customer ask — observability, an agent marketplace
+(Agent Hub), and a coding-agent product (Software Factory). Closed, hosted, enterprise,
+SOC 2 / HIPAA / GDPR. $44M raised, GV-led, $300M valuation, founder ex-Meta Dev Infra.
+
+The honest split, then, is not open-vs-locked-in:
+
+- **Mode.** Guild governs *your org's* agent fleet — inventory, ownership, spend (Mode B).
+  Runmesh's documented beachhead is a product's agent acting for *its end users* (Mode A,
+  delegated consent). Different buyer, different consent problem.
+- **Open vs. closed.** Guild is closed and hosted; Runmesh is MIT and self-hostable.
+- **Breadth vs. depth.** Guild is a full lifecycle platform; Runmesh is narrow on the
+  credential / consent / audit loop.
+- **Consent.** Guild's approvals are org/operator-centric. Delegated end-user consent is
+  the less crowded axis — and the one Vercel's surface cannot express (below).
+
+The durable layer is still the boundary, not the authoring format. Own credential and
+consent resolution at the boundary and you are compatible with every framework. Guild
+proves the category is real and fundable; it does not prove the runtime must be adopted.
 
 ## What Vercel AI SDK Already Ships
 
@@ -172,7 +190,7 @@ already being built.
 
 | Compared to | Their role | Our role |
 | --- | --- | --- |
-| Guild | Owns your runtime, forces their SDK | Intercepts the runtime you already run |
+| Guild | Closed enterprise control plane for your own fleet; broad, cost-led | Open, Mode A: credentials and delegated end-user consent at the tool boundary |
 | Vercel AI SDK | Decides whether a call is allowed | Supplies the scoped credential and the user's consent, and records it |
 | Langfuse et al. | Observe what happened | Authorize and attribute it |
 
@@ -183,7 +201,11 @@ already being built.
 3. Does the wrapper ship as an open-source package that calls a hosted vault, or as a
    hosted client from the start?
 4. First target: Vercel AI SDK only, or a framework-agnostic `execute` shim from day one?
-5. Does record-and-replay ship first, to earn adoption before governance is asked for?
+5. ~~Does record-and-replay ship first, to earn adoption before governance is asked for?~~
+   **Resolved 2026-09-24: yes.** Ship record-and-replay first, scoped to CI fixtures.
+   Finish model-I/O capture, replay definition-at-version-N with tools stubbed, expose it as
+   an open-source `runmesh replay` and a Replay action in the run UI. It is the acquisition
+   wedge, not the moat; the credential/consent layer remains the product.
 
 ## Source Notes
 
@@ -194,8 +216,9 @@ already being built.
   https://sdk.vercel.ai/docs/ai-sdk-core/middleware
 - Vercel AI SDK tool approvals (underlying `toolApproval` callback):
   https://sdk.vercel.ai/docs/agents/tool-approvals
-- Guild SDK constraints and runtime isolation:
-  https://docs.guild.ai/guide/sdk-introduction, https://docs.guild.ai/guide/tasks
-- Guild funding and positioning:
-  https://www.guild.ai/knowledge/guild-raises-44m-agent-control-plane
+- Guild positioning (framework-agnostic, MCP gateway, four pillars): https://www.guild.ai/
+- Guild, "What Is an AI Agent Control Plane?" (primitives, category):
+  https://www.guild.ai/blog/product/what-is-an-ai-agent-control-plane
+- Guild funding and scale: $44M ($14M seed + $30M Series A, GV-led), $300M valuation,
+  GA 2026-04-28: https://www.guild.ai/blog/news/guild-raises-44m-agent-control-plane
 - Existing Runmesh strategy this note extends: `docs/agentic-infrastructure-strategy.md`
