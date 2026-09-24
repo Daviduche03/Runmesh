@@ -1,0 +1,11 @@
+{
+  "name": "support-e2e",
+  "private": true,
+  "type": "module",
+  "dependencies": {
+    "@ai-sdk/groq": "^4.0.47",
+    "@runmesh/agent": "file:../../packages/agent",
+    "ai": "^7.0.112",
+    "zod": "^4.3.11"
+  }
+}
