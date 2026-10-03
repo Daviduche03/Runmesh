@@ -31,11 +31,11 @@ export function Dashboard() {
 	}, [fetchAudit]);
 
 	return (
-		<div className="flex flex-col gap-4">
+		<div className="flex flex-col gap-6">
 			<div className="flex flex-col gap-4 md:flex-row md:items-end md:justify-between">
 				<div>
-					<h1 className="font-display text-[22px] font-medium tracking-[-0.02em]">Control room</h1>
-					<p className="mt-1 max-w-2xl text-sm text-muted-foreground">
+					<h1 className="font-display text-[24px] font-medium tracking-[-0.025em]">Control room</h1>
+					<p className="mt-1.5 max-w-2xl text-sm text-muted-foreground">
 						What is waiting on you, what is running, and what is wrong.
 					</p>
 				</div>

@@ -6,7 +6,7 @@ import { SegmentedControl } from "@/components/segmented-control";
 import { GrantsTable, type Grant, type GrantStatus } from "@/modules/grants/components/grants-table";
 import EmptyState from "@/components/empty-state";
 import { useGrantsStore, type BackendGrant } from "@/lib/stores/grants-store";
-import { KeyRoundIcon } from "lucide-react";
+import { Key } from "@phosphor-icons/react";
 import { toast } from "sonner";
 
 function formatExpiry(grant: BackendGrant): string {
@@ -109,11 +109,11 @@ export function GrantsPage() {
 	};
 
 	return (
-		<div className="flex flex-col gap-4">
+		<div className="flex flex-col gap-6">
 			<div className="flex flex-col gap-4 md:flex-row md:items-end md:justify-between">
 				<div>
-					<h1 className="font-display text-[22px] font-medium tracking-[-0.02em]">Grants</h1>
-					<p className="mt-1 max-w-2xl text-sm text-muted-foreground">
+					<h1 className="font-display text-[24px] font-medium tracking-[-0.025em]">Grants</h1>
+					<p className="mt-1.5 max-w-2xl text-sm text-muted-foreground">
 						Consent and scoped access issued on behalf of your users. This is where an agent is allowed to act,
 						and for how long.
 					</p>
@@ -198,7 +198,7 @@ function FilterableGrants({
 						<EmptyState
 							title="No grants yet"
 							description="Grants appear here when your users connect accounts and agents request access."
-							icon={<KeyRoundIcon className="size-6 text-muted-foreground" />}
+							icon={<Key className="size-6 text-muted-foreground" />}
 						/>
 					</div>
 				)}

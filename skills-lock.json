@@ -1,0 +1,41 @@
+{
+  "version": 1,
+  "skills": {
+    "anti-slop-brain": {
+      "source": "AgriciDaniel/anti-slop",
+      "sourceType": "github",
+      "skillPath": "anti-slop-brain/SKILL.md",
+      "computedHash": "2dc1fe6f40c6bdf4b7a6c8831c94926318066bccb7207a54a2f6033f850afd94"
+    },
+    "better-typography": {
+      "source": "jakubkrehel/skills",
+      "sourceType": "github",
+      "skillPath": "skills/better-typography/SKILL.md",
+      "computedHash": "342f0e90fe46fd8a0111682ebd7e1ce526ede636d1a14d867d8dd3e2803670af"
+    },
+    "better-ui": {
+      "source": "jakubkrehel/skills",
+      "sourceType": "github",
+      "skillPath": "skills/better-ui/SKILL.md",
+      "computedHash": "d05cf568f197e47b15e71e21b19be1897eba2bf187ef7b0a341bc5ffaf3ffd4d"
+    },
+    "deslop": {
+      "source": "cursor/plugins",
+      "sourceType": "github",
+      "skillPath": "cursor-team-kit/skills/deslop/SKILL.md",
+      "computedHash": "8883a7d459c07a0b2ee06972e79baa634009aa3bab969a6650acbefac394ad41"
+    },
+    "emil-design-eng": {
+      "source": "emilkowalski/skills",
+      "sourceType": "github",
+      "skillPath": "skills/emil-design-eng/SKILL.md",
+      "computedHash": "41b0a4dc1a27164fe297845a6c6850a39e9242c42c9be999967fcee9df2c5974"
+    },
+    "kill-slop": {
+      "source": "iCodeCraft/anti-slop",
+      "sourceType": "github",
+      "skillPath": "skills/kill-slop/SKILL.md",
+      "computedHash": "5b22d807d316370c8131869c367a35ffecb0525a29f8ec479905b00559419345"
+    }
+  }
+}

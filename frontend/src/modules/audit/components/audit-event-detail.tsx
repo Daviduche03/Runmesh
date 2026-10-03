@@ -4,7 +4,7 @@ import { useState, type ReactNode } from "react";
 import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle } from "@/components/ui/sheet";
 import type { AuditEvent } from "@/modules/audit/components/audit-table";
 import { formatDuration } from "@/lib/audit";
-import { CheckIcon, CopyIcon } from "lucide-react";
+import { Check, Copy } from "@phosphor-icons/react";
 
 function CopyValue({ value }: { value: string }) {
 	const [copied, setCopied] = useState(false);
@@ -19,7 +19,7 @@ function CopyValue({ value }: { value: string }) {
 			}}
 			className="shrink-0 text-muted-foreground transition-[color,transform] duration-150 ease-[var(--ease-out)] hover:text-foreground active:scale-[0.9]"
 		>
-			{copied ? <CheckIcon className="size-3.5 text-emerald-400" /> : <CopyIcon className="size-3.5" />}
+			{copied ? <Check className="size-3.5 text-emerald-400" /> : <Copy className="size-3.5" />}
 		</button>
 	);
 }

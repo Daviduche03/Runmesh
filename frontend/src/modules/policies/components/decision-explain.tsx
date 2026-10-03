@@ -15,7 +15,7 @@ import { usePoliciesStore, type EvaluateResult } from "@/lib/stores/policies-sto
 import { useAgentsStore } from "@/lib/stores/agents-store";
 import { useProvidersStore } from "@/lib/stores/providers-store";
 import { useToolsStore } from "@/lib/stores/tools-store";
-import { ArrowRightIcon, CheckIcon, MinusIcon, PlayIcon } from "lucide-react";
+import { ArrowRight, Check, Minus, Play } from "@phosphor-icons/react";
 
 function Field({ label, children }: { label: string; children: React.ReactNode }) {
 	return (
@@ -145,7 +145,7 @@ export function DecisionExplain() {
 
 			<div className="flex flex-wrap items-center gap-3">
 				<Button size="sm" disabled={!ready} onClick={() => void run()}>
-					<PlayIcon className="me-1.5 size-3.5" />
+					<Play className="me-1.5 size-3.5" />
 					Evaluate
 				</Button>
 				{failed ? <span className="text-[12px] text-red-400">Evaluation failed. Try again.</span> : null}
@@ -154,7 +154,7 @@ export function DecisionExplain() {
 			{result ? (
 				<div className="grid gap-4 lg:grid-cols-[minmax(0,1fr)_minmax(0,1fr)]">
 					<div className="grid content-start gap-2 rounded-[4px] border border-border bg-muted/30 p-4">
-						<span className="font-mono text-[10.5px] uppercase tracking-[0.14em] text-muted-foreground">
+						<span className="text-[11px] font-medium tracking-[0.02em] text-muted-foreground">
 							Decision
 						</span>
 						<span className={cn("font-display text-[18px] font-medium", actionText[result.decision])}>
@@ -163,14 +163,14 @@ export function DecisionExplain() {
 						<span className="font-mono text-[11.5px] text-muted-foreground">{label}</span>
 						<p className="text-[12.5px] leading-5 text-muted-foreground">{result.reason}</p>
 						<div className="mt-1 flex items-start gap-1.5 border-t border-border pt-3">
-							<ArrowRightIcon className="mt-0.5 size-3.5 shrink-0 text-muted-foreground" />
+							<ArrowRight className="mt-0.5 size-3.5 shrink-0 text-muted-foreground" />
 							<span className="text-[12.5px] leading-5">{result.changeHint}</span>
 						</div>
 					</div>
 
 					<div className="rounded-[4px] border border-border">
 						<div className="border-b border-border px-4 py-2">
-							<span className="font-mono text-[10.5px] uppercase tracking-[0.14em] text-muted-foreground">
+							<span className="text-[11px] font-medium tracking-[0.02em] text-muted-foreground">
 								Rules evaluated in order
 							</span>
 						</div>
@@ -179,7 +179,7 @@ export function DecisionExplain() {
 								<li className="flex items-start gap-3 px-4 py-2.5" key={step.id}>
 									<span className="mt-1.5 flex size-4 shrink-0 items-center justify-center">
 										{step.status === "matched" ? (
-											<CheckIcon className="size-3.5 text-emerald-400" />
+											<Check className="size-3.5 text-emerald-400" />
 										) : (
 											<span className={cn("size-1.5 rounded-full", statusDot[step.status])} aria-hidden />
 										)}
@@ -198,7 +198,7 @@ export function DecisionExplain() {
 							))}
 						</ul>
 						<div className="flex items-center gap-2 border-t border-border px-4 py-2 text-[11.5px] text-muted-foreground">
-							<MinusIcon className="size-3" />
+							<Minus className="size-3" />
 							Unmatched falls to default deny — enforced once an enforcing rule is enabled.
 						</div>
 					</div>

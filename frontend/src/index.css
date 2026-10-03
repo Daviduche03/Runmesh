@@ -52,10 +52,8 @@
   --color-chart-4: var(--chart-4);
   --color-chart-5: var(--chart-5);
   --font-display: "Space Grotesk", ui-sans-serif, system-ui, sans-serif;
-  --font-sans: "IBM Plex Sans", ui-sans-serif, system-ui, sans-serif;
+  --font-sans: "Geist", ui-sans-serif, system-ui, sans-serif;
   --font-mono: "IBM Plex Mono", ui-monospace, "SF Mono", Menlo, monospace;
-  --color-accent: #e1683c;
-  --color-accent-soft: #f0a07c;
   --radius-sm: calc(var(--radius) - 4px);
   --radius-md: calc(var(--radius) - 2px);
   --radius-lg: var(--radius);
@@ -117,7 +115,7 @@
     0px 1px 1px 0px rgba(0, 0, 0, 0.07),
     0px 0px 1px 0px rgba(0, 0, 0, 0.08);
   --font-monospace: ui-monospace, 'SF Mono', 'Menlo', monospace;
-  --font-regular: 'IBM Plex Sans', 'SF Pro Text', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+  --font-regular: 'Geist', 'SF Pro Text', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
   --header-bg: hsla(0, 0%, 4%, 0.8);
   --header-border: hsla(0, 0%, 100%, 0.08);
   --color-bg-primary: #0a0a0b;
@@ -140,8 +138,8 @@
   --card-foreground: #f4f2ee;
   --popover: #0e0f11;
   --popover-foreground: #f4f2ee;
-  --primary: #e1683c;
-  --primary-foreground: #140b06;
+  --primary: #c2491f;
+  --primary-foreground: #ffffff;
   --secondary: #17181b;
   --secondary-foreground: #e3e4e6;
   --muted: #141518;
@@ -159,7 +157,7 @@
   --chart-4: #d9a441;
   --chart-5: #3fb0a0;
   --radius: 4px;
-  --sidebar-background: #0c0c0e;
+  --sidebar-background: #0e0f11;
   --sidebar-foreground: #c3c4c8;
   --sidebar-primary: #e1683c;
   --sidebar-primary-foreground: #140b06;
@@ -167,6 +165,10 @@
   --sidebar-accent-foreground: #f4f2ee;
   --sidebar-border: #1c1d20;
   --sidebar-ring: #e1683c;
+  --surface-shadow: inset 0 1px 0 0 rgba(255, 255, 255, 0.035),
+    0 1px 2px 0 rgba(0, 0, 0, 0.25);
+  --overlay-shadow: inset 0 1px 0 0 rgba(255, 255, 255, 0.04),
+    0 16px 40px -12px rgba(0, 0, 0, 0.6);
 }
 
 @media (max-width: 768px) {
@@ -187,38 +189,41 @@
 }
 
 .light {
-  --background: #f4f1ea;
-  --foreground: #141311;
-  --card: #ffffff;
-  --card-foreground: #141311;
+  --background: #ffffff;
+  --foreground: #18181b;
+  --card: #f6f6f7;
+  --card-foreground: #18181b;
   --popover: #ffffff;
-  --popover-foreground: #141311;
+  --popover-foreground: #18181b;
   --primary: #c2491f;
-  --primary-foreground: #faf6f0;
-  --secondary: #eae6dd;
-  --secondary-foreground: #141311;
-  --muted: #ece8e0;
-  --muted-foreground: #5f5c55;
-  --accent: #e8e4db;
-  --accent-foreground: #141311;
+  --primary-foreground: #ffffff;
+  --secondary: #ebebed;
+  --secondary-foreground: #18181b;
+  --muted: #ebebed;
+  --muted-foreground: #71717a;
+  --accent: #ebebed;
+  --accent-foreground: #18181b;
   --destructive: oklch(0.577 0.245 27.325);
   --destructive-foreground: oklch(0.577 0.245 27.325);
-  --border: #e3dfd6;
-  --input: #d5d0c5;
+  --border: #e4e4e7;
+  --input: #d4d4d8;
   --ring: #c2491f;
-  --chart-1: #d9552a;
-  --chart-2: #3a6fd0;
-  --chart-3: #2f9157;
-  --chart-4: #a97b12;
-  --chart-5: #0f766e;
-  --sidebar-background: #efece4;
-  --sidebar-foreground: #4a4842;
+  --chart-1: #c2491f;
+  --chart-2: #4f7cc4;
+  --chart-3: #3f8f63;
+  --chart-4: #b08417;
+  --chart-5: #2f7d74;
+  --sidebar-background: #fbfbfc;
+  --sidebar-foreground: #3f3f46;
   --sidebar-primary: #c2491f;
-  --sidebar-primary-foreground: #faf6f0;
-  --sidebar-accent: #e6e2d9;
-  --sidebar-accent-foreground: #141311;
-  --sidebar-border: #ded9cf;
+  --sidebar-primary-foreground: #ffffff;
+  --sidebar-accent: #f0f0f1;
+  --sidebar-accent-foreground: #18181b;
+  --sidebar-border: #e4e4e7;
   --sidebar-ring: #c2491f;
+  --bento-border: hsla(0, 0%, 0%, 0.03);
+  --surface-shadow: 0 1px 2px 0 rgba(0, 0, 0, 0.04);
+  --overlay-shadow: 0 16px 40px -12px rgba(0, 0, 0, 0.18);
 }
 
 .rm-surface {

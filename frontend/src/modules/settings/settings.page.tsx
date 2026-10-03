@@ -11,14 +11,14 @@ import { WebhooksTab } from "@/modules/settings/sections/webhooks-tab";
 import { ApiKeysTab } from "@/modules/settings/sections/api-keys-tab";
 import { useApiKeysStore } from "@/lib/stores/api-keys-store";
 import { useWebhooksStore } from "@/lib/stores/webhooks-store";
-import { WebhookIcon, KeyRoundIcon, Settings2Icon, Loader2Icon, CopyIcon, CheckIcon } from "lucide-react";
+import { Check, CircleNotch, Copy, Key, Sliders, WebhooksLogo } from "@phosphor-icons/react";
 import { toast } from "sonner";
 import { useSearchParams } from "react-router-dom";
 
 const tabs = [
-	{ id: "general", label: "General", icon: <Settings2Icon className="size-4" /> },
-	{ id: "webhooks", label: "Webhooks", icon: <WebhookIcon className="size-4" /> },
-	{ id: "api-keys", label: "API Keys", icon: <KeyRoundIcon className="size-4" /> },
+	{ id: "general", label: "General", icon: <Sliders className="size-4" /> },
+	{ id: "webhooks", label: "Webhooks", icon: <WebhooksLogo className="size-4" /> },
+	{ id: "api-keys", label: "API Keys", icon: <Key className="size-4" /> },
 ] as const;
 
 export function SettingsPage() {
@@ -153,8 +153,8 @@ export function SettingsPage() {
 	return (
 		<div className="grid gap-4">
 			<div>
-				<h1 className="font-display text-[22px] font-medium tracking-[-0.02em]">Settings</h1>
-				<p className="mt-1 max-w-2xl text-sm text-muted-foreground">
+				<h1 className="font-display text-[24px] font-medium tracking-[-0.025em]">Settings</h1>
+				<p className="mt-1.5 max-w-2xl text-sm text-muted-foreground">
 					Workspace identity, webhooks, and API keys.
 				</p>
 			</div>
@@ -232,10 +232,10 @@ export function SettingsPage() {
 								}}
 								className="shrink-0 text-muted-foreground transition-[color,transform] duration-150 ease-[var(--ease-out)] hover:text-foreground active:scale-[0.9]"
 							>
-								{copied ? <CheckIcon className="size-4 text-emerald-400" /> : <CopyIcon className="size-4" />}
+								{copied ? <Check className="size-4 text-emerald-400" /> : <Copy className="size-4" />}
 							</button>
 						</div>
-						<div className="flex justify-end pt-2 border-t border-border">
+						<div className="flex justify-end pt-2">
 							<Button
 								onClick={() => {
 									setShowWebhookModal(false);
@@ -253,15 +253,15 @@ export function SettingsPage() {
 				) : (
 				<form onSubmit={handleCreateWebhook} className="grid gap-5">
 					<div className="grid gap-1.5">
-						<label className="font-mono text-[10.5px] uppercase tracking-[0.14em] text-muted-foreground">Name</label>
+						<label className="text-[11px] font-medium tracking-[0.02em] text-muted-foreground">Name</label>
 						<Input placeholder="e.g. Receipt delivery" value={whName} onChange={(e) => setWhName(e.target.value)} />
 					</div>
 					<div className="grid gap-1.5">
-						<label className="font-mono text-[10.5px] uppercase tracking-[0.14em] text-muted-foreground">Endpoint URL</label>
+						<label className="text-[11px] font-medium tracking-[0.02em] text-muted-foreground">Endpoint URL</label>
 						<Input placeholder="https://api.example.com/webhook" value={whUrl} onChange={(e) => setWhUrl(e.target.value)} />
 					</div>
 					<div className="grid gap-1.5">
-						<label className="font-mono text-[10.5px] uppercase tracking-[0.14em] text-muted-foreground">Events</label>
+						<label className="text-[11px] font-medium tracking-[0.02em] text-muted-foreground">Events</label>
 						<Input
 							placeholder="task.completed,task.failed"
 							value={whEvents}
@@ -272,10 +272,10 @@ export function SettingsPage() {
 						</p>
 					</div>
 					{whError && <p className="text-sm text-red-400">{whError}</p>}
-					<div className="flex justify-end gap-3 pt-2 border-t border-border">
+					<div className="flex justify-end gap-3 pt-2">
 						<Button type="button" variant="outline" onClick={() => setShowWebhookModal(false)}>Cancel</Button>
 						<Button type="submit" disabled={webhooks.creating}>
-							{webhooks.creating && <Loader2Icon className="size-4 animate-spin me-1.5" />}
+							{webhooks.creating && <CircleNotch className="size-4 animate-spin me-1.5" />}
 							Add webhook
 						</Button>
 					</div>
@@ -299,10 +299,10 @@ export function SettingsPage() {
 								}}
 								className="shrink-0 text-muted-foreground transition-[color,transform] duration-150 ease-[var(--ease-out)] hover:text-foreground active:scale-[0.9]"
 							>
-								{copied ? <CheckIcon className="size-4 text-emerald-400" /> : <CopyIcon className="size-4" />}
+								{copied ? <Check className="size-4 text-emerald-400" /> : <Copy className="size-4" />}
 							</button>
 						</div>
-						<div className="flex justify-end pt-2 border-t border-border">
+						<div className="flex justify-end pt-2">
 							<Button onClick={() => { setShowKeyModal(false); setLastCreatedKey(null); setCopied(false); }}>
 								Done
 							</Button>
@@ -311,11 +311,11 @@ export function SettingsPage() {
 				) : (
 					<form onSubmit={handleCreateKey} className="grid gap-5">
 						<div className="grid gap-1.5">
-							<label className="font-mono text-[10.5px] uppercase tracking-[0.14em] text-muted-foreground">Name</label>
+							<label className="text-[11px] font-medium tracking-[0.02em] text-muted-foreground">Name</label>
 							<Input placeholder="e.g. Production" value={keyName} onChange={(e) => setKeyName(e.target.value)} />
 						</div>
 						<div className="grid gap-1.5">
-							<label className="font-mono text-[10.5px] uppercase tracking-[0.14em] text-muted-foreground">Permissions</label>
+							<label className="text-[11px] font-medium tracking-[0.02em] text-muted-foreground">Permissions</label>
 							<div className="grid gap-2">
 								<label className="flex items-center gap-2 text-sm">
 									<input
@@ -342,10 +342,10 @@ export function SettingsPage() {
 							</div>
 						</div>
 						{keyError && <p className="text-sm text-red-400">{keyError}</p>}
-						<div className="flex justify-end gap-3 pt-2 border-t border-border">
+						<div className="flex justify-end gap-3 pt-2">
 							<Button type="button" variant="outline" onClick={() => { setShowKeyModal(false); setLastCreatedKey(null); setCopied(false); }}>Cancel</Button>
 							<Button type="submit" disabled={apiKeys.creating}>
-								{apiKeys.creating && <Loader2Icon className="size-4 animate-spin me-1.5" />}
+								{apiKeys.creating && <CircleNotch className="size-4 animate-spin me-1.5" />}
 								Create key
 							</Button>
 						</div>

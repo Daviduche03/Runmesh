@@ -1,7 +1,7 @@
 import json
 from urllib.parse import urlencode
 
-from workers import fetch
+from runtime.http_fetch import fetch
 
 from utils.connect_providers import (
     ConnectProvider,

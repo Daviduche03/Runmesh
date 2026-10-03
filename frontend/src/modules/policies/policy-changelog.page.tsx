@@ -13,7 +13,7 @@ import { usePoliciesStore } from "@/lib/stores/policies-store";
 import { useEffect } from "react";
 import { Skeleton } from "@/components/ui/skeleton";
 import EmptyState from "@/components/empty-state";
-import { ScrollTextIcon } from "lucide-react";
+import { Scroll } from "@phosphor-icons/react";
 
 export function PolicyChangelogPage() {
 	const changes = usePoliciesStore((s) => s.changes);
@@ -25,10 +25,10 @@ export function PolicyChangelogPage() {
 	}, [fetchChanges]);
 
 	return (
-		<div className="flex flex-col gap-4">
+		<div className="flex flex-col gap-6">
 			<div>
-				<h1 className="font-display text-[22px] font-medium tracking-[-0.02em]">Change log</h1>
-				<p className="mt-1 max-w-2xl text-sm text-muted-foreground">
+				<h1 className="font-display text-[24px] font-medium tracking-[-0.025em]">Change log</h1>
+				<p className="mt-1.5 max-w-2xl text-sm text-muted-foreground">
 					Policy is auditable. Every change carries who made it, what moved, and a record hash.
 				</p>
 			</div>
@@ -80,7 +80,7 @@ export function PolicyChangelogPage() {
 							<EmptyState
 								title="No policy changes yet"
 								description="Edits to rules appear here with who made them."
-								icon={<ScrollTextIcon className="size-6 text-muted-foreground" />}
+								icon={<Scroll className="size-6 text-muted-foreground" />}
 							/>
 						</div>
 					)}

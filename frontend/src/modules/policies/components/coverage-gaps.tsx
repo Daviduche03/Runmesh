@@ -12,7 +12,7 @@ import {
 	TableRow,
 } from "@/components/ui/table";
 import type { CoverageGap } from "@/lib/stores/policies-store";
-import { EyeOffIcon, PlusIcon } from "lucide-react";
+import { EyeSlash, Plus } from "@phosphor-icons/react";
 
 function relativeTime(iso: string): string {
 	if (!iso) return "—";
@@ -57,7 +57,7 @@ export function CoverageGaps({
 				<EmptyState
 					title="No gaps yet"
 					description="Requests that match no rule will appear here."
-					icon={<EyeOffIcon className="size-6 text-muted-foreground" />}
+					icon={<EyeSlash className="size-6 text-muted-foreground" />}
 				/>
 			</div>
 		);
@@ -93,7 +93,7 @@ export function CoverageGaps({
 								variant="outline"
 								onClick={onAddRule ? () => onAddRule(gap) : undefined}
 							>
-								<PlusIcon className="me-1 size-3" />
+								<Plus className="me-1 size-3" />
 								Add rule
 							</Button>
 						</TableCell>

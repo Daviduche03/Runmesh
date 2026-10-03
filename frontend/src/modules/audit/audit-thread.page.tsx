@@ -12,7 +12,7 @@ import type { AuditEvent, AuditOutcome } from "@/modules/audit/components/audit-
 import { outcomeText } from "@/lib/audit";
 import { downloadAuditCsv } from "@/lib/audit-export";
 import { useAuditStore } from "@/lib/stores/audit-store";
-import { ArrowLeftIcon, DownloadIcon } from "lucide-react";
+import { ArrowLeft, Download } from "@phosphor-icons/react";
 
 const severity: Record<AuditOutcome, number> = { success: 0, timeout: 1, escalated: 2, failed: 3, denied: 4 };
 
@@ -53,18 +53,18 @@ export function AuditThreadPage() {
 	const escalated = threadEvents.filter((event) => event.outcome === "escalated").length;
 
 	return (
-		<div className="flex flex-col gap-4">
+		<div className="flex flex-col gap-6">
 			<Link
 				to="/audit"
 				className="inline-flex w-fit items-center gap-1.5 text-[12px] text-muted-foreground no-underline transition-[color] duration-150 ease-[var(--ease-out)] hover:text-foreground"
 			>
-				<ArrowLeftIcon className="size-3.5" />
+				<ArrowLeft className="size-3.5" />
 				Audit
 			</Link>
 
 			<div className="flex flex-col gap-4 md:flex-row md:items-end md:justify-between">
 				<div>
-					<h1 className="font-display text-[22px] font-medium tracking-[-0.02em]">
+					<h1 className="font-display text-[24px] font-medium tracking-[-0.025em]">
 						{key ?? "Unchained events"}
 					</h1>
 					<p className="mt-1 text-[13px] text-muted-foreground">
@@ -78,7 +78,7 @@ export function AuditThreadPage() {
 					size="sm"
 					onClick={() => downloadAuditCsv(`audit-thread-${key ?? "unchained"}.csv`, threadEvents)}
 				>
-					<DownloadIcon className="size-3.5" />
+					<Download className="size-3.5" />
 					Export thread
 				</Button>
 			</div>

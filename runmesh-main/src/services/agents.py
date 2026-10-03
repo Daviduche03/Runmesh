@@ -16,6 +16,7 @@ from utils.responses import success
 from services.workspaces import resolve_workspace_id
 
 AGENT_ENVIRONMENTS = ("dev", "staging", "prod")
+AGENT_STATUS_ARCHIVED = "archived"
 AGENT_NAME_MAX = 64
 AGENT_DESCRIPTION_MAX = 500
 AGENT_PUBLIC_KEY_MAX = 4096
@@ -112,7 +113,36 @@ async def list_agents(db, user_id: str, workspace_id: str) -> dict:
     model = Model(db)
     workspace_id = await resolve_workspace_id(model.db, user_id, workspace_id)
     rows = await model.find_many(
-        "agents", "workspace_id = ? ORDER BY created_at DESC", workspace_id
+        "agents",
+        "workspace_id = ? AND status != ? ORDER BY created_at DESC",
+        workspace_id,
+        AGENT_STATUS_ARCHIVED,
     )
     agents = [serialize_agent(row) for row in rows]
     return success(agents, meta={"total": len(agents)})
+
+
+async def archive_agent(db, user_id: str, workspace_id: str, agent_id: str) -> dict:
+    """Soft delete: retire the identity without touching its recorded runs,
+    versions, or audit. Archiving is idempotent, and an agent outside the
+    caller's workspace reads as 404 either way."""
+    model = Model(db)
+    workspace_id = await resolve_workspace_id(model.db, user_id, workspace_id)
+    row = await model.find_one(
+        "agents", "id = ? AND workspace_id = ?", agent_id, workspace_id
+    )
+    if row is None:
+        raise HTTPException(status_code=404, detail="Agent not found")
+
+    if row.get("status") != AGENT_STATUS_ARCHIVED:
+        await model.update(
+            "agents",
+            "id = ? AND workspace_id = ?",
+            {"status": AGENT_STATUS_ARCHIVED, "updated_at": _now()},
+            agent_id,
+            workspace_id,
+        )
+        row = await model.find_one(
+            "agents", "id = ? AND workspace_id = ?", agent_id, workspace_id
+        )
+    return success(serialize_agent(row), message="Agent archived")

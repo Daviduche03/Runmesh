@@ -9,7 +9,7 @@ import {
 	DropdownMenuRadioItem,
 	DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { ChevronDownIcon } from "lucide-react";
+import { CaretDown } from "@phosphor-icons/react";
 import { cn } from "@/lib/utils";
 
 export type FormSelectOption<T extends string> = {
@@ -52,7 +52,7 @@ export function FormSelect<T extends string>({
 					)}
 				>
 					<span className="truncate">{selected?.label ?? placeholder ?? "Select…"}</span>
-					<ChevronDownIcon className="size-4 shrink-0 text-muted-foreground transition-transform duration-150 ease-[var(--ease-out)]" />
+					<CaretDown className="size-4 shrink-0 text-muted-foreground transition-transform duration-150 ease-[var(--ease-out)]" />
 				</Button>
 			</DropdownMenuTrigger>
 			<DropdownMenuContent align="start" className="max-h-80 min-w-48 overflow-y-auto">
@@ -71,7 +71,7 @@ export function FormSelect<T extends string>({
 									<div
 										role="presentation"
 										className={cn(
-											"px-2 pt-2 pb-1 font-mono text-[10px] uppercase tracking-[0.12em] text-muted-foreground/70",
+											"px-2 pt-2 pb-1 text-[11px] font-medium tracking-[0.02em] text-muted-foreground/70",
 											!isFirstGroup && "mt-1 border-t border-border"
 										)}
 									>

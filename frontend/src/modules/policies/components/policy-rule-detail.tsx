@@ -71,7 +71,7 @@ function Block({
 			)}
 		>
 			<div className="flex items-baseline justify-between gap-3">
-				<h3 className="font-mono text-[10.5px] uppercase tracking-[0.14em] text-muted-foreground">{title}</h3>
+				<h3 className="text-[11px] font-medium tracking-[0.02em] text-muted-foreground">{title}</h3>
 				{hint ? <span className="text-[11px] text-muted-foreground/70">{hint}</span> : null}
 			</div>
 			<div className="grid gap-3">{children}</div>
@@ -92,7 +92,7 @@ function Field({ label, hint, children }: { label: string; hint?: string; childr
 function Metric({ label, value, tone }: { label: string; value: string; tone?: string }) {
 	return (
 		<div className="grid gap-0.5 rounded-[4px] border border-border px-3 py-2">
-			<span className="font-mono text-[10px] uppercase tracking-[0.12em] text-muted-foreground">{label}</span>
+			<span className="text-[11px] font-medium tracking-[0.02em] text-muted-foreground">{label}</span>
 			<span className={cn("text-[14px] tabular-nums", tone)}>{value}</span>
 		</div>
 	);
@@ -192,7 +192,7 @@ export function PolicyRuleDetail({
 				<div className="flex items-start gap-3">
 					<div className="min-w-0 flex-1">
 						<div className="flex items-center gap-2">
-							<span className="font-mono text-[10.5px] uppercase tracking-[0.14em] text-muted-foreground">
+							<span className="text-[11px] font-medium tracking-[0.02em] text-muted-foreground">
 								{isNew ? "New rule" : "Rule"}
 							</span>
 							<span className={cn("font-mono text-[11px]", actionText[action])}>#{rule.priority}</span>
@@ -233,7 +233,7 @@ export function PolicyRuleDetail({
 			<div className="flex-1 space-y-6 overflow-y-auto px-4 pb-4 pt-1">
 				<Block title="Rule" hint="what this decides" focal>
 					<div className="grid gap-2">
-						<span className="font-mono text-[10.5px] uppercase tracking-[0.14em] text-muted-foreground/80">If</span>
+						<span className="text-[11px] font-medium tracking-[0.02em] text-muted-foreground/80">If</span>
 						{conditions.map((condition, index) => {
 							const actionValueOptions = providers
 								? buildActionValueOptions({ providers, tools, current: condition.value })
@@ -280,7 +280,7 @@ export function PolicyRuleDetail({
 						<p className="text-[11px] text-muted-foreground/70">All conditions must match.</p>
 					</div>
 					<div className="grid gap-2">
-						<span className="font-mono text-[10.5px] uppercase tracking-[0.14em] text-muted-foreground/80">Then</span>
+						<span className="text-[11px] font-medium tracking-[0.02em] text-muted-foreground/80">Then</span>
 						<SegmentedControl
 							options={actionOptions}
 							value={action}
@@ -376,7 +376,7 @@ export function PolicyRuleDetail({
 				)}
 
 				<details className="group rounded-lg border border-border">
-					<summary className="cursor-pointer list-none px-3.5 py-2.5 font-mono text-[10.5px] uppercase tracking-[0.14em] text-muted-foreground transition-colors duration-150 ease-[var(--ease-out)] hover:text-foreground">
+					<summary className="cursor-pointer list-none px-3.5 py-2.5 text-[11px] font-medium tracking-[0.02em] text-muted-foreground transition-colors duration-150 ease-[var(--ease-out)] hover:text-foreground">
 						Compiled policy
 					</summary>
 					<pre className="overflow-x-auto border-t border-border p-3 font-mono text-[11px] leading-5 text-muted-foreground">

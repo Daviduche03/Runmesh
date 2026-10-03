@@ -1,6 +1,6 @@
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Trash2Icon } from "lucide-react";
+import { Trash } from "@phosphor-icons/react";
 import type { WorkflowGraphNode } from "@/lib/workflow-graph";
 
 type Props = {
@@ -42,7 +42,7 @@ export function WorkflowStepEditor({
 					<h3 className="text-sm font-semibold">Configure HTTP request</h3>
 				</div>
 				<Button variant="outline" size="sm" onClick={onRemove}>
-					<Trash2Icon className="size-3.5" />
+					<Trash className="size-3.5" />
 					Remove
 				</Button>
 			</div>

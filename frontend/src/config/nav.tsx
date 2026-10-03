@@ -1,23 +1,23 @@
-import type { ReactNode } from "react";
+import type { Icon } from "@phosphor-icons/react";
 import {
-	ActivityIcon,
-	BotIcon,
-	CloudIcon,
-	HelpCircleIcon,
-	BookOpenIcon,
-	KeyRoundIcon,
-	LayoutDashboardIcon,
-	ScrollTextIcon,
-	ShieldCheckIcon,
-	SlidersHorizontalIcon,
-	WorkflowIcon,
-	SettingsIcon,
-} from "lucide-react";
+	BookOpen,
+	ClipboardText,
+	FolderOpen,
+	Gear,
+	Key,
+	PlugsConnected,
+	PlayCircle,
+	Question,
+	Robot,
+	Scales,
+	SquaresFour,
+	TreeStructure,
+} from "@phosphor-icons/react";
 
 export type SidebarNavItem = {
 	title: string;
 	path?: string;
-	icon?: ReactNode;
+	icon?: Icon;
 	isActive?: boolean;
 	subItems?: SidebarNavItem[];
 };
@@ -34,12 +34,12 @@ export const navGroups: SidebarNavGroup[] = [
 			{
 				title: "Control room",
 				path: "/dashboard",
-				icon: <LayoutDashboardIcon />,
+				icon: SquaresFour,
 			},
 			{
 				title: "Agents",
 				path: "/agents",
-				icon: <BotIcon />,
+				icon: Robot,
 			},
 		],
 	},
@@ -49,12 +49,12 @@ export const navGroups: SidebarNavGroup[] = [
 			{
 				title: "Grants",
 				path: "/grants",
-				icon: <KeyRoundIcon />,
+				icon: Key,
 			},
 			{
 				title: "Connect",
 				path: "/connect",
-				icon: <ShieldCheckIcon />,
+				icon: PlugsConnected,
 			},
 		],
 	},
@@ -64,17 +64,17 @@ export const navGroups: SidebarNavGroup[] = [
 			{
 				title: "Runs",
 				path: "/runs",
-				icon: <ActivityIcon />,
+				icon: PlayCircle,
 			},
 			{
 				title: "Workflows",
 				path: "/workflows",
-				icon: <WorkflowIcon />,
+				icon: TreeStructure,
 			},
 			{
 				title: "Workspace",
 				path: "/app/workspace",
-				icon: <CloudIcon />,
+				icon: FolderOpen,
 			},
 		],
 	},
@@ -84,12 +84,12 @@ export const navGroups: SidebarNavGroup[] = [
 			{
 				title: "Audit",
 				path: "/audit",
-				icon: <ScrollTextIcon />,
+				icon: ClipboardText,
 			},
 			{
 				title: "Policies",
 				path: "/policies",
-				icon: <SlidersHorizontalIcon />,
+				icon: Scales,
 				subItems: [
 					{
 						title: "Rules",
@@ -108,7 +108,7 @@ export const navGroups: SidebarNavGroup[] = [
 			{
 				title: "Settings",
 				path: "/settings",
-				icon: <SettingsIcon />,
+				icon: Gear,
 			},
 		],
 	},
@@ -118,12 +118,12 @@ export const footerNavLinks: SidebarNavItem[] = [
 	{
 		title: "Help Center",
 		path: "#/help",
-		icon: <HelpCircleIcon />,
+		icon: Question,
 	},
 	{
 		title: "Documentation",
 		path: "#/documentation",
-		icon: <BookOpenIcon />,
+		icon: BookOpen,
 	},
 ];
 

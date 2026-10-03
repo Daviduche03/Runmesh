@@ -45,6 +45,7 @@ from utils.auth import (
 )
 
 from utils.dual_auth import get_jwt_user
+from utils.log import log_error
 
 from utils.rate_limit import (
     enforce_rate_limit,
@@ -295,7 +296,7 @@ async def github_callback(code: str, request: Request, state: Optional[str] = ""
     except HTTPException:
         raise
     except Exception as e:
-        print(f"GitHub callback error: {e}")
+        log_error("github_callback_error", error=str(e))
         raise HTTPException(status_code=500, detail="Failed to complete GitHub login")
 
 

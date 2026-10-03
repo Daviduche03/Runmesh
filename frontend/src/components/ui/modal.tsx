@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState, type ReactNode } from "react";
-import { XIcon } from "lucide-react";
+import { X } from "@phosphor-icons/react";
 
 import { cn } from "@/lib/utils";
 
@@ -93,7 +93,7 @@ export function Modal({ open, onClose, title, children }: ModalProps) {
 	return (
 		<div
 			className={cn(
-				"fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4",
+				"fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4 backdrop-blur-[2px]",
 				"transition-[opacity] duration-150 ease-[var(--ease-out)]",
 				visible ? "opacity-100" : "opacity-0",
 			)}
@@ -108,24 +108,25 @@ export function Modal({ open, onClose, title, children }: ModalProps) {
 				aria-label={title}
 				tabIndex={-1}
 				className={cn(
-					"w-full max-w-lg rounded-lg border border-border bg-popover text-popover-foreground shadow-2xl outline-none",
+					"w-full max-w-lg overflow-hidden rounded-2xl bg-popover text-popover-foreground outline-none",
+					"ring-1 ring-[var(--bento-border)] shadow-[var(--overlay-shadow)]",
 					"transition-[opacity,transform] duration-200 ease-[var(--ease-out)]",
 					visible ? "scale-100 opacity-100" : "scale-95 opacity-0",
 					"motion-reduce:scale-100 motion-reduce:transition-[opacity] motion-reduce:duration-150",
 				)}
 			>
-				<div className="flex items-center justify-between border-b border-border px-4 py-3">
-					<h2 className="text-base font-medium">{title}</h2>
+				<div className="flex items-center justify-between gap-4 px-6 pt-5 pb-4">
+					<h2 className="text-[15px] font-medium">{title}</h2>
 					<button
 						type="button"
 						onClick={onClose}
 						aria-label="Close"
-						className="flex size-8 items-center justify-center rounded-[4px] text-muted-foreground transition-[color,transform] duration-150 ease-[var(--ease-out)] hover:text-foreground active:scale-[0.96]"
+						className="flex size-8 items-center justify-center rounded-lg text-muted-foreground transition-[color,background-color,transform] duration-150 ease-[var(--ease-out)] hover:bg-muted hover:text-foreground active:scale-[0.96]"
 					>
-						<XIcon className="size-4" />
+						<X className="size-4" />
 					</button>
 				</div>
-				<div className="px-4 py-4">{children}</div>
+				<div className="px-6 pb-6">{children}</div>
 			</div>
 		</div>
 	);

@@ -1,6 +1,6 @@
 import { memo } from "react";
 import { Handle, Position, type NodeProps } from "@xyflow/react";
-import { AlertCircleIcon, GlobeIcon, WebhookIcon, ZapIcon } from "lucide-react";
+import { Globe, Lightning, WarningCircle, WebhooksLogo } from "@phosphor-icons/react";
 import { cn } from "@/lib/utils";
 import { triggerLabel, type WorkflowGraphNodeData } from "@/lib/workflow-graph";
 
@@ -93,9 +93,9 @@ export const TriggerGraphNode = memo(function TriggerGraphNode({ data, selected 
 						)}
 					>
 						{isWebhook ? (
-							<WebhookIcon className="size-4" />
+							<WebhooksLogo className="size-4" />
 						) : (
-							<ZapIcon className="size-4" />
+							<Lightning className="size-4" />
 						)}
 					</div>
 					<div className="min-w-0 flex-1 space-y-1">
@@ -167,7 +167,7 @@ export const HttpGraphNode = memo(function HttpGraphNode({ data, selected }: Nod
 				<Handle type="source" position={Position.Right} className={handleClass} />
 				<div className="flex items-start gap-3">
 					<div className="flex size-9 shrink-0 items-center justify-center rounded-none border border-border bg-muted text-muted-foreground">
-						<GlobeIcon className="size-4" />
+						<Globe className="size-4" />
 					</div>
 					<div className="min-w-0 flex-1 space-y-1">
 						<p className="truncate text-sm font-medium">{label}</p>
@@ -183,7 +183,7 @@ export const HttpGraphNode = memo(function HttpGraphNode({ data, selected }: Nod
 				</div>
 				{!hasUrl && (
 					<div className="mt-2.5 flex items-center gap-1.5 text-[11px] text-amber-400">
-						<AlertCircleIcon className="size-3 shrink-0" />
+						<WarningCircle className="size-3 shrink-0" />
 						<span>URL required before run</span>
 					</div>
 				)}

@@ -223,3 +223,24 @@ class ToolForwardRequest(BaseModel):
     connect_user_id: Optional[str] = None
 
 
+
+
+class TriggerCreateRequest(BaseModel):
+    agent_id: str
+    type: str = "api"
+    name: str
+    config: Dict[str, Any] = Field(default_factory=dict)
+    endpoint: Optional[str] = None
+    endpoint_secret: Optional[str] = None
+
+
+class TriggerUpdateRequest(BaseModel):
+    name: Optional[str] = None
+    config: Optional[Dict[str, Any]] = None
+    enabled: Optional[bool] = None
+    endpoint: Optional[str] = None
+    endpoint_secret: Optional[str] = None
+
+
+class TriggerFireRequest(BaseModel):
+    input: Optional[Any] = None

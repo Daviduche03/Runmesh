@@ -7,8 +7,7 @@ hasn't applied the migration yet keeps working (with a logged warning).
 from datetime import datetime, timedelta, timezone
 
 from fastapi import HTTPException, Request
-
-TABLE_MISSING = "rate_limits"
+from utils.log import log_warn
 
 
 def _now() -> datetime:
@@ -53,7 +52,7 @@ async def check_rate_limit(db, key: str, limit: int, window_seconds: int) -> boo
         return True
     except Exception as exc:
         # Fail open: rate limiting must not take down the API
-        print(f"[rate-limit] check failed for {key}: {exc}")
+        log_warn("rate_limit_check_failed", key=key, error=str(exc))
         return True
 
 

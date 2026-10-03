@@ -32,8 +32,8 @@ export function PolicySimulationPage() {
 	return (
 		<div className="flex flex-col gap-6">
 			<div>
-				<h1 className="font-display text-[22px] font-medium tracking-[-0.02em] text-balance">Simulation</h1>
-				<p className="mt-1 max-w-2xl text-sm text-muted-foreground text-pretty">
+				<h1 className="font-display text-[24px] font-medium tracking-[-0.025em] text-balance">Simulation</h1>
+				<p className="mt-1.5 max-w-2xl text-sm text-muted-foreground text-pretty">
 					Evaluate a request against the rules, see what each agent resolves to, and find what the
 					default is silently blocking. Nothing here runs for real.
 				</p>
@@ -56,7 +56,7 @@ export function PolicySimulationPage() {
 
 			<div className="grid gap-3">
 				<div className="flex flex-wrap items-baseline justify-between gap-3">
-					<h2 className="font-mono text-[10.5px] uppercase tracking-[0.14em] text-muted-foreground">
+					<h2 className="text-[11px] font-medium tracking-[0.02em] text-muted-foreground">
 						Current state
 					</h2>
 				</div>

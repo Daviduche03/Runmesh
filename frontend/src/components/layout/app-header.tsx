@@ -1,22 +1,9 @@
 import { cn } from "@/lib/utils";
-import { Separator } from "@/components/ui/separator";
 import { DecorIcon } from "@/components/decor-icon";
-import { AppBreadcrumbs } from "@/components/layout/app-breadcrumbs";
-import { navLinks } from "@/config/nav";
 import { CustomSidebarTrigger } from "@/components/layout/custom-sidebar-trigger";
 import { NavUser } from "@/components/layout/nav-user";
-import { useLocation } from "react-router-dom";
 
 export function AppHeader() {
-	const { pathname, search } = useLocation();
-	const activeItem = navLinks.find((item) => {
-		if (item.path === "/workflows" && pathname.startsWith("/workflows/")) return true;
-		if (item.path?.startsWith("/settings?tab=")) return `${pathname}${search}` === item.path;
-		if (item.path === "/settings") return pathname === "/settings" && !search;
-		if (item.path && item.path !== "/" && pathname.startsWith(`${item.path}/`)) return true;
-		return item.path === pathname;
-	});
-
 	return (
 		<header
 			className={cn(
@@ -27,11 +14,6 @@ export function AppHeader() {
 			<DecorIcon className="hidden md:block" position="bottom-left" />
 			<div className="flex items-center gap-3">
 				<CustomSidebarTrigger />
-				<Separator
-					className="mr-2 h-4 data-[orientation=vertical]:self-center"
-					orientation="vertical"
-				/>
-				<AppBreadcrumbs page={activeItem} />
 			</div>
 			<div className="flex items-center gap-3">
 				<NavUser />

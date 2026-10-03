@@ -38,16 +38,13 @@ async def get_api_key_user(
     """
     env = request.scope["env"]
     
-    # Get API key from custom header
     api_key = request.headers.get("X-API-Key")
     if not api_key:
         raise HTTPException(status_code=401, detail="API key required in X-API-Key header")
     
-    # Validate API key format
     if not api_key.startswith("rk_"):
         raise HTTPException(status_code=401, detail="Invalid API key format")
     
-    # Find API key by hash
     api_key_model = ApiKeyModel(env.DB)
     key_hash = hash_api_key(api_key)
     api_key_data = await api_key_model.find_by_key_hash(key_hash)
@@ -55,27 +52,23 @@ async def get_api_key_user(
     if not api_key_data:
         raise HTTPException(status_code=401, detail="Invalid API key")
     
-    # Check if key is expired
     if api_key_data.get("expires_at"):
         expires_at = datetime.fromisoformat(api_key_data["expires_at"].replace('Z', '+00:00'))
         if expires_at <= datetime.now(timezone.utc):
             raise HTTPException(status_code=401, detail="API key expired")
     
-    # Check permissions
     if required_permissions:
         permissions = json.loads(api_key_data.get("permissions", "[]"))
         for permission in required_permissions:
             if permission not in permissions:
                 raise HTTPException(status_code=403, detail=f"Insufficient permissions: {permission} required")
     
-    # Get user information
     user_model = UserModel(env.DB)
     user_data = await user_model.find_by_id(api_key_data["user_id"])
     
     if not user_data:
         raise HTTPException(status_code=401, detail="User not found")
     
-    # Update last used timestamp
     await api_key_model.update_last_used(api_key_data["id"])
     
     return {

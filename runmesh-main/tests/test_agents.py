@@ -257,10 +257,13 @@ async def main():
             import traceback
 
             report(t.__name__, False, f"exception {e} {traceback.format_exc()[:600]}")
-    print(f"\n--- {sum(1 for _, p, _ in results if p)}/{len(results)} passed ---")
+    failed = [name for name, passed, _ in results if not passed]
+    print(f"\n--- {len(results) - len(failed)}/{len(results)} passed ---")
     for name, passed, detail in results:
         if not passed:
             print(f"FAIL {name}: {detail}")
+    if failed:
+        raise SystemExit(f"FAILED: {failed}")
 
 
 if __name__ == "__main__":

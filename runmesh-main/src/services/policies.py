@@ -780,7 +780,7 @@ async def capability_matrix(db, user_id: str, workspace_id: str) -> dict:
     )
 
     agent_rows = await model.find_many(
-        "agents", "workspace_id = ? ORDER BY name ASC", workspace_id
+        "agents", "workspace_id = ? AND status != 'archived' ORDER BY name ASC", workspace_id
     )
     agents = [
         {"id": row["id"], "name": row.get("name") or row["id"]} for row in agent_rows

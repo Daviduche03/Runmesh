@@ -1,6 +1,5 @@
 "use client";
 
-import { cn } from "@/lib/utils";
 import { LogoIcon } from "@/components/logo";
 import { Link } from "react-router-dom";
 import {
@@ -13,17 +12,11 @@ import {
 	SidebarMenuItem,
 } from "@/components/ui/sidebar";
 import { footerNavLinks, navGroups } from "@/config/nav";
-import { NavGroup } from "@/components/layout/nav-group";
+import { NavGroup, NavIcon } from "@/components/layout/nav-group";
 
 export function AppSidebar() {
 	return (
-		<Sidebar
-			className={cn(
-				"*:data-[slot=sidebar-inner]:bg-background",
-			)}
-			collapsible="icon"
-			variant="sidebar"
-		>
+		<Sidebar collapsible="icon" variant="sidebar">
 			<SidebarHeader className="h-12 justify-center gap-0 border-b border-sidebar-border px-2 py-0">
 				<SidebarMenuButton asChild>
 					<Link to="/dashboard" className="flex items-center gap-2">
@@ -38,7 +31,7 @@ export function AppSidebar() {
 				))}
 			</SidebarContent>
 			<SidebarFooter className="gap-0 p-0">
-				<SidebarMenu className="border-t border-sidebar-border p-2">
+				<SidebarMenu className="p-2">
 					{footerNavLinks.map((item) => (
 						<SidebarMenuItem key={item.title}>
 							<SidebarMenuButton
@@ -48,7 +41,7 @@ export function AppSidebar() {
 								size="sm"
 							>
 								<Link to={item.path ?? "#"}>
-									{item.icon}
+									<NavIcon icon={item.icon} active={item.isActive} />
 									<span>{item.title}</span>
 								</Link>
 							</SidebarMenuButton>
