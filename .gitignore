@@ -33,3 +33,10 @@ __pycache__/
 
 # CLI binary (build with: go build ./cmd/runmesh)
 runmesh-main/workspace/runmesh
+
+# Agent/IDE tooling — local only, never commit
+.agents/
+.claude/
+.kiro/
+agent/
+skills-lock.json
