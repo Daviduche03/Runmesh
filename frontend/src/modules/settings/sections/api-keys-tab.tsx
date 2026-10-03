@@ -17,7 +17,7 @@ import {
 	TableHeader,
 	TableRow,
 } from "@/components/ui/table";
-import { PlusIcon, Trash2Icon } from "lucide-react";
+import { Plus, Trash } from "@phosphor-icons/react";
 import type { ApiKey } from "@/lib/stores/api-keys-store";
 
 type Props = {
@@ -37,7 +37,7 @@ export function ApiKeysTab({ keys, loading, onAdd, onDelete }: Props) {
 						<CardDescription>Keys for authenticating requests to the Runmesh API.</CardDescription>
 					</div>
 					<Button onClick={onAdd}>
-						<PlusIcon className="size-4" />
+						<Plus className="size-4" />
 						Create key
 					</Button>
 				</div>
@@ -80,7 +80,7 @@ export function ApiKeysTab({ keys, loading, onAdd, onDelete }: Props) {
 									</TableCell>
 									<TableCell className="pe-4 text-right">
 										<Button variant="ghost" size="icon-sm" onClick={() => onDelete(k.id, k.name)}>
-											<Trash2Icon className="size-4 text-muted-foreground" />
+											<Trash className="size-4 text-muted-foreground" />
 										</Button>
 									</TableCell>
 								</TableRow>

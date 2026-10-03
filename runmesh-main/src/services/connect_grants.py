@@ -447,7 +447,6 @@ async def approve_grant(
         from services.workspaces import require_membership
         await require_membership(env.DB, approved_by_user_id, grant.workspace_id)
 
-    # Can only approve pending grants
     if grant.approval_status != "pending_approval":
         raise HTTPException(status_code=409, detail=json.dumps({
             "error": "grant_invalid_state",
@@ -455,7 +454,6 @@ async def approve_grant(
             "grant_id": grant_id,
         }))
     
-    # Update grant to approved (SIMPLIFIED: only update approval_status)
     now = utc_now_iso()
     await grant_model.update_grant(
         grant_id,
@@ -464,7 +462,6 @@ async def approve_grant(
         }
     )
     
-    # Audit the approval with full agentic context
     await _audit(
         audit_model,
         event_type=ConnectAuditEventType.GRANT_APPROVED,
@@ -492,7 +489,6 @@ async def approve_grant(
             await task_model.update("tasks", "id = ?", {"status": "queued", "updated_at": now}, t["id"])
             await env.TASK_QUEUE.send({"task_id": t["id"]})
     
-    # Return updated grant
     updated_grant = await grant_model.find_by_id(grant_id)
     return success({
         "id": updated_grant.id,
@@ -528,7 +524,6 @@ async def deny_grant(
             "grant_id": grant_id,
         }))
     
-    # Update grant to denied (SIMPLIFIED: only update approval_status)
     now = utc_now_iso()
     await grant_model.update_grant(
         grant_id,
@@ -537,7 +532,7 @@ async def deny_grant(
         }
     )
     
-    # Audit the denial with full agentic context (decision metadata stored here)
+    # The denial reason is recorded in the audit event, not on the grant.
     await _audit(
         audit_model,
         event_type=ConnectAuditEventType.GRANT_DENIED,
@@ -565,7 +560,6 @@ async def deny_grant(
         for t in waiting:
             await task_model.update("tasks", "id = ?", {"status": "failed", "updated_at": now}, t["id"])
     
-    # Return updated grant
     updated_grant = await grant_model.find_by_id(grant_id)
     return success({
         "id": updated_grant.id,

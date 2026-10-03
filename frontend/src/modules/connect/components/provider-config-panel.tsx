@@ -3,22 +3,13 @@
 import { useState, type ReactNode } from "react";
 import { Input } from "@/components/ui/input";
 import { SheetDescription, SheetHeader, SheetTitle } from "@/components/ui/sheet";
-import { AuthBadge, ProviderLogo, type Provider, type ProviderAuth } from "@/modules/connect/components/providers-table";
-import { CheckIcon, CopyIcon } from "lucide-react";
+import { ProviderLogo, type Provider } from "@/modules/connect/components/providers-table";
+import { Button } from "@/components/ui/button";
+import { SheetClose } from "@/components/ui/sheet";
+import { Check, Copy } from "@phosphor-icons/react";
+import { cn } from "@/lib/utils";
 
 const CALLBACK_URL = "https://connect.runmesh.app/oauth/callback";
-
-function Section({ title, hint, children }: { title: string; hint?: string; children: ReactNode }) {
-	return (
-		<section className="grid gap-3 border-t border-border py-5 first:border-t-0 first:pt-0">
-			<div className="flex items-baseline justify-between gap-3">
-				<h3 className="font-mono text-[10.5px] uppercase tracking-[0.14em] text-muted-foreground">{title}</h3>
-				{hint ? <span className="text-[11px] text-muted-foreground/70">{hint}</span> : null}
-			</div>
-			<div className="grid gap-3">{children}</div>
-		</section>
-	);
-}
 
 function Field({ label, hint, children }: { label: string; hint?: string; children: ReactNode }) {
 	return (
@@ -45,46 +36,69 @@ function CopyField({ value }: { value: string }) {
 				}}
 				className="shrink-0 text-muted-foreground transition-[color,transform] duration-150 ease-[var(--ease-out)] hover:text-foreground active:scale-[0.9]"
 			>
-				{copied ? <CheckIcon className="size-3.5 text-emerald-400" /> : <CopyIcon className="size-3.5" />}
+				{copied ? <Check className="size-3.5 text-emerald-400" /> : <Copy className="size-3.5" />}
 			</button>
 		</div>
 	);
 }
 
-function SchemeDescription({ provider, scheme }: { provider: Provider; scheme: ProviderAuth }) {
-	if (scheme === "oauth2") {
-		return (
-			<p className="text-[12px] leading-5 text-muted-foreground">
-				Runmesh maintains the OAuth app for {provider.name}. Zero setup — your users see
-				“Runmesh” on the consent screen.
-			</p>
-		);
-	}
-	if (scheme === "api_key") {
-		return (
-			<p className="text-[12px] leading-5 text-muted-foreground">
-				Uses a per-connection API key, stored encrypted and sent on each request.
-			</p>
-		);
-	}
-	if (scheme === "dcr_oauth") {
-		return (
-			<p className="text-[12px] leading-5 text-muted-foreground">
-				{provider.name} supports dynamic client registration. Runmesh registers a client
-				automatically — there are no credentials to provide.
-			</p>
-		);
-	}
+function ScopePicker({ scopes }: { scopes: string[] }) {
+	const [selected, setSelected] = useState<Set<string>>(() => new Set(scopes));
+
+	const toggle = (scope: string) => {
+		setSelected((prev) => {
+			const next = new Set(prev);
+			if (next.has(scope)) next.delete(scope);
+			else next.add(scope);
+			return next;
+		});
+	};
+
 	return (
-		<p className="text-[12px] leading-5 text-muted-foreground">
-			{provider.name} requires no authentication.
-		</p>
+		<div className="grid gap-1.5">
+			<div className="flex items-baseline justify-between gap-3">
+				<span className="text-[12px] text-muted-foreground">Scopes</span>
+				<span className="shrink-0 text-[11px] text-muted-foreground tabular-nums">
+					{selected.size} of {scopes.length} selected
+				</span>
+			</div>
+			<p className="text-[11px] text-muted-foreground/70">Pick the scopes to request.</p>
+			<ul className="grid gap-0.5">
+				{scopes.map((scope) => {
+					const checked = selected.has(scope);
+					return (
+						<li key={scope}>
+							<button
+								type="button"
+								role="checkbox"
+								aria-checked={checked}
+								onClick={() => toggle(scope)}
+								className="flex w-full cursor-pointer items-center gap-2.5 rounded-[4px] px-1.5 py-1.5 text-left transition-[background-color] duration-150 ease-[var(--ease-out)] hover:bg-muted/50 active:scale-[0.99]"
+							>
+								<span
+									aria-hidden
+									className={cn(
+										"grid size-3.5 shrink-0 place-items-center rounded-[3px] border transition-[background-color,border-color] duration-150 ease-[var(--ease-out)]",
+										checked ? "border-primary bg-primary" : "border-input bg-transparent"
+									)}
+								>
+									{checked ? <Check className="size-2.5 text-primary-foreground" weight="bold" /> : null}
+								</span>
+								<span className={cn("min-w-0 flex-1 truncate font-mono text-[12.5px]", checked ? "text-foreground" : "text-muted-foreground")}>
+									{scope}
+								</span>
+							</button>
+						</li>
+					);
+				})}
+			</ul>
+		</div>
 	);
 }
 
 export function ProviderConfigPanel({ provider }: { provider: Provider }) {
 	const scheme = provider.auth[0] ?? "none";
-	const showScopes = (scheme === "oauth2" || scheme === "dcr_oauth") && provider.scopes.length > 0;
+	const showScopes = provider.scopes.length > 0;
 
 	return (
 		<>
@@ -94,12 +108,7 @@ export function ProviderConfigPanel({ provider }: { provider: Provider }) {
 						<ProviderLogo provider={provider} size={24} />
 					</span>
 					<div className="min-w-0 flex-1">
-						<SheetTitle className="flex flex-wrap items-center gap-2">
-							{provider.name}
-							<span className="font-mono text-[10.5px] uppercase tracking-[0.12em] text-muted-foreground">
-								{provider.category}
-							</span>
-						</SheetTitle>
+						<SheetTitle>{provider.name}</SheetTitle>
 						<SheetDescription>Let your users connect {provider.name}.</SheetDescription>
 					</div>
 					<span className="inline-flex shrink-0 items-center gap-1.5 rounded-full border border-border px-2.5 py-1 text-[11px] font-medium">
@@ -111,51 +120,30 @@ export function ProviderConfigPanel({ provider }: { provider: Provider }) {
 				</div>
 			</SheetHeader>
 
-			<div className="flex-1 overflow-y-auto px-4">
-				<Section title="Authentication">
-					<div className="flex flex-wrap gap-1.5">
-						{provider.auth.map((auth) => (
-							<AuthBadge key={auth} auth={auth} />
-						))}
-					</div>
-					<SchemeDescription provider={provider} scheme={scheme} />
+			<div className="grid flex-1 content-start gap-5 overflow-y-auto px-4 pt-1">
+				{scheme === "oauth2" ? (
+					<Field
+						label="Callback URL"
+						hint={`Register this exact URL in ${provider.name}'s OAuth settings.`}
+					>
+						<CopyField value={CALLBACK_URL} />
+					</Field>
+				) : null}
 
-					{scheme === "oauth2" ? (
-						<Field
-							label="Callback URL"
-							hint={`Register this exact URL in ${provider.name}'s OAuth settings.`}
-						>
-							<CopyField value={CALLBACK_URL} />
-						</Field>
-					) : null}
-
-					{showScopes ? (
-						<Field label="Scopes" hint="Requested from every new connection.">
-							<ul className="grid gap-1.5">
-								{provider.scopes.map((scope) => (
-									<li key={scope} className="font-mono text-[12.5px]">
-										{scope}
-									</li>
-								))}
-							</ul>
-						</Field>
-					) : null}
-				</Section>
-
-				<Section title="Tools" hint={`${provider.slugs.length} available`}>
-					<ul className="grid gap-1.5">
-						{provider.slugs.map((slug) => (
-							<li key={slug} className="font-mono text-[12.5px]">
-								{slug}
-							</li>
-						))}
-					</ul>
-				</Section>
+				{showScopes ? <ScopePicker key={provider.id} scopes={provider.scopes} /> : null}
 
 				<p className="border-t border-border py-5 text-[11px] leading-5 text-muted-foreground/70">
 					Provider settings aren’t configurable yet — everything runs on Runmesh-managed
 					credentials. Bring-your-own OAuth apps land with provider settings.
 				</p>
+			</div>
+
+			<div className="flex justify-end gap-2 border-t border-border px-4 py-4">
+				<SheetClose asChild>
+					<Button type="button" variant="outline">
+						Close
+					</Button>
+				</SheetClose>
 			</div>
 		</>
 	);

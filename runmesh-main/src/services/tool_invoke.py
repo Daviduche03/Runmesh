@@ -25,7 +25,7 @@ from urllib.parse import urlencode, urlparse
 
 from fastapi import HTTPException
 
-from workers import fetch
+from runtime.http_fetch import fetch
 
 from db.orm import Model
 from utils.responses import success

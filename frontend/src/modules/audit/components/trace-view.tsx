@@ -7,18 +7,7 @@ import { Button } from "@/components/ui/button";
 import { SegmentedControl } from "@/components/segmented-control";
 import { outcomeText, formatDuration } from "@/lib/audit";
 import type { AuditEvent, AuditOutcome, AuditType } from "@/modules/audit/components/audit-table";
-import {
-	BotIcon,
-	CheckCheckIcon,
-	ChevronRightIcon,
-	KeyRoundIcon,
-	ScrollTextIcon,
-	SearchIcon,
-	ServerIcon,
-	ShieldCheckIcon,
-	TicketIcon,
-	WrenchIcon,
-} from "lucide-react";
+import { CaretRight, Checks, Database, Key, MagnifyingGlass, Robot, Scroll, ShieldCheck, Ticket, Wrench } from "@phosphor-icons/react";
 
 export type TraceRun = {
 	traceId: string | null;
@@ -30,14 +19,14 @@ export type TraceRun = {
 type TreeEvent = AuditEvent & { __children: TreeEvent[] };
 
 const typeIcon: Record<AuditType, ComponentType<{ className?: string }>> = {
-	agent: BotIcon,
-	tool: WrenchIcon,
-	approval: CheckCheckIcon,
-	consent: ShieldCheckIcon,
-	grant: KeyRoundIcon,
-	token: TicketIcon,
-	policy: ScrollTextIcon,
-	system: ServerIcon,
+	agent: Robot,
+	tool: Wrench,
+	approval: Checks,
+	consent: ShieldCheck,
+	grant: Key,
+	token: Ticket,
+	policy: Scroll,
+	system: Database,
 };
 
 const typeColor: Record<AuditType, string> = {
@@ -127,7 +116,7 @@ function TreeNode({
 						}}
 						className="grid size-3.5 shrink-0 cursor-pointer place-items-center text-muted-foreground"
 					>
-						<ChevronRightIcon
+						<CaretRight
 							className={cn("size-3.5 transition-transform duration-150 ease-[var(--ease-out)]", !isCollapsed && "rotate-90")}
 						/>
 					</span>
@@ -286,7 +275,7 @@ export function TraceView({
 							</Button>
 						) : null}
 						<div className="relative">
-							<SearchIcon className="absolute top-1/2 left-2.5 size-3.5 -translate-y-1/2 text-muted-foreground" />
+							<MagnifyingGlass className="absolute top-1/2 left-2.5 size-3.5 -translate-y-1/2 text-muted-foreground" />
 							<Input
 								placeholder="Search steps…"
 								className="h-8 w-44 pl-8"
@@ -350,7 +339,7 @@ export function TraceView({
 									className="flex w-full items-center gap-2.5 rounded-[3px] px-2 py-2 text-left transition-colors duration-150 ease-[var(--ease-out)] hover:bg-muted/40 active:bg-muted/70"
 								>
 									<span className="grid size-3.5 shrink-0 place-items-center text-muted-foreground">
-										<ChevronRightIcon
+										<CaretRight
 											className={cn(
 												"size-3.5 transition-transform duration-150 ease-[var(--ease-out)]",
 												!runCollapsed && "rotate-90"
@@ -428,7 +417,7 @@ export function TraceView({
 			) : (
 				<div>
 					<div className="grid grid-cols-[minmax(0,360px)_minmax(0,1fr)] items-center gap-4 border-b border-border px-4 py-2">
-						<span className="font-mono text-[10px] uppercase tracking-[0.12em] text-muted-foreground">Step</span>
+						<span className="text-[11px] font-medium tracking-[0.02em] text-muted-foreground">Step</span>
 						<div className="relative h-4">
 							{[0, 25, 50, 75, 100].map((tick) => (
 								<span

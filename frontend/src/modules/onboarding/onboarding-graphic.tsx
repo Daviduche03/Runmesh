@@ -32,7 +32,7 @@ const FAINT = "#5f6166";
 const ACCENT = "#e1683c";
 
 const mono = "'IBM Plex Mono', ui-monospace, monospace";
-const sans = "'IBM Plex Sans', ui-sans-serif, system-ui, sans-serif";
+const sans = "'Geist', ui-sans-serif, system-ui, sans-serif";
 
 function Arrow({ x1, x2, y }: { x1: number; x2: number; y: number }) {
 	return (

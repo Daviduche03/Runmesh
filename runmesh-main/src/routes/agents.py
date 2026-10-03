@@ -27,3 +27,10 @@ async def list_agents(request: Request, current_user: dict = Depends(get_jwt_use
     env = request.scope["env"]
     workspace_id = await resolve_request_workspace(request, current_user)
     return await agents_service.list_agents(env.DB, current_user["id"], workspace_id)
+
+
+@router.delete("/api/v1/agents/{agent_id}")
+async def archive_agent(agent_id: str, request: Request, current_user: dict = Depends(get_jwt_user)):
+    env = request.scope["env"]
+    workspace_id = await resolve_request_workspace(request, current_user)
+    return await agents_service.archive_agent(env.DB, current_user["id"], workspace_id, agent_id)

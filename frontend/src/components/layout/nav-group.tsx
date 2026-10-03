@@ -16,7 +16,14 @@ import {
 	SidebarMenuSubItem,
 } from "@/components/ui/sidebar";
 import type { SidebarNavGroup } from "@/config/nav";
-import { ChevronRightIcon } from "lucide-react";
+import type { Icon } from "@phosphor-icons/react";
+import { CaretRight } from "@phosphor-icons/react";
+
+/** Sidebar icon — filled when its link is active, outline otherwise. */
+export function NavIcon({ icon: Cmp, active }: { icon?: Icon; active?: boolean }) {
+	if (!Cmp) return null;
+	return <Cmp size={16} weight={active ? "fill" : "regular"} />;
+}
 
 export function NavGroup({ label, items }: SidebarNavGroup) {
 	const { pathname, search } = useLocation();
@@ -24,7 +31,7 @@ export function NavGroup({ label, items }: SidebarNavGroup) {
 	return (
 		<SidebarGroup>
 			{label && (
-				<SidebarGroupLabel className="font-mono text-[10px] uppercase tracking-[0.14em] text-muted-foreground">
+				<SidebarGroupLabel className="text-[11px] font-medium tracking-[0.02em] text-muted-foreground">
 					{label}
 				</SidebarGroupLabel>
 			)}
@@ -56,9 +63,9 @@ export function NavGroup({ label, items }: SidebarNavGroup) {
 											className={cn(!highlight && "text-muted-foreground")}
 											isActive={highlight}
 										>
-												{item.icon}
+												<NavIcon icon={item.icon} active={highlight} />
 												<span>{item.title}</span>
-												<ChevronRightIcon className="ml-auto transition-transform duration-150 ease-[var(--ease-out)] group-data-[state=open]/collapsible:rotate-90" />
+												<CaretRight className="ml-auto transition-transform duration-150 ease-[var(--ease-out)] group-data-[state=open]/collapsible:rotate-90" />
 											</SidebarMenuButton>
 										</CollapsibleTrigger>
 										<CollapsibleContent>
@@ -74,7 +81,7 @@ export function NavGroup({ label, items }: SidebarNavGroup) {
 																isActive={subActive}
 															>
 																<Link to={subItem.path ?? "#"}>
-																	{subItem.icon}
+																	<NavIcon icon={subItem.icon} active={subActive} />
 																	<span>{subItem.title}</span>
 																</Link>
 															</SidebarMenuSubButton>
@@ -91,7 +98,7 @@ export function NavGroup({ label, items }: SidebarNavGroup) {
 										isActive={isActive}
 									>
 										<Link to={item.path ?? "#"}>
-											{item.icon}
+											<NavIcon icon={item.icon} active={isActive} />
 											<span>{item.title}</span>
 										</Link>
 									</SidebarMenuButton>

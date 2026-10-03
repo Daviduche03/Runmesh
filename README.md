@@ -21,18 +21,19 @@ The missing layer is not another tracing dashboard. It is control:
 - **Agent identity** — register agents and tie every action to the agent, task, or workflow run that requested it.
 - **Scoped grants** — mint tokens bound to a scope, a resource, and an expiry. Revoke the agent without revoking everything.
 - **Approval gates** — decide what runs freely and what waits for a person before it happens.
-- **Durable execution** — HTTP tasks, UTC scheduling, and multi-step workflows on Cloudflare Queues with retries, idempotency, and replay.
+- **Durable execution** — HTTP tasks, UTC scheduling, and multi-step workflows with retries, idempotency, and replay.
 - **Audit trail** — follow a token from request, to approval, to the action it authorized.
 - **Dashboard** — runs, workflow execution, analytics, API keys, and outbound webhooks in one place.
 - **Dual auth** — JWT for the dashboard, API keys for integrations, on `/api/v1` routes.
 
-Built on [Cloudflare Workers](https://developers.cloudflare.com/workers/) (Python) with [D1](https://developers.cloudflare.com/d1/) for storage and [Queues](https://developers.cloudflare.com/queues/) for dispatch.
+A single Python process (FastAPI) backed by SQLite — no external services, runs on
+any VM or container host.
 
 ## Repository layout
 
 ```
 Runmesh/
-├── runmesh-main/     Backend — Cloudflare Worker (FastAPI + D1 + Queues)
+├── runmesh-main/     Backend — FastAPI + SQLite
 └── frontend/         Dashboard + landing — React + Vite
 ```
 
@@ -41,32 +42,27 @@ Runmesh/
 - [Node.js](https://nodejs.org/) 20+
 - [pnpm](https://pnpm.io/) (frontend)
 - [uv](https://docs.astral.sh/uv/) 0.8.10+ (backend)
-- [Wrangler](https://developers.cloudflare.com/workers/wrangler/) via `uv sync` in `runmesh-main/`
-- A Cloudflare account with D1 and Queues enabled
+- Docker, if you want to run it the way production does
 
 ## Quick start
 
-### 1. Backend
+### 1. Database
+
+Migrations apply automatically when the server starts, so there is nothing to run
+first. On a blank database the schema is created from `schema.sql`.
+
+To start from production data instead, see [runmesh-main/DEPLOY.md](./runmesh-main/DEPLOY.md).
+
+### 2. Backend
 
 ```bash
 cd runmesh-main
 uv sync --all-groups
-cp .dev.vars.example .dev.vars
-uv run pywrangler dev
+cp .env.example .env      # set JWT_SECRET at minimum
+uv run python src/main.py
 ```
 
 The API listens on `http://localhost:8787` by default.
-
-### 2. Database
-
-Apply migrations to your local D1 instance:
-
-```bash
-cd runmesh-main
-uv run pywrangler d1 migrations apply runmesh-db --local
-```
-
-For production, omit `--local`.
 
 ### 3. Frontend
 
@@ -87,33 +83,18 @@ Open `http://localhost:5173`.
 
 ## Environment variables
 
-Configure in `runmesh-main/wrangler.jsonc` under `vars`. Use [Wrangler secrets](https://developers.cloudflare.com/workers/configuration/secrets/) for sensitive values in production.
+Configure in `runmesh-main/.env` (see [runmesh-main/.env.example](./runmesh-main/.env.example)).
 
 | Variable | Description |
 |----------|-------------|
-| `JWT_SECRET` | Secret for signing dashboard session tokens |
+| `JWT_SECRET` | Secret for signing dashboard session tokens **and** webhook signatures |
+| `DB_PATH` | Path to the SQLite database file (default `runmesh.db`) |
 | `GITHUB_CLIENT_ID` | GitHub OAuth app client ID |
 | `GITHUB_CLIENT_SECRET` | GitHub OAuth app client secret |
 | `FRONTEND_URL` | Dashboard origin for OAuth redirects (e.g. `http://localhost:5173`) |
-| `PUBLIC_URL` | Public Worker URL used as OAuth callback base |
+| `PUBLIC_URL` | Public API URL used as OAuth callback base |
 
-### Bindings (wrangler.jsonc)
-
-| Binding | Resource |
-|---------|----------|
-| `DB` | D1 database |
-| `TASK_QUEUE` | Cloudflare Queue for task dispatch |
-| `WEBHOOK_QUEUE` | Cloudflare Queue for outbound webhooks |
-
-### Cloudflare Queues
-
-Create both queues before deploying:
-
-```bash
-cd runmesh-main
-wrangler queues create runmesh-tasks --message-retention-period-secs 86400
-wrangler queues create runmesh-webhooks --message-retention-period-secs 86400
-```
+Storage is a single SQLite file; dispatch is a queue table the runtime polls.
 
 ## API overview
 
@@ -158,16 +139,20 @@ X-API-Key: rk_...
 
 ```bash
 cd runmesh-main
-uv run pywrangler deploy
-uv run pywrangler d1 migrations apply runmesh-db --remote
+cp .env.example .env       # set JWT_SECRET, PUBLIC_URL, FRONTEND_URL
+docker compose up -d --build
 ```
 
-Deploy the frontend separately (Cloudflare Pages, Vercel, etc.) and set `VITE_API_URL` to your Worker URL.
+Full instructions, including migrating production data off Cloudflare D1, are in
+[runmesh-main/DEPLOY.md](./runmesh-main/DEPLOY.md).
+
+Deploy the frontend separately (Cloudflare Pages, Vercel, etc.) and set
+`VITE_API_URL` to the API origin.
 
 ## Development
 
 ```bash
-cd runmesh-main && uv run pywrangler dev
+cd runmesh-main && uv run --reload python src/main.py
 cd frontend && pnpm dev
 cd frontend && pnpm build
 ```

@@ -10,6 +10,7 @@ from fastapi import HTTPException
 
 from db.orm import WebhookModel, WebhookDeadLetterModel
 from services.workspaces import resolve_workspace_id, require_row_access
+from utils.log import log_error, log_warn
 from utils.url_security import validate_outbound_url
 
 WEBHOOK_QUEUE_NAME = "runmesh-webhooks"
@@ -333,9 +334,13 @@ async def process_webhook_queue_message(
         return
 
     detail = err or "unknown error"
-    print(
-        f"Webhook {webhook_id} attempt {delivery_attempt}/{MAX_WEBHOOK_DELIVERY_ATTEMPTS} "
-        f"failed for {event}: {detail}"
+    log_warn(
+        "webhook_delivery_attempt_failed",
+        webhook_id=webhook_id,
+        attempt=delivery_attempt,
+        max_attempts=MAX_WEBHOOK_DELIVERY_ATTEMPTS,
+        webhook_event=event,
+        error=detail,
     )
 
     scheduled = await schedule_webhook_retry(queue, webhook_id, event, envelope, delivery_attempt)
@@ -349,7 +354,7 @@ async def process_webhook_queue_message(
             status_code,
             detail,
         )
-        print(f"Webhook {webhook_id} exhausted retries for event {event} (event id {envelope.get('id')})")
+        log_warn("webhook_retries_exhausted", webhook_id=webhook_id, webhook_event=event, event_id=envelope.get("id"))
 
 
 def _queue_message_body(message) -> dict:
@@ -383,7 +388,7 @@ async def handle_webhook_queue_batch(
             await process_webhook_queue_message(db, queue, fetch_fn, body)
             _ack_message(message)
         except Exception as e:
-            print(f"Webhook queue handler error: {e}")
+            log_error("webhook_queue_error", error=str(e))
             try:
                 _ack_message(message)
             except Exception:

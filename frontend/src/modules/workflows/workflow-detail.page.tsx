@@ -4,7 +4,7 @@ import { useEffect, useState, useCallback, useRef, useMemo } from "react";
 import { Link, useParams } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
-import { ArrowLeftIcon, GitBranchIcon, Loader2Icon, PlayIcon, PlusIcon, SaveIcon, StopCircleIcon, ListIcon, KeyRoundIcon } from "lucide-react";
+import { ArrowLeft, CircleNotch, FloppyDisk, GitBranch, Key, List, Play, Plus, StopCircle } from "@phosphor-icons/react";
 import { apiGet, apiPost, ApiError } from "@/lib/api";
 import type { Workflow } from "@/lib/stores/workflows-store";
 import EmptyState from "@/components/empty-state";
@@ -228,14 +228,14 @@ export function WorkflowDetailPage() {
 			<div className="grid gap-4">
 				<Button asChild variant="outline" className="w-fit">
 					<Link to="/workflows">
-						<ArrowLeftIcon className="size-4 me-1.5" />
+						<ArrowLeft className="size-4 me-1.5" />
 						Back to workflows
 					</Link>
 				</Button>
 				<EmptyState
 					title="Workflow not found"
 					description="This workflow may have been deleted or you do not have access."
-					icon={<GitBranchIcon className="size-6 text-muted-foreground" />}
+					icon={<GitBranch className="size-6 text-muted-foreground" />}
 				/>
 			</div>
 		);
@@ -283,9 +283,9 @@ export function WorkflowDetailPage() {
 							className="border-red-500/30 text-red-400 hover:bg-red-500/10"
 						>
 							{cancelling ? (
-								<Loader2Icon className="size-4 me-1.5 animate-spin" />
+								<CircleNotch className="size-4 me-1.5 animate-spin" />
 							) : (
-								<StopCircleIcon className="size-4 me-1.5" />
+								<StopCircle className="size-4 me-1.5" />
 							)}
 							Cancel
 						</Button>
@@ -300,21 +300,21 @@ export function WorkflowDetailPage() {
 						}
 					>
 						{running || runActive ? (
-							<Loader2Icon className="size-4 me-1.5 animate-spin" />
+							<CircleNotch className="size-4 me-1.5 animate-spin" />
 						) : (
-							<PlayIcon className="size-4 me-1.5" />
+							<Play className="size-4 me-1.5" />
 						)}
 						{runActive ? "Running" : "Run"}
 					</Button>
 					<Button variant="outline" onClick={() => canvasRef.current?.addStep()}>
-						<PlusIcon className="size-4 me-1.5" />
+						<Plus className="size-4 me-1.5" />
 						Add step
 					</Button>
 					<Button onClick={() => void canvasRef.current?.save()} disabled={saving}>
 						{saving ? (
-							<Loader2Icon className="size-4 me-1.5 animate-spin" />
+							<CircleNotch className="size-4 me-1.5 animate-spin" />
 						) : (
-							<SaveIcon className="size-4 me-1.5" />
+							<FloppyDisk className="size-4 me-1.5" />
 						)}
 						Save
 					</Button>
@@ -337,10 +337,10 @@ export function WorkflowDetailPage() {
 			<div className="rounded-lg border border-border">
 				<div className="flex items-center justify-between border-b border-border px-4 py-3">
 					<div className="flex items-center gap-2">
-						<ListIcon className="size-4 text-muted-foreground" />
+						<List className="size-4 text-muted-foreground" />
 						<h2 className="text-sm font-semibold">Run history</h2>
 					</div>
-					{loadingRuns && <Loader2Icon className="size-4 animate-spin text-muted-foreground" />}
+					{loadingRuns && <CircleNotch className="size-4 animate-spin text-muted-foreground" />}
 				</div>
 				{runs.length === 0 && !loadingRuns ? (
 					<div className="px-4 py-8 text-center text-sm text-muted-foreground">
@@ -367,7 +367,7 @@ export function WorkflowDetailPage() {
 								<div className="flex items-center gap-4 text-sm text-muted-foreground">
 									{runsTokenMap[run.id] ? (
 										<span className="inline-flex items-center gap-1 text-muted-foreground" title="Connect tokens issued">
-											<KeyRoundIcon className="size-3" />
+											<Key className="size-3" />
 											{runsTokenMap[run.id]}
 										</span>
 									) : null}

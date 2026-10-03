@@ -44,7 +44,7 @@ export function CliVerify() {
 		return (
 			<main className="flex min-h-screen items-center justify-center bg-background font-sans text-foreground">
 				<div className="max-w-[440px] p-10 text-center">
-					<h1 className="font-display text-[24px] font-medium tracking-[-0.02em]">Invalid link</h1>
+					<h1 className="font-display text-[24px] font-medium tracking-[-0.025em]">Invalid link</h1>
 					<p className="mt-2 text-[15px] text-muted-foreground">
 						No verification code provided. Run{" "}
 						<code className="rounded-[4px] bg-muted px-1.5 py-0.5 font-mono text-[13px]">runmesh login</code>{" "}
@@ -59,7 +59,7 @@ export function CliVerify() {
 		<main className="flex min-h-screen items-center justify-center bg-background font-sans text-foreground">
 			<div className="max-w-[480px] p-10 text-center">
 				<LogoIcon className="mx-auto mb-6 size-8 text-primary" />
-				<h1 className="font-display text-[24px] font-medium tracking-[-0.02em]">Confirm Runmesh CLI login</h1>
+				<h1 className="font-display text-[24px] font-medium tracking-[-0.025em]">Confirm Runmesh CLI login</h1>
 				<p className="mt-2 text-[15px] text-muted-foreground">
 					A CLI session is requesting access to your Runmesh account.
 				</p>

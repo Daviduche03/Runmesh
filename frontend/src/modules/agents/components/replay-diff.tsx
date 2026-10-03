@@ -1,6 +1,6 @@
 "use client";
 
-import { CheckCheckIcon, GitCompareArrowsIcon } from "lucide-react";
+import { Checks, GitDiff } from "@phosphor-icons/react";
 import type { BackendRunEvent } from "@/lib/stores/agent-runs-store";
 
 type Divergence = { index: number; original: unknown; replayed: unknown };
@@ -46,11 +46,11 @@ export function ReplayDiff({
 			<div className="flex flex-wrap items-center gap-2">
 				{diff.identical ? (
 					<span className="flex items-center gap-1.5 font-mono text-[12px] text-emerald-400">
-						<CheckCheckIcon className="size-3.5" /> identical
+						<Checks className="size-3.5" /> identical
 					</span>
 				) : (
 					<span className="flex items-center gap-1.5 font-mono text-[12px] text-amber-400">
-						<GitCompareArrowsIcon className="size-3.5" /> diverged
+						<GitDiff className="size-3.5" /> diverged
 					</span>
 				)}
 				<span className="font-mono text-[11px] text-muted-foreground">

@@ -4,7 +4,7 @@ import { Area, AreaChart, CartesianGrid, XAxis, YAxis } from "recharts";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { ChartContainer, ChartTooltip, ChartTooltipContent, type ChartConfig } from "@/components/ui/chart";
-import { ChevronDownIcon } from "lucide-react";
+import { CaretDown } from "@phosphor-icons/react";
 
 export type ThroughputPoint = {
 	date: string;
@@ -29,7 +29,7 @@ export function ActionThroughputChart({ data }: { data: ThroughputPoint[] }) {
 					</div>
 					<Button variant="outline" size="sm">
 						Last 30 days
-						<ChevronDownIcon className="size-4" />
+						<CaretDown className="size-4" />
 					</Button>
 				</div>
 			</CardHeader>
@@ -42,7 +42,7 @@ export function ActionThroughputChart({ data }: { data: ThroughputPoint[] }) {
 								<stop offset="100%" stopColor="var(--color-actions)" stopOpacity={0} />
 							</linearGradient>
 						</defs>
-						<CartesianGrid className="stroke-border" vertical={false} />
+						<CartesianGrid className="stroke-border/60" vertical={false} />
 						<XAxis axisLine={false} dataKey="date" interval={4} tickLine={false} tickMargin={8} />
 						<YAxis axisLine={false} tickLine={false} tickMargin={8} width={30} />
 						<ChartTooltip content={<ChartTooltipContent hideLabel />} />

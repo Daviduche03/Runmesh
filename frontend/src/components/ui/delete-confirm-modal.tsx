@@ -2,7 +2,7 @@
 
 import { Button } from "@/components/ui/button";
 import { Modal } from "@/components/ui/modal";
-import { Loader2Icon, Trash2Icon } from "lucide-react";
+import { CircleNotch, Trash } from "@phosphor-icons/react";
 
 type DeleteConfirmModalProps = {
 	open: boolean;
@@ -29,15 +29,15 @@ export function DeleteConfirmModal({
 				<p className="text-sm text-muted-foreground">
 					Are you sure you want to delete <span className="font-medium text-foreground">{itemName}</span>? {description}
 				</p>
-				<div className="flex justify-end gap-3 pt-2 border-t border-border">
+				<div className="flex justify-end gap-3 pt-2">
 					<Button variant="outline" onClick={onClose} disabled={confirming}>
 						Cancel
 					</Button>
 					<Button variant="destructive" onClick={onConfirm} disabled={confirming}>
 						{confirming ? (
-							<Loader2Icon className="size-4 animate-spin me-1.5" />
+							<CircleNotch className="size-4 animate-spin me-1.5" />
 						) : (
-							<Trash2Icon className="size-4 me-1.5" />
+							<Trash className="size-4 me-1.5" />
 						)}
 						Delete
 					</Button>

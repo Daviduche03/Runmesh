@@ -1,7 +1,6 @@
 "use client";
 
 import { cn } from "@/lib/utils";
-import { Button } from "@/components/ui/button";
 import {
 	Table,
 	TableBody,
@@ -10,23 +9,27 @@ import {
 	TableHeader,
 	TableRow,
 } from "@/components/ui/table";
-import { ChevronRightIcon, KeyRoundIcon, SettingsIcon } from "lucide-react";
+import { CaretRight } from "@phosphor-icons/react";
+import { SlackIcon } from "@/components/icons/slack-icon";
 import {
 	SiGmail,
 	SiGithub,
 	SiGoogle,
 	SiGooglecalendar,
 	SiGooglesheets,
+	SiIntercom,
 	SiMeta,
 	SiNotion,
 	SiSupabase,
 } from "@icons-pack/react-simple-icons";
 
 // Keyed by provider id. API ids first; legacy fixture ids kept so nothing
-// regresses if they return. No `slack` entry: this pack version ships no
-// Slack brand icon, so it uses the initials fallback below.
+// regresses if they return. `slack` is vendored (see components/icons):
+// this pack version ships no Slack brand icon.
 const providerIcons = {
 	google: SiGoogle,
+	intercom: SiIntercom,
+	slack: SlackIcon,
 	meta: SiMeta,
 	gmail: SiGmail,
 	github: SiGithub,
@@ -41,7 +44,6 @@ export type ProviderAuth = "oauth2" | "api_key" | "dcr_oauth" | "none";
 export type Provider = {
 	id: string;
 	name: string;
-	category: string;
 	slugs: string[];
 	extraSlugs: number;
 	auth: ProviderAuth[];
@@ -97,7 +99,6 @@ export function ProvidersTable({
 					<TableHead className="ps-4">App</TableHead>
 					<TableHead>Slugs</TableHead>
 					<TableHead>Auth</TableHead>
-					<TableHead>Management</TableHead>
 					<TableHead>Last updated</TableHead>
 					<TableHead className="pe-4" />
 				</TableRow>
@@ -132,29 +133,9 @@ export function ProvidersTable({
 								))}
 							</span>
 						</TableCell>
-						<TableCell>
-							<span className="flex items-center gap-1" onClick={(e) => e.stopPropagation()}>
-								<Button
-									variant="ghost"
-									size="icon-sm"
-									className="size-6 rounded-full text-muted-foreground"
-									onClick={() => onSelect?.(provider)}
-								>
-									<KeyRoundIcon className="size-3.5" />
-								</Button>
-								<Button
-									variant="ghost"
-									size="icon-sm"
-									className="size-6 rounded-full text-muted-foreground"
-									onClick={() => onSelect?.(provider)}
-								>
-									<SettingsIcon className="size-3.5" />
-								</Button>
-							</span>
-						</TableCell>
-						<TableCell className="text-[13px] text-muted-foreground">{provider.lastUpdated}</TableCell>
+					<TableCell className="text-[13px] text-muted-foreground">{provider.lastUpdated}</TableCell>
 						<TableCell className="pe-4 text-right">
-							<ChevronRightIcon className="ms-auto size-4 text-muted-foreground/60" />
+							<CaretRight className="ms-auto size-4 text-muted-foreground/60" />
 						</TableCell>
 					</TableRow>
 				))}

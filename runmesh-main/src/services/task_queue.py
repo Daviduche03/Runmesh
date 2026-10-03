@@ -6,6 +6,7 @@ from db.orm import TaskModel, WorkflowRunModel
 from services.templating import resolve_task_request
 from services.webhooks import dispatch_event, signed_dispatch, _ack_message, _queue_message_body
 from services.workflow_runner import handle_workflow_task_completion
+from utils.log import log_error, log_warn
 from utils.url_security import is_outbound_url_allowed
 
 TERMINAL_STATUSES = frozenset({"completed", "failed", "cancelled"})
@@ -109,13 +110,13 @@ async def process_task_message(env, message, fetch_fn) -> None:
                 chain_context = await build_step_chain_context(env, task_row)
             target_url, task_payload = resolve_task_request(task_row, chain_context)
         except HTTPException as exc:
-            print(f"Task template error for {task_id}: {exc.detail}")
+            log_error("task_template_error", task_id=task_id, error=str(exc.detail))
             raise ValueError(str(exc.detail)) from exc
 
         # SSRF guard: re-validate the (possibly template-rendered) target URL.
         # Blocked URLs are a permanent failure — retrying would never succeed.
         if not is_outbound_url_allowed(target_url):
-            print(f"Task {task_id} blocked: target URL failed SSRF checks")
+            log_warn("task_blocked_ssrf", task_id=task_id)
             await _finalize_task(env, task_id, task_row, workflow_run_id, "failed", "", None)
             _ack_message(message)
             return
@@ -145,7 +146,7 @@ async def process_task_message(env, message, fetch_fn) -> None:
             final_status = "failed"
             response_body = ""
         else:
-            print(f"Task delivery error for {task_id}: {dispatch_out}")
+            log_error("task_delivery_error", task_id=task_id, error=dispatch_out)
             raise ValueError(dispatch_out or "delivery failed") from None
         if final_status == "failed":
             retries = task_row.get("retries") or 0
@@ -169,7 +170,7 @@ async def process_task_message(env, message, fetch_fn) -> None:
         )
         _ack_message(message)
     except Exception as exc:
-        print(f"Task execution error for {task_id}: {exc}")
+        log_error("task_execution_error", task_id=task_id, error=str(exc))
         if not task_id or not task_row:
             _ack_message(message)
             return
@@ -196,4 +197,4 @@ async def process_task_message(env, message, fetch_fn) -> None:
             )
             _ack_message(message)
         except Exception as finalize_exc:
-            print(f"Task completion handler error for {task_id}: {finalize_exc}")
+            log_error("task_finalize_error", task_id=task_id, error=str(finalize_exc))

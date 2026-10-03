@@ -21,7 +21,7 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { SegmentedControl } from "@/components/segmented-control";
-import { ActivityIcon, Loader2Icon, PlusIcon, MoreVerticalIcon, CopyIcon, CheckIcon, Trash2Icon } from "lucide-react";
+import { Check, CircleNotch, Copy, DotsThreeVertical, Plus, Pulse, Trash } from "@phosphor-icons/react";
 import { toast } from "sonner";
 import { DeleteConfirmModal } from "@/components/ui/delete-confirm-modal";
 import { FormSelect } from "@/components/form-select";
@@ -126,16 +126,16 @@ export function RunsPage() {
 	const totalPages = Math.ceil(total / 50);
 
 	return (
-		<div className="flex flex-col gap-4">
+		<div className="flex flex-col gap-6">
 			<div className="flex flex-col gap-4 md:flex-row md:items-end md:justify-between">
 				<div>
-					<h1 className="font-display text-[22px] font-medium tracking-[-0.02em]">Runs</h1>
-					<p className="mt-1 max-w-2xl text-sm text-muted-foreground">
+					<h1 className="font-display text-[24px] font-medium tracking-[-0.025em]">Runs</h1>
+					<p className="mt-1.5 max-w-2xl text-sm text-muted-foreground">
 						Durable executions, retries, and workflow steps across your workspace.
 					</p>
 				</div>
 				<Button onClick={() => setModalOpen(true)}>
-					<PlusIcon className="me-1.5 size-4" />
+					<Plus className="me-1.5 size-4" />
 					New run
 				</Button>
 			</div>
@@ -176,7 +176,7 @@ export function RunsPage() {
 										<EmptyState
 											title="No runs yet"
 											description="Create your first durable run or workflow to see executions here."
-											icon={<ActivityIcon className="size-6 text-muted-foreground" />}
+											icon={<Pulse className="size-6 text-muted-foreground" />}
 										/>
 									</TableCell>
 								</TableRow>
@@ -204,24 +204,24 @@ export function RunsPage() {
 												<DropdownMenu>
 													<DropdownMenuTrigger asChild>
 														<Button variant="ghost" size="icon-sm">
-															<MoreVerticalIcon className="size-4 text-muted-foreground" />
+															<DotsThreeVertical className="size-4 text-muted-foreground" />
 														</Button>
 													</DropdownMenuTrigger>
 													<DropdownMenuContent align="end" className="min-w-40">
 														<DropdownMenuItem onClick={() => copyValue(`id-${run.id}`, run.id)}>
 															{copied === `id-${run.id}` ? (
-																<CheckIcon className="size-4 text-emerald-400" />
+																<Check className="size-4 text-emerald-400" />
 															) : (
-																<CopyIcon className="size-4" />
+																<Copy className="size-4" />
 															)}
 															Copy run ID
 														</DropdownMenuItem>
 														{run.endpoint ? (
 															<DropdownMenuItem onClick={() => copyValue(`endpoint-${run.id}`, run.endpoint)}>
 																{copied === `endpoint-${run.id}` ? (
-																	<CheckIcon className="size-4 text-emerald-400" />
+																	<Check className="size-4 text-emerald-400" />
 																) : (
-																	<CopyIcon className="size-4" />
+																	<Copy className="size-4" />
 																)}
 																Copy endpoint
 															</DropdownMenuItem>
@@ -230,7 +230,7 @@ export function RunsPage() {
 															variant="destructive"
 															onClick={() => setDeleteTarget({ id: run.id, name: run.id.slice(0, 8) })}
 														>
-															<Trash2Icon className="size-4" />
+															<Trash className="size-4" />
 															Delete run
 														</DropdownMenuItem>
 													</DropdownMenuContent>
@@ -241,7 +241,7 @@ export function RunsPage() {
 									{loading ? (
 										<TableRow>
 											<TableCell colSpan={7} className="py-3 text-center text-sm text-muted-foreground">
-												<Loader2Icon className="me-2 inline size-4 animate-spin" />
+												<CircleNotch className="me-2 inline size-4 animate-spin" />
 												Loading more…
 											</TableCell>
 										</TableRow>
@@ -272,7 +272,7 @@ export function RunsPage() {
 			<Modal open={modalOpen} onClose={() => { setModalOpen(false); setError(""); }} title="New run">
 				<form onSubmit={handleSubmit} className="grid gap-4">
 					<div className="grid gap-1.5">
-						<label className="font-mono text-[10.5px] uppercase tracking-[0.14em] text-muted-foreground">URL</label>
+						<label className="text-[11px] font-medium tracking-[0.02em] text-muted-foreground">URL</label>
 						<Input
 							placeholder="https://app.example.com/api/agent/tool"
 							value={url}
@@ -280,7 +280,7 @@ export function RunsPage() {
 						/>
 					</div>
 					<div className="grid gap-1.5">
-						<label className="font-mono text-[10.5px] uppercase tracking-[0.14em] text-muted-foreground">Trigger</label>
+						<label className="text-[11px] font-medium tracking-[0.02em] text-muted-foreground">Trigger</label>
 						<FormSelect
 							value={trigger as (typeof triggerOptions)[number]["value"]}
 							onChange={setTrigger}
@@ -288,7 +288,7 @@ export function RunsPage() {
 						/>
 					</div>
 					<div className="grid gap-1.5">
-						<label className="font-mono text-[10.5px] uppercase tracking-[0.14em] text-muted-foreground">Payload (JSON)</label>
+						<label className="text-[11px] font-medium tracking-[0.02em] text-muted-foreground">Payload (JSON)</label>
 						<textarea
 							className="flex min-h-24 w-full rounded-[4px] border border-input bg-background px-3 py-2 font-mono text-sm focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
 							value={payload}
@@ -296,12 +296,12 @@ export function RunsPage() {
 						/>
 					</div>
 					{error && <p className="text-sm text-red-400">{error}</p>}
-					<div className="flex justify-end gap-2 border-t border-border pt-4">
+					<div className="flex justify-end gap-2 pt-4">
 						<Button type="button" variant="outline" onClick={() => { setModalOpen(false); setError(""); }}>
 							Cancel
 						</Button>
 						<Button type="submit" disabled={creating}>
-							{creating && <Loader2Icon className="me-1.5 size-4 animate-spin" />}
+							{creating && <CircleNotch className="me-1.5 size-4 animate-spin" />}
 							Create run
 						</Button>
 					</div>

@@ -1,7 +1,7 @@
 [project]
 name = "runmesh"
 version = "0.1.0"
-description = "Task execution API for webhooks, queues, and scheduled jobs on Cloudflare Workers"
+description = "Task execution API for webhooks, queues, and scheduled jobs"
 readme = "README.md"
 requires-python = ">=3.12"
 dependencies = [
@@ -9,6 +9,9 @@ dependencies = [
     "markupsafe",
     "jinja2",
     "python-multipart>=0.0.32",
+    "aiosqlite>=0.20.0",
+    "httpx>=0.27.0",
+    "uvicorn>=0.32.0",
 ]
 
 

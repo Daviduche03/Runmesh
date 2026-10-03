@@ -53,12 +53,12 @@ export function PolicyRulesTable({
 								<span className="flex flex-wrap items-center gap-2">
 									<span className="text-[13.5px] font-medium">{rule.name}</span>
 									{rule.mode === "log-only" ? (
-										<span className="font-mono text-[10px] uppercase tracking-[0.12em] text-muted-foreground/60">
+										<span className="text-[11px] font-medium tracking-[0.02em] text-muted-foreground/60">
 											log-only
 										</span>
 									) : null}
 									{!rule.enabled ? (
-										<span className="font-mono text-[10px] uppercase tracking-[0.12em] text-muted-foreground/60">
+										<span className="text-[11px] font-medium tracking-[0.02em] text-muted-foreground/60">
 											disabled
 										</span>
 									) : null}

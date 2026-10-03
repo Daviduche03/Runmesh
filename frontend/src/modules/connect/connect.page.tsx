@@ -11,21 +11,27 @@ import { Sheet, SheetContent } from "@/components/ui/sheet";
 import { ProvidersTable, type Provider } from "@/modules/connect/components/providers-table";
 import { ProviderConfigPanel } from "@/modules/connect/components/provider-config-panel";
 import { ConnectionsTable, type Connection } from "@/modules/connect/components/connections-table";
-import { SegmentedControl } from "@/components/segmented-control";
 import { useConnectionsStore, type BackendConnection } from "@/lib/stores/connections-store";
 import { useProvidersStore, type BackendProvider } from "@/lib/stores/providers-store";
 import { useGrantsStore } from "@/lib/stores/grants-store";
 import { StatCard } from "@/modules/dashboard/components/stat-card";
 import { Skeleton } from "@/components/ui/skeleton";
-import { PlugIcon, SearchIcon } from "lucide-react";
+import { MagnifyingGlass, Plug } from "@phosphor-icons/react";
 import EmptyState from "@/components/empty-state";
 
+// Display names that differ from a capitalized id. Fin is Intercom's AI
+// agent; the credential behind it is the Intercom workspace token.
+const providerNames: Record<string, string> = {
+	intercom: "Intercom Fin",
+};
+
 function toProvider(provider: BackendProvider): Provider {
-	const name = provider.id.charAt(0).toUpperCase() + provider.id.slice(1);
+	const name =
+		providerNames[provider.id] ??
+		provider.id.charAt(0).toUpperCase() + provider.id.slice(1);
 	return {
 		id: provider.id,
 		name,
-		category: "Other",
 		slugs: [provider.id],
 		extraSlugs: 0,
 		auth: provider.oauth_enabled ? ["oauth2"] : ["none"],
@@ -46,13 +52,6 @@ function formatAge(iso: string): string {
 	return `${Math.floor(hours / 24)}d ago`;
 }
 
-const filterOptions = [
-	{ label: "All", value: "all" },
-	{ label: "OAuth2", value: "oauth2" },
-	{ label: "API Key", value: "api_key" },
-	{ label: "No auth", value: "none" },
-] as const;
-
 export function ConnectPage() {
 	const connections = useConnectionsStore((s) => s.connections);
 	const connectionsLoading = useConnectionsStore((s) => s.loading);
@@ -65,7 +64,6 @@ export function ConnectPage() {
 	const fetchGrants = useGrantsStore((s) => s.fetch);
 	const [selected, setSelected] = useState<Provider | null>(null);
 	const [query, setQuery] = useState("");
-	const [authFilter, setAuthFilter] = useState<(typeof filterOptions)[number]["value"]>("all");
 
 	useEffect(() => {
 		fetchConnections();
@@ -100,7 +98,6 @@ export function ConnectPage() {
 	}));
 
 	const filtered = providers.filter((provider) => {
-		if (authFilter !== "all" && !provider.auth.includes(authFilter)) return false;
 		if (query) {
 			const q = query.toLowerCase();
 			if (!provider.name.toLowerCase().includes(q) && !provider.slugs.some((slug) => slug.includes(q))) return false;
@@ -109,10 +106,10 @@ export function ConnectPage() {
 	});
 
 	return (
-		<div className="flex flex-col gap-4">
+		<div className="flex flex-col gap-6">
 			<div>
-				<h1 className="font-display text-[22px] font-medium tracking-[-0.02em]">Connect</h1>
-				<p className="mt-1 max-w-2xl text-sm text-muted-foreground">
+				<h1 className="font-display text-[24px] font-medium tracking-[-0.025em]">Connect</h1>
+				<p className="mt-1.5 max-w-2xl text-sm text-muted-foreground">
 					Let your users connect the accounts your agents act on.
 				</p>
 			</div>
@@ -132,7 +129,7 @@ export function ConnectPage() {
 							<CardDescription>Accounts your users can connect. Select one to configure.</CardDescription>
 						</div>
 						<div className="relative w-full max-w-xs">
-							<SearchIcon className="absolute top-1/2 left-2.5 size-3.5 -translate-y-1/2 text-muted-foreground" />
+							<MagnifyingGlass className="absolute top-1/2 left-2.5 size-3.5 -translate-y-1/2 text-muted-foreground" />
 							<Input
 								placeholder="Search providers…"
 								className="h-8 pl-8"
@@ -143,9 +140,6 @@ export function ConnectPage() {
 					</div>
 				</CardHeader>
 				<CardContent className="px-0">
-					<div className="border-b border-border px-4 py-3">
-						<SegmentedControl options={filterOptions} value={authFilter} onChange={setAuthFilter} />
-					</div>
 					{loadingProviders ? (
 						<div className="grid gap-2 px-4 py-2">
 							{[0, 1, 2].map((index) => (
@@ -159,7 +153,7 @@ export function ConnectPage() {
 							<EmptyState
 								title="No providers"
 								description="The backend did not return any connect providers."
-								icon={<PlugIcon className="size-6 text-muted-foreground" />}
+								icon={<Plug className="size-6 text-muted-foreground" />}
 							/>
 						</div>
 					)}
@@ -183,7 +177,7 @@ export function ConnectPage() {
 							<EmptyState
 								title="No connections yet"
 								description="Connections appear here when your users connect accounts."
-								icon={<PlugIcon className="size-6 text-muted-foreground" />}
+								icon={<Plug className="size-6 text-muted-foreground" />}
 							/>
 						</div>
 					)}
@@ -196,7 +190,7 @@ export function ConnectPage() {
 					if (!open) setSelected(null);
 				}}
 			>
-				<SheetContent side="right" className="w-full sm:max-w-xl">
+				<SheetContent side="right" showCloseButton={false} className="w-full sm:max-w-xl">
 					{selected ? <ProviderConfigPanel key={selected.id} provider={selected} /> : null}
 				</SheetContent>
 			</Sheet>

@@ -11,7 +11,7 @@ import {
 	TableHeader,
 	TableRow,
 } from "@/components/ui/table";
-import { Loader2Icon } from "lucide-react";
+import { CircleNotch } from "@phosphor-icons/react";
 
 export type GrantStatus = "active" | "pending" | "expired" | "revoked" | "denied";
 
@@ -110,7 +110,7 @@ export function GrantsTable({
 											disabled={actingId !== null}
 											onClick={onApprove ? () => onApprove(grant) : undefined}
 										>
-											{acting && <Loader2Icon className="size-3.5 animate-spin" />}
+											{acting && <CircleNotch className="size-3.5 animate-spin" />}
 											Approve
 										</Button>
 										<Button
@@ -129,7 +129,7 @@ export function GrantsTable({
 										onClick={onRevoke ? () => onRevoke(grant) : undefined}
 										disabled={grant.status !== "active" || actingId !== null}
 									>
-										{acting && <Loader2Icon className="size-3.5 animate-spin" />}
+										{acting && <CircleNotch className="size-3.5 animate-spin" />}
 										Revoke
 									</Button>
 								)}
