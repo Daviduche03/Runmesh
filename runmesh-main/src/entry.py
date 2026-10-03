@@ -5,26 +5,11 @@ from fastapi import (
 
 from fastapi.exceptions import RequestValidationError
 
-from services import webhooks as webhooks_service
-
-from services.scheduler import TaskScheduler
-
-from services.task_queue import process_task_message
-
-from services.workflow_runner import recover_stale_workflow_runs
-
-from services.workflow_triggers import run_due_scheduled_workflows
-
 from starlette.middleware.cors import CORSMiddleware
 
 from utils.errors import (
     http_exception_handler,
     validation_exception_handler,
-)
-
-from workers import (
-    WorkerEntrypoint,
-    fetch,
 )
 
 from routes.system import router as system_router
@@ -36,6 +21,7 @@ from routes.workflows import router as workflows_router
 from routes.policies import router as policies_router
 from routes.collection import router as collection_router
 from routes.tools import router as tools_router
+from routes.triggers import router as triggers_router
 from routes.connect_sessions import router as connect_sessions_router
 from routes.connect_oauth import router as connect_oauth_router
 from routes.connect_grants import router as connect_grants_router
@@ -79,6 +65,7 @@ app.include_router(workflows_router)
 app.include_router(policies_router)
 app.include_router(collection_router)
 app.include_router(tools_router)
+app.include_router(triggers_router)
 app.include_router(connect_sessions_router)
 app.include_router(connect_oauth_router)
 app.include_router(connect_grants_router)
@@ -86,38 +73,3 @@ app.include_router(workspaces_router)
 app.include_router(auth_router)
 app.include_router(dashboard_router)
 
-
-class Default(WorkerEntrypoint):
-    async def fetch(self, request):
-        import asgi
-        return await asgi.fetch(app, request.js_object, self.env)
-
-    async def scheduled(self, event, *_):
-        scheduler = TaskScheduler(self.env.DB, self.env.TASK_QUEUE)
-        try:
-            enqueued_count = await scheduler.enqueue_due_tasks()
-            if enqueued_count > 0:
-                print(f"Enqueued {enqueued_count} scheduled tasks for execution")
-            workflow_count = await run_due_scheduled_workflows(self.env)
-            if workflow_count > 0:
-                print(f"Started {workflow_count} scheduled workflow runs")
-            recovered = await recover_stale_workflow_runs(self.env)
-            if recovered > 0:
-                print(f"Recovered {recovered} stale workflow run(s)")
-        except Exception as e:
-            print(f"Scheduler error: {e}")
-            raise
-
-    async def queue(self, batch, *_):
-        queue_name = getattr(batch, "queue", None)
-        if queue_name == webhooks_service.WEBHOOK_QUEUE_NAME:
-            await webhooks_service.handle_webhook_queue_batch(
-                self.env.DB,
-                self.env.WEBHOOK_QUEUE,
-                fetch,
-                batch.messages,
-            )
-            return
-
-        for message in batch.messages:
-            await process_task_message(self.env, message, fetch)

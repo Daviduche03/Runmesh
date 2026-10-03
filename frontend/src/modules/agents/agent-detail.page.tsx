@@ -19,16 +19,16 @@ import { useAgentRunsStore, type BackendRun, type BackendRunEvent } from "@/lib/
 import { copyText } from "@/lib/clipboard";
 import { estimateCost, formatCost, formatTokens, usageNumbers } from "@/lib/pricing";
 import EmptyState from "@/components/empty-state";
-import { toast } from "sonner";
+import { DeleteConfirmModal } from "@/components/ui/delete-confirm-modal";
 import {
-	ArrowLeftIcon,
-	BotIcon,
-	ChevronRightIcon,
-	CopyIcon,
-	KeyRoundIcon,
-	Loader2Icon,
-	PauseIcon,
-} from "lucide-react";
+	DropdownMenu,
+	DropdownMenuContent,
+	DropdownMenuItem,
+	DropdownMenuSeparator,
+	DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
+import { toast } from "sonner";
+import { ArrowLeft, CaretRight, CircleNotch, Copy, DotsThree, Key, Pause, Robot, ShieldSlash, Trash } from "@phosphor-icons/react";
 import { useEffect, useState } from "react";
 import { cn } from "@/lib/utils";
 import {
@@ -295,6 +295,8 @@ export function AgentDetailPage() {
 	const grantsLoading = useGrantsStore((s) => s.loading);
 	const fetchGrants = useGrantsStore((s) => s.fetch);
 	const revokeGrant = useGrantsStore((s) => s.revoke);
+	const removeAgent = useAgentsStore((s) => s.remove);
+	const deletingAgent = useAgentsStore((s) => s.deleting);
 	const runsByAgent = useAgentRunsStore((s) => s.runsByAgent);
 	const runsLoading = useAgentRunsStore((s) => s.loadingAgents);
 	const fetchRuns = useAgentRunsStore((s) => s.fetchRuns);
@@ -302,6 +304,7 @@ export function AgentDetailPage() {
 	const navigate = useNavigate();
 	const [expandedRun, setExpandedRun] = useState<string | null>(() => searchParams.get("run"));
 	const [selectedEvent, setSelectedEvent] = useState<AuditEvent | null>(null);
+	const [deleteOpen, setDeleteOpen] = useState(false);
 
 	const handleOpenRun = (runId: string, agentId: string | null) => {
 		if (agentId) navigate(`/agents/${agentId}?run=${runId}`);
@@ -324,7 +327,7 @@ export function AgentDetailPage() {
 	if (loading && !found) {
 		return (
 			<div className="flex items-center justify-center py-24 text-sm text-muted-foreground">
-				<Loader2Icon className="me-2 size-4 animate-spin" />
+				<CircleNotch className="me-2 size-4 animate-spin" />
 				Loading agent…
 			</div>
 		);
@@ -332,12 +335,12 @@ export function AgentDetailPage() {
 
 	if (!found) {
 		return (
-			<div className="flex flex-col gap-4">
+			<div className="flex flex-col gap-6">
 				<Link
 					to="/agents"
 					className="inline-flex w-fit items-center gap-1.5 text-[12px] text-muted-foreground no-underline transition-[color] duration-150 ease-[var(--ease-out)] hover:text-foreground"
 				>
-					<ArrowLeftIcon className="size-3.5" />
+					<ArrowLeft className="size-3.5" />
 					Agents
 				</Link>
 				<p className="text-sm text-muted-foreground">Agent not found in this workspace.</p>
@@ -375,34 +378,60 @@ export function AgentDetailPage() {
 		else toast.success("Grant revoked");
 	};
 
+	const handleDeleteAgent = async () => {
+		const message = await removeAgent(found.id);
+		if (message) {
+			toast.error(message);
+			return;
+		}
+		setDeleteOpen(false);
+		toast.success("Agent deleted");
+		navigate("/agents");
+	};
+
 	return (
-		<div className="flex flex-col gap-4">
+		<div className="flex flex-col gap-6">
 			<Link
 				to="/agents"
 				className="inline-flex w-fit items-center gap-1.5 text-[12px] text-muted-foreground no-underline transition-[color] duration-150 ease-[var(--ease-out)] hover:text-foreground"
 			>
-				<ArrowLeftIcon className="size-3.5" />
+				<ArrowLeft className="size-3.5" />
 				Agents
 			</Link>
 
 			<div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
 				<div className="flex flex-wrap items-center gap-3">
-					<h1 className="font-display text-[22px] font-medium tracking-[-0.02em]">{agent.name}</h1>
+					<h1 className="font-display text-[24px] font-medium tracking-[-0.025em]">{agent.name}</h1>
 					<AgentStatus status={agent.status} />
 					<span className="font-mono text-[12px] text-muted-foreground">{agent.id}</span>
 				</div>
 				<div className="flex flex-wrap items-center gap-2">
-					<Button variant="outline" size="sm" onClick={() => copyText(found.id, "Agent ID copied")}>
-						<CopyIcon className="me-1.5 size-3.5" />
-						Copy ID
-					</Button>
-					<Button variant="outline" size="sm">
-						Revoke all access
-					</Button>
-					<Button size="sm">
-						<PauseIcon className="me-1.5 size-3.5" />
-						Suspend agent
-					</Button>
+					<DropdownMenu>
+						<DropdownMenuTrigger asChild>
+							<Button variant="outline" size="icon-sm" aria-label="Agent actions">
+								<DotsThree className="size-4" weight="bold" />
+							</Button>
+						</DropdownMenuTrigger>
+						<DropdownMenuContent align="end" className="min-w-44">
+							<DropdownMenuItem onSelect={() => copyText(found.id, "Agent ID copied")}>
+								<Copy />
+								Copy ID
+							</DropdownMenuItem>
+							<DropdownMenuItem>
+								<ShieldSlash />
+								Revoke all access
+							</DropdownMenuItem>
+							<DropdownMenuItem>
+								<Pause />
+								Suspend agent
+							</DropdownMenuItem>
+							<DropdownMenuSeparator />
+							<DropdownMenuItem variant="destructive" onSelect={() => setDeleteOpen(true)}>
+								<Trash />
+								Delete agent
+							</DropdownMenuItem>
+						</DropdownMenuContent>
+					</DropdownMenu>
 				</div>
 			</div>
 
@@ -461,7 +490,7 @@ export function AgentDetailPage() {
 											onClick={() => setExpandedRun(expanded ? null : run.id)}
 										>
 											<TableCell className="ps-4">
-												<ChevronRightIcon
+												<CaretRight
 													className={cn(
 														"size-3.5 text-muted-foreground transition-transform duration-150 ease-[var(--ease-out)]",
 														expanded && "rotate-90"
@@ -523,7 +552,7 @@ export function AgentDetailPage() {
 							<EmptyState
 								title="No runs yet"
 								description="Runs appear here once this agent executes through the wrapper."
-								icon={<BotIcon className="size-6 text-muted-foreground" />}
+								icon={<Robot className="size-6 text-muted-foreground" />}
 							/>
 						</div>
 					)}
@@ -550,7 +579,7 @@ export function AgentDetailPage() {
 							<EmptyState
 								title="No grants held"
 								description="This agent has no scoped access. Grants appear here once issued."
-								icon={<KeyRoundIcon className="size-6 text-muted-foreground" />}
+								icon={<Key className="size-6 text-muted-foreground" />}
 							/>
 						</div>
 					)}
@@ -558,6 +587,16 @@ export function AgentDetailPage() {
 			</Card>
 
 			<AuditEventDetail event={selectedEvent} onClose={() => setSelectedEvent(null)} />
+
+			<DeleteConfirmModal
+				open={deleteOpen}
+				onClose={() => setDeleteOpen(false)}
+				title="Delete agent"
+				itemName={agent.name}
+				description="Its recorded runs, versions, and audit history are kept — the identity is removed from this workspace."
+				onConfirm={handleDeleteAgent}
+				confirming={deletingAgent}
+			/>
 		</div>
 	);
 }

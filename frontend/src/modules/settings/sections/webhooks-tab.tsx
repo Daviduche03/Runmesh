@@ -19,7 +19,7 @@ import {
 	TableHeader,
 	TableRow,
 } from "@/components/ui/table";
-import { PlusIcon, Trash2Icon, CopyIcon, CheckIcon, RefreshCwIcon, Loader2Icon, RotateCcwIcon } from "lucide-react";
+import { ArrowCounterClockwise, ArrowsClockwise, Check, CircleNotch, Copy, Plus, Trash } from "@phosphor-icons/react";
 import type { Webhook, WebhookDeadLetter } from "@/lib/stores/webhooks-store";
 
 type Props = {
@@ -80,7 +80,7 @@ export function WebhooksTab({
 							<CardDescription>Runmesh POSTs signed event payloads when tasks change state.</CardDescription>
 						</div>
 						<Button onClick={onAdd}>
-							<PlusIcon className="size-4" />
+							<Plus className="size-4" />
 							Add webhook
 						</Button>
 					</div>
@@ -139,7 +139,7 @@ export function WebhooksTab({
 													onDelete(w.id, w.name);
 												}}
 											>
-												<Trash2Icon className="size-4 text-muted-foreground" />
+												<Trash className="size-4 text-muted-foreground" />
 											</Button>
 										</TableCell>
 									</TableRow>
@@ -169,12 +169,12 @@ export function WebhooksTab({
 							/>
 							{revealedSecret ? (
 								<Button variant="outline" size="sm" onClick={() => copySecret(revealedSecret)}>
-									{copied ? <CheckIcon className="size-3.5" /> : <CopyIcon className="size-3.5" />}
+									{copied ? <Check className="size-3.5" /> : <Copy className="size-3.5" />}
 									Copy
 								</Button>
 							) : null}
 							<Button variant="outline" size="sm" disabled={rotating} onClick={handleRotate}>
-								{rotating ? <Loader2Icon className="size-3.5 animate-spin" /> : <RefreshCwIcon className="size-3.5" />}
+								{rotating ? <CircleNotch className="size-3.5 animate-spin" /> : <ArrowsClockwise className="size-3.5" />}
 								Rotate
 							</Button>
 						</div>
@@ -241,9 +241,9 @@ export function WebhooksTab({
 													onClick={() => onReplayDeadLetter(item.id)}
 												>
 													{replaying === item.id ? (
-														<Loader2Icon className="size-4 animate-spin" />
+														<CircleNotch className="size-4 animate-spin" />
 													) : (
-														<RotateCcwIcon className="size-4 text-muted-foreground" />
+														<ArrowCounterClockwise className="size-4 text-muted-foreground" />
 													)}
 												</Button>
 												<Button
@@ -251,7 +251,7 @@ export function WebhooksTab({
 													size="icon-sm"
 													onClick={() => onDismissDeadLetter(item.id, item.webhook_name || item.webhook_id)}
 												>
-													<Trash2Icon className="size-4 text-muted-foreground" />
+													<Trash className="size-4 text-muted-foreground" />
 												</Button>
 											</div>
 										</TableCell>

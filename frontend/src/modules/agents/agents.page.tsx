@@ -2,15 +2,17 @@
 
 import { useEffect, useState } from "react";
 import { Button } from "@/components/ui/button";
+import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Modal } from "@/components/ui/modal";
 import { Skeleton } from "@/components/ui/skeleton";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { SegmentedControl } from "@/components/segmented-control";
 import { FormSelect } from "@/components/form-select";
 import { AgentCard } from "@/modules/agents/components/agent-card";
 import EmptyState from "@/components/empty-state";
 import type { AgentTone } from "@/modules/agents/components/agent-status";
-import { BotIcon, Loader2Icon, PlusIcon } from "lucide-react";
+import { CircleNotch, Plus, Robot } from "@phosphor-icons/react";
 import { toast } from "sonner";
 import { toUiAgent, useAgentsStore } from "@/lib/stores/agents-store";
 
@@ -23,17 +25,22 @@ const environmentOptions = [
 
 function AgentCardSkeleton() {
 	return (
-		<div className="min-h-[132px] rounded-[4px] border border-border bg-background p-5">
-			<div className="flex items-center gap-2.5">
-				<Skeleton className="size-8 rounded-full" />
-				<div className="grid flex-1 gap-1.5">
-					<Skeleton className="h-4 w-24" />
-					<Skeleton className="h-3 w-16" />
+		<Card className="gap-4 py-4">
+			<CardHeader>
+				<div className="flex items-center gap-2.5">
+					<Skeleton className="size-8 rounded-full" />
+					<div className="grid flex-1 gap-1.5">
+						<Skeleton className="h-4 w-24" />
+						<Skeleton className="h-3 w-16" />
+					</div>
+					<Skeleton className="h-4 w-14" />
 				</div>
-				<Skeleton className="h-4 w-14" />
-			</div>
-			<Skeleton className="mt-4 h-4 w-16" />
-		</div>
+			</CardHeader>
+			<CardContent className="flex flex-col gap-1.5">
+				<Skeleton className="h-4 w-16" />
+				<Skeleton className="h-3 w-24" />
+			</CardContent>
+		</Card>
 	);
 }
 
@@ -88,22 +95,22 @@ export function AgentsPage() {
 	};
 
 	return (
-		<div className="flex flex-col gap-4">
+		<div className="flex flex-col gap-6">
 			<div className="flex flex-col gap-4 md:flex-row md:items-end md:justify-between">
 				<div>
-					<h1 className="font-display text-[22px] font-medium tracking-[-0.02em]">Agents</h1>
-					<p className="mt-1 max-w-2xl text-sm text-muted-foreground">
+					<h1 className="font-display text-[24px] font-medium tracking-[-0.025em]">Agents</h1>
+					<p className="mt-1.5 max-w-2xl text-sm text-muted-foreground">
 						The identities your agents act as, the access they hold, and what they are doing right now.
 					</p>
 				</div>
 				<Button onClick={openModal}>
-					<PlusIcon className="me-1.5 size-4" />
+					<Plus className="me-1.5 size-4" />
 					Register agent
 				</Button>
 			</div>
 
 			<div className="flex items-center justify-between gap-3">
-				<span className="font-mono text-[11px] uppercase tracking-[0.12em] text-muted-foreground">
+				<span className="text-[13px] text-muted-foreground">
 					{loading ? "…" : `${filtered.length} of ${uiAgents.length}`}
 				</span>
 				<SegmentedControl
@@ -134,25 +141,35 @@ export function AgentsPage() {
 				<EmptyState
 					title="No agents yet"
 					description="Register your first agent to give it an identity."
-					icon={<BotIcon className="size-6 text-muted-foreground" />}
+					icon={<Robot className="size-6 text-muted-foreground" />}
 				/>
 			)}
 
 			<Modal open={modalOpen} onClose={() => setModalOpen(false)} title="Register agent">
-				<form onSubmit={handleSubmit} className="grid gap-4">
-					<div className="grid gap-1.5">
-						<label className="font-mono text-[10.5px] uppercase tracking-[0.14em] text-muted-foreground">
-							Name
-						</label>
-						<Input
-							placeholder="e.g. Atlas"
-							value={name}
-							onChange={(e) => setName(e.target.value)}
-							autoFocus
-						/>
+				<form onSubmit={handleSubmit} className="grid gap-5">
+					<div className="flex items-center gap-3">
+						<Avatar size="lg" className="shrink-0">
+							<AvatarImage
+								src={`https://api.dicebear.com/10.x/squircles/svg?seed=${encodeURIComponent(name.trim() || "new-agent")}`}
+								alt="New agent avatar preview"
+							/>
+							<AvatarFallback>{(name.trim().slice(0, 1) || "?").toUpperCase()}</AvatarFallback>
+						</Avatar>
+						<div className="grid flex-1 gap-1.5">
+							<label className="text-[11px] font-medium tracking-[0.02em] text-muted-foreground">
+								Name
+							</label>
+							<Input
+								placeholder="e.g. Atlas"
+								value={name}
+								onChange={(e) => setName(e.target.value)}
+								autoFocus
+								className="h-10 text-[15px]"
+							/>
+						</div>
 					</div>
 					<div className="grid gap-1.5">
-						<label className="font-mono text-[10.5px] uppercase tracking-[0.14em] text-muted-foreground">
+						<label className="text-[11px] font-medium tracking-[0.02em] text-muted-foreground">
 							Description
 						</label>
 						<Input
@@ -161,39 +178,41 @@ export function AgentsPage() {
 							onChange={(e) => setDescription(e.target.value)}
 						/>
 					</div>
-					<div className="grid gap-1.5">
-						<label className="font-mono text-[10.5px] uppercase tracking-[0.14em] text-muted-foreground">
-							Environment
-						</label>
-						<FormSelect
-							options={environmentOptions}
-							value={environment as (typeof environmentOptions)[number]["value"]}
-							onChange={setEnvironment}
-						/>
-					</div>
-					<div className="grid gap-1.5">
-						<label className="font-mono text-[10.5px] uppercase tracking-[0.14em] text-muted-foreground">
-							Spawned by
-						</label>
-						<FormSelect
-							options={[
-								{ label: "No parent — top-level agent", value: "" },
-								...agents.map((agent) => ({
-									label: `${agent.name || "Untitled agent"} · ${agent.id}`,
-									value: agent.id,
-								})),
-							]}
-							value={parentId}
-							onChange={setParentId}
-						/>
+					<div className="grid gap-4 sm:grid-cols-2">
+						<div className="grid gap-1.5">
+							<label className="text-[11px] font-medium tracking-[0.02em] text-muted-foreground">
+								Environment
+							</label>
+							<FormSelect
+								options={environmentOptions}
+								value={environment as (typeof environmentOptions)[number]["value"]}
+								onChange={setEnvironment}
+							/>
+						</div>
+						<div className="grid min-w-0 gap-1.5">
+							<label className="text-[11px] font-medium tracking-[0.02em] text-muted-foreground">
+								Spawned by
+							</label>
+							<FormSelect
+								options={[
+									{ label: "No parent — top-level agent", value: "" },
+									...agents.map((agent) => ({
+										label: agent.name || "Untitled agent",
+										value: agent.id,
+									})),
+								]}
+								value={parentId}
+								onChange={setParentId}
+							/>
+						</div>
 					</div>
 					{error ? <p className="text-sm text-red-400">{error}</p> : null}
-					<div className="flex justify-end gap-2 border-t border-border pt-4">
+					<div className="flex justify-end gap-2 pt-4">
 						<Button type="button" variant="outline" onClick={() => setModalOpen(false)}>
 							Cancel
 						</Button>
 						<Button type="submit" disabled={!name.trim() || creating}>
-							{creating && <Loader2Icon className="me-1.5 size-4 animate-spin" />}
+							{creating && <CircleNotch className="me-1.5 size-4 animate-spin" />}
 							Register agent
 						</Button>
 					</div>

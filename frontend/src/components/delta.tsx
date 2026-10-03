@@ -2,7 +2,7 @@
 import { cn } from "@/lib/utils";
 import * as React from "react";
 import { Badge } from "@/components/ui/badge";
-import { MinusIcon, TrendingUpIcon, ArrowUpIcon, ChevronUpIcon, TrendingDownIcon, ArrowDownIcon, ChevronDownIcon } from "lucide-react";
+import { ArrowDown, ArrowUp, CaretDown, CaretUp, Minus, TrendDown, TrendUp } from "@phosphor-icons/react";
 
 type DeltaIconVariant = "default" | "trend" | "arrow";
 type DeltaVariant = "default" | "badge";
@@ -77,7 +77,7 @@ function FilledShell({
 		<span
 			className={cn(
 				"inline-flex size-3 shrink-0 items-center justify-center rounded-full",
-				"[&_svg]:size-2! [&_svg]:shrink-0 [&_svg]:stroke-3! [&_svg]:text-background",
+				"[&_svg]:size-2! [&_svg]:shrink-0 [&_svg]:text-background",
 				value > 0 && "bg-emerald-500",
 				value < 0 && "bg-red-500",
 				(!value || value === 0) && "bg-muted-foreground"
@@ -109,42 +109,42 @@ function DeltaIcon({
 
 	if (!resolvedValue || resolvedValue === 0) {
 		return shell(
-			<MinusIcon {...slotProps} className={mergedClassName} {...props} />
+			<Minus weight="bold" {...slotProps} className={mergedClassName} {...props} />
 		);
 	}
 
 	if (resolvedValue > 0) {
 		if (variant === "trend") {
 			return shell(
-				<TrendingUpIcon {...slotProps} className={mergedClassName} {...props} />
+				<TrendUp weight="bold" {...slotProps} className={mergedClassName} {...props} />
 			);
 		}
 
 		if (variant === "arrow") {
 			return shell(
-				<ArrowUpIcon {...slotProps} className={mergedClassName} {...props} />
+				<ArrowUp weight="bold" {...slotProps} className={mergedClassName} {...props} />
 			);
 		}
 
 		return shell(
-			<ChevronUpIcon {...slotProps} className={mergedClassName} {...props} />
+			<CaretUp weight="bold" {...slotProps} className={mergedClassName} {...props} />
 		);
 	}
 
 	if (variant === "trend") {
 		return shell(
-			<TrendingDownIcon {...slotProps} className={mergedClassName} {...props} />
+			<TrendDown weight="bold" {...slotProps} className={mergedClassName} {...props} />
 		);
 	}
 
 	if (variant === "arrow") {
 		return shell(
-			<ArrowDownIcon {...slotProps} className={mergedClassName} {...props} />
+			<ArrowDown weight="bold" {...slotProps} className={mergedClassName} {...props} />
 		);
 	}
 
 	return shell(
-		<ChevronDownIcon {...slotProps} className={mergedClassName} {...props} />
+		<CaretDown weight="bold" {...slotProps} className={mergedClassName} {...props} />
 	);
 }
 

@@ -1,0 +1,15 @@
+services:
+  runmesh:
+    build: .
+    ports:
+      - "8787:8787"
+    env_file:
+      - .env
+    environment:
+      DB_PATH: /data/runmesh.db
+    volumes:
+      - runmesh-data:/data
+    restart: unless-stopped
+
+volumes:
+  runmesh-data:

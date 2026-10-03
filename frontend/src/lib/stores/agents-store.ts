@@ -1,7 +1,18 @@
 import { create } from "zustand";
-import { apiGet, apiPost } from "@/lib/api";
-import type { Agent } from "@/modules/agents/components/agents-table";
+import { apiDelete, apiGet, apiPost } from "@/lib/api";
 import type { AgentTone } from "@/modules/agents/components/agent-status";
+
+export type Agent = {
+	id: string;
+	name: string;
+	status: AgentTone;
+	grants: number;
+	current: string;
+	seen: string;
+	framework?: string | null;
+	model?: string | null;
+	version?: number | null;
+};
 
 export type BackendAgentStatus = "active" | "suspended" | "archived";
 
@@ -70,16 +81,20 @@ type AgentsState = {
 	agents: BackendAgent[];
 	loading: boolean;
 	creating: boolean;
+	deleting: boolean;
 	fetchedAt: number | null;
 	fetch: () => Promise<void>;
 	/** Returns the server error message, or null on success. */
 	create: (data: CreateAgentPayload) => Promise<string | null>;
+	/** Returns the server error message, or null on success. */
+	remove: (id: string) => Promise<string | null>;
 };
 
 export const useAgentsStore = create<AgentsState>((set, get) => ({
 	agents: [],
 	loading: false,
 	creating: false,
+	deleting: false,
 	fetchedAt: null,
 
 	fetch: async () => {
@@ -108,6 +123,21 @@ export const useAgentsStore = create<AgentsState>((set, get) => ({
 		} catch (err) {
 			set({ creating: false });
 			return err instanceof Error ? err.message : "Failed to register agent.";
+		}
+	},
+
+	remove: async (id) => {
+		const state = get();
+		if (state.deleting) return "Already deleting an agent.";
+		set({ deleting: true });
+		try {
+			await apiDelete(`/api/v1/agents/${id}`);
+			set({ deleting: false, fetchedAt: null });
+			await get().fetch();
+			return null;
+		} catch (err) {
+			set({ deleting: false });
+			return err instanceof Error ? err.message : "Failed to delete agent.";
 		}
 	},
 }));

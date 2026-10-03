@@ -28,7 +28,8 @@ Three verbs, done as one thing:
 
 **What we do not compete on:** the phrase "agent identity." Okta/Auth0 and Microsoft Entra Agent ID own that fight and have distribution. Our wedge is the bundled loop above, open source, with the consent/policy/escalation model. See the competitive map before repositioning.
 
-Runmesh runs on Cloudflare Workers (Python/FastAPI) with D1 for storage and Queues for dispatch. It is the open-source substrate that combines:
+Runmesh runs as a plain Python server (FastAPI + SQLite) that can be deployed on
+any VM or container host. It is the open-source substrate that combines:
 
 1. **Identity** — an agent is a principal, not a shared API key.
 2. **Access** — credentials scoped to an agent, task, resource, and expiry.
@@ -121,7 +122,7 @@ The repositioning is **partially implemented**. Know what already exists before 
 - **Dashboard IA** — the app still navigates as a workflow builder (see §6). No control-room home, no dedicated Agents/Grants/Approvals/Policies/Audit screens.
 - **Unified audit** — actions (`tasks`) and access (`connect_audit_events`) are separate streams; there is no single "agent → grant → action → result" timeline.
 - **Async token issuance** — the P3 backlog item (task pauses in `waiting_for_grant`, resumes on approval) is designed but not implemented.
-- **Production readiness** — see the gap table in [`runmesh-main/AGENTS.md`](./runmesh-main/AGENTS.md). Notably: sequential workflow runner, one active run per workflow, poll-based run UI, `print()`-only observability, limited tests.
+- **Production readiness** — see the gap table in [`runmesh-main/AGENTS.md`](./runmesh-main/AGENTS.md). Notably: sequential workflow runner, one active run per workflow, poll-based run UI, no metrics/alerting (structured logging landed in `utils/log.py`), limited tests.
 
 The authoritative roadmap lives in [`BACKLOG.md`](./BACKLOG.md) (Runmesh Connect P0–P4). Treat the P-numbers there as the source of truth for sequencing.
 
@@ -130,18 +131,26 @@ The authoritative roadmap lives in [`BACKLOG.md`](./BACKLOG.md) (Runmesh Connect
 ## 4. Architecture
 
 ```
-runmesh-main/                Cloudflare Worker (Python)
-  src/entry.py               FastAPI app + Default() worker entrypoints
-  src/routes/*.py            One APIRouter per domain (system, tasks, workflows,
+runmesh-main/                API server (Python, SQLite, portable)
+  src/entry.py               FastAPI app + route registration (one APIRouter per
+                             domain (system, tasks, workflows,
                                webhooks, api_keys, connect_*, workspaces, auth,
                                dashboard); registered in entry.py in file order
+  src/main.py                Entrypoint: applies migrations, builds the runtime
+                             env, starts uvicorn + background workers
+  src/runtime/               Platform shims that let the app run off Cloudflare:
+                               sqlite_db.py (D1-shaped driver), queue.py
+                               (DB-backed TASK_QUEUE/WEBHOOK_QUEUE), runner.py
+                               (queue consumers + scheduler sweep), env.py,
+                               http_fetch.py, migrate.py, asgi_env.py
+  src/routes/*.py            One APIRouter per domain
   src/services/*.py          Business logic (async functions; Connect is split into
                                connect_* submodules behind the connect.py facade)
   src/db/*.py                ORM / table access (orm.py, connect_orm.py + connect_orm_*
                                submodules, schema.py)
   src/utils/*.py             auth, responses, errors, rate limit, url safety
-  migrations/*.sql           D1 migrations (numbered, append-only)
-  schema.sql                 Reference schema snapshot
+  migrations/*.sql           SQL migrations (numbered, append-only)
+  schema.sql                 Reference schema snapshot (bootstrap source)
   TASK_API_DOCUMENTATION.md  Full API reference
 
 frontend/                    React 19 + Vite + react-router + zustand
@@ -158,15 +167,27 @@ frontend/                    React 19 + Vite + react-router + zustand
   src/App.tsx                  Thin wrapper around AppRouter
 ```
 
-### Worker entrypoints
+### Runtime entrypoints
 
-`Default` in `src/entry.py` implements three handlers:
+`src/main.py` starts one process that does three jobs the Workers version split
+across `fetch` / `queue` / `scheduled`:
 
-- `fetch` — the FastAPI HTTP API.
-- `queue` — consumers for `runmesh-tasks` and `runmesh-webhooks`.
-- `scheduled` — cron `* * * * *`; enqueues due standalone scheduled tasks and starts due scheduled workflows.
+- HTTP — the FastAPI app from `entry.py`, served by uvicorn (`src/runtime/asgi_env.py`
+  injects `scope["env"]`, which routes read as `request.scope["env"]`).
+- Queue consumers — `src/runtime/runner.py` drains the `queue_messages` table for
+  `runmesh-tasks` (→ `process_task_message`) and `runmesh-webhooks`
+  (→ `handle_webhook_queue_batch`).
+- Scheduler sweep — `src/runtime/runner.py` runs `enqueue_due_tasks()` →
+  `run_due_scheduled_workflows()` → `run_due_schedule_triggers()` →
+  `recover_stale_workflow_runs()` every 5s, each step isolated so one failure
+  cannot starve the others.
 
-> `src/scheduler.py` was removed. **Do not reintroduce a separate scheduler worker** — scheduling lives in `entry.py`'s `scheduled()`.
+> Cloudflare Workers is no longer the runtime: the worker cron hit an unfixed
+> Pyodide bug (`NoGilError`, cloudflare/workerd#6624) that killed every scheduled
+> tick. `src/entry.py` no longer defines `Default`, so `pywrangler dev`/`deploy`
+> will not serve traffic — see `runmesh-main/DEPLOY.md`.
+> `src/scheduler.py` was removed. **Do not reintroduce a separate scheduler module**
+> — the sweep lives in `runtime/runner.py`.
 
 ### Conventions
 
@@ -183,6 +204,7 @@ frontend/                    React 19 + Vite + react-router + zustand
 - Landing pages use the `--rm-*` CSS tokens and the components in `modules/landing/` (`SectionHeading`, `SectionLabel`, `constants`). Extend those; do not introduce a parallel design system.
 - Dashboard routes are wired in `src/app/router.tsx` (nested: `RequireAuth` → `AppShell` via `Outlet`); sidebar items in `src/config/nav.tsx` (`navGroups`).
 - Data fetching via zustand stores in `src/lib/stores/` calling `src/lib/api.ts`. New feature UI goes in `src/modules/<feature>/` (`*.page.tsx` + colocated `components/`); only truly shared primitives go in `src/components/`.
+- Icons come from `@phosphor-icons/react` (fill-based; use `weight`, not `stroke`/`strokeWidth`). Size with Tailwind `size-*` classes. The sidebar renders icons via `NavIcon` in `components/layout/nav-group.tsx` (fill on active).
 - Run `pnpm typecheck` and `pnpm lint` before finishing. (There are pre-existing lint errors in `use-mobile.ts` and `workflow-graph.ts` — do not add new ones.)
 
 ---
@@ -190,12 +212,11 @@ frontend/                    React 19 + Vite + react-router + zustand
 ## 5. How to run
 
 ```bash
-# Backend (Cloudflare Worker, port 8787)
+# Backend (port 8787, SQLite)
 cd runmesh-main
 uv sync --all-groups
-cp .dev.vars.example .dev.vars
-uv run pywrangler d1 migrations apply runmesh-db --local
-uv run pywrangler dev
+cp .env.example .env        # set JWT_SECRET at minimum
+uv run python src/main.py   # applies pending migrations on boot
 
 # Frontend (port 5173)
 cd frontend
@@ -204,23 +225,21 @@ printf 'VITE_API_URL=http://localhost:8787\n' > .env.local
 pnpm dev
 ```
 
-Queues (create once, before deploying):
+Or the way production runs it — one container, volume holds the SQLite file:
 
 ```bash
 cd runmesh-main
-wrangler queues create runmesh-tasks --message-retention-period-secs 86400
-wrangler queues create runmesh-webhooks --message-retention-period-secs 86400
+cp .env.example .env
+docker compose up -d --build
 ```
 
-Deploy:
+Deploy / migrate off Cloudflare D1: [`runmesh-main/DEPLOY.md`](./runmesh-main/DEPLOY.md).
 
-```bash
-cd runmesh-main
-uv run pywrangler deploy
-uv run pywrangler d1 migrations apply runmesh-db --remote
-```
-
-There is no backend test command configured yet (a gap). Frontend verification is `pnpm typecheck` + `pnpm lint` + `pnpm build`.
+There is no backend test command configured yet (a gap). Backend verification is
+`python -m compileall src/` plus `uv run python scripts/smoke_vps.py <base-url>
+<jwt-secret> <db-path>` (13 end-to-end checks, including that the scheduler
+sweep only dispatches a task after its due time). Frontend verification is
+`pnpm typecheck` + `pnpm lint` + `pnpm build`.
 
 ---
 

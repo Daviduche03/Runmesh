@@ -9,6 +9,7 @@ class ConnectProvider(str, Enum):
     GOOGLE = "google"
     SLACK = "slack"
     META = "meta"
+    INTERCOM = "intercom"
 
 
 CONNECT_PROVIDER_SCOPES: dict[ConnectProvider, dict[str, str]] = {
@@ -37,6 +38,25 @@ CONNECT_PROVIDER_SCOPES: dict[ConnectProvider, dict[str, str]] = {
         "pages_manage_posts": "pages_manage_posts",
         "instagram_basic": "instagram_basic",
         "instagram_content_publish": "instagram_content_publish",
+    },
+    # Intercom configures OAuth scopes in the Developer Hub (not via the
+    # authorize URL), so values are the canonical permission labels from
+    # https://developers.intercom.com/docs/build-an-integration/learn-more/authentication/oauth-scopes
+    ConnectProvider.INTERCOM: {
+        "users.read": "Read and list users and companies",
+        "users.write": "Read and write users",
+        "companies.write": "Write users and companies",
+        "conversations.read": "Read conversations",
+        "conversations.write": "Write conversations",
+        "conversations.delete": "Delete conversations and metrics",
+        "tags.read": "Read tags",
+        "tags.write": "Write tags",
+        "events.read": "Read events",
+        "events.write": "Write events",
+        "articles.read": "Read and List articles",
+        "articles.write": "Read and Write Articles",
+        "ai_content.write": "Read and write AI content",
+        "admins.read": "Read admins",
     },
 }
 
@@ -81,7 +101,10 @@ def normalize_requested_scopes(provider: ConnectProvider, scopes: list[str]) -> 
         if value in aliases:
             cleaned.append(value)
             continue
-        if value.startswith("https://") and value in aliases.values():
+        # Remote values are URLs for Google but plain permission labels for
+        # other providers (e.g. Intercom configures scopes in its Developer
+        # Hub, so there is no URL form). Accept either.
+        if value in aliases.values():
             for alias, remote in aliases.items():
                 if remote == value:
                     cleaned.append(alias)

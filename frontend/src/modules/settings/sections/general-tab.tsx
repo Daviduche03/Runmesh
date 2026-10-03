@@ -13,7 +13,7 @@ import {
 	CardTitle,
 } from "@/components/ui/card";
 import { DeleteConfirmModal } from "@/components/ui/delete-confirm-modal";
-import { Building2Icon, Trash2Icon } from "lucide-react";
+import { Buildings, Trash } from "@phosphor-icons/react";
 
 type Props = {
 	saved: boolean;
@@ -23,7 +23,7 @@ type Props = {
 function Field({ label, hint, children }: { label: string; hint?: string; children: ReactNode }) {
 	return (
 		<div className="grid gap-1.5">
-			<label className="font-mono text-[10.5px] uppercase tracking-[0.14em] text-muted-foreground">
+			<label className="text-[11px] font-medium tracking-[0.02em] text-muted-foreground">
 				{label}
 			</label>
 			{children}
@@ -48,7 +48,7 @@ export function GeneralTab({ saved, onSave }: Props) {
 				<CardContent className="grid gap-5">
 					<div className="flex items-center gap-3">
 						<span className="grid size-10 place-items-center rounded-[4px] border border-border bg-muted text-foreground">
-							<Building2Icon className="size-5" />
+							<Buildings className="size-5" />
 						</span>
 						<div className="min-w-0 flex-1">
 							<p className="text-[13px] font-medium">Workspace avatar</p>
@@ -88,7 +88,7 @@ export function GeneralTab({ saved, onSave }: Props) {
 							<p className="text-xs text-muted-foreground">Permanently remove all tasks, runs, and settings.</p>
 						</div>
 						<Button variant="destructive" size="sm" onClick={() => setShowDeleteWorkspace(true)}>
-							<Trash2Icon className="me-1.5 size-3.5" />
+							<Trash className="me-1.5 size-3.5" />
 							Delete workspace
 						</Button>
 					</div>

@@ -1,6 +1,6 @@
 import json
 from datetime import datetime, timezone
-from workers import fetch
+from runtime.http_fetch import fetch
 from db.orm import UserModel
 
 

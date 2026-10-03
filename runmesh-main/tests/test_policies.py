@@ -287,7 +287,7 @@ async def test_05_evaluate():
         db, "u_1", "ws_1", PolicyEvaluateRequest(action="stripe.charge.create", amount="120"))
     assert gated["data"]["decision"] == "escalate", gated["data"]
     assert "matched" in [s["status"] for s in gated["data"]["steps"]]
-    assert "not-reached" not in [s["status"] for s in gated["data"]["steps"]] or True
+    assert "not-reached" not in [s["status"] for s in gated["data"]["steps"]]
     assert "$120" in gated["data"]["changeHint"], gated["data"]
 
     small = await policies_service.evaluate_request(

@@ -1,20 +1,18 @@
 "use client";
 
 import { useNavigate } from "react-router-dom";
-import { Card, CardContent, CardFooter, CardHeader } from "@/components/ui/card";
+import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { AgentStatus } from "@/modules/agents/components/agent-status";
 import { AgentAvatar } from "@/modules/agents/components/agent-avatar";
-import type { Agent } from "@/modules/agents/components/agents-table";
+import type { Agent } from "@/lib/stores/agents-store";
 
-// Same footprint as StatCard: identical grid, the same footer band,
-// min-h matched to the KPI row height.
 export function AgentCard({ agent }: { agent: Agent }) {
 	const navigate = useNavigate();
 	const activity = agent.current !== "—" ? `${agent.current} · ${agent.seen}` : agent.seen;
 
 	return (
 		<Card
-			className="min-h-[132px] cursor-pointer transition-[border-color,background-color] duration-150 ease-[var(--ease-out)] hover:bg-muted/40 active:bg-muted/70"
+			className="cursor-pointer gap-4 py-4 transition-[background-color] duration-150 ease-[var(--ease-out)] hover:bg-muted/30 active:bg-muted/50"
 			onClick={() => navigate(`/agents/${agent.id}`)}
 		>
 			<CardHeader>
@@ -29,20 +27,12 @@ export function AgentCard({ agent }: { agent: Agent }) {
 					</span>
 				</div>
 			</CardHeader>
-			<CardContent>
-				<p className="text-[13px] tabular-nums">
-					{agent.grants} <span className="text-muted-foreground">{agent.grants === 1 ? "grant" : "grants"}</span>
-				</p>
-				{agent.framework || agent.model ? (
-					<p className="mt-1 truncate font-mono text-[11px] text-muted-foreground">
-						{[agent.framework, agent.model].filter(Boolean).join(" · ")}
-						{agent.version != null && agent.version > 1 ? ` · v${agent.version}` : ""}
-					</p>
-				) : null}
-			</CardContent>
-			<CardFooter>
+			<CardContent className="flex items-center justify-between gap-2">
 				<span className="truncate font-mono text-[11px] text-muted-foreground">{activity}</span>
-			</CardFooter>
+				<span className="shrink-0 text-[13px] tabular-nums">
+					{agent.grants} <span className="text-muted-foreground">{agent.grants === 1 ? "grant" : "grants"}</span>
+				</span>
+			</CardContent>
 		</Card>
 	);
 }

@@ -1,4 +1,4 @@
-import { Card, CardContent, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Delta, DeltaIcon, DeltaValue } from "@/components/delta";
 
 export function StatCard({
@@ -13,28 +13,24 @@ export function StatCard({
 	delta?: number;
 }) {
 	return (
-		<Card>
+		<Card className="gap-2">
 			<CardHeader>
-				<CardTitle className="font-mono text-[10.5px] font-normal uppercase tracking-[0.12em] text-muted-foreground">
+				<CardTitle className="text-[13px] font-normal text-muted-foreground">
 					{label}
 				</CardTitle>
 			</CardHeader>
-			<CardContent>
+			<CardContent className="flex flex-col gap-2">
 				<p key={value} className="animate-value-in text-[28px] leading-none font-medium tabular-nums">{value}</p>
-			</CardContent>
-			<CardFooter className="gap-1.5 text-xs">
-				{typeof delta === "number" ? (
-					<>
+				<div className="flex items-center gap-1.5 text-xs">
+					{typeof delta === "number" ? (
 						<Delta value={delta}>
 							<DeltaIcon />
 							<DeltaValue />
 						</Delta>
-						<span className="text-muted-foreground">{footnote}</span>
-					</>
-				) : (
+					) : null}
 					<span className="text-muted-foreground">{footnote}</span>
-				)}
-			</CardFooter>
+				</div>
+			</CardContent>
 		</Card>
 	);
 }

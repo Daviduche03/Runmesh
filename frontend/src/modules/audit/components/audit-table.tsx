@@ -110,7 +110,7 @@ export function AuditTable({
 							<TableCell>
 								<span className="flex items-center gap-2">
 									<span className="text-[13px] font-medium">{event.actor}</span>
-									<span className="font-mono text-[10px] uppercase tracking-[0.12em] text-muted-foreground/70">
+									<span className="text-[11px] font-medium tracking-[0.02em] text-muted-foreground/70">
 										{event.actorType}
 									</span>
 								</span>

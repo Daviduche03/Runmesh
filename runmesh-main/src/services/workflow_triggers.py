@@ -6,6 +6,7 @@ from fastapi import HTTPException
 from db.orm import WorkflowModel
 from services.workspaces import require_row_access
 from services.workflow_runner import start_workflow_run
+from utils.log import log_error, log_info
 from services.workflow_trigger_config import (
     is_webhook_trigger,
     is_workflow_schedule_due,
@@ -47,10 +48,10 @@ async def run_due_scheduled_workflows(env) -> int:
             started += 1
         except HTTPException as e:
             if e.status_code == 409:
-                print(f"Scheduled workflow {workflow['id']} skipped: run already in progress")
+                log_info("scheduled_workflow_skipped", workflow_id=workflow["id"], reason="run_in_progress")
             else:
-                print(f"Scheduled workflow {workflow['id']} failed: {e.detail}")
+                log_error("scheduled_workflow_failed", workflow_id=workflow["id"], error=str(e.detail))
         except Exception as e:
-            print(f"Scheduled workflow {workflow['id']} error: {e}")
+            log_error("scheduled_workflow_error", workflow_id=workflow["id"], error=str(e))
 
     return started

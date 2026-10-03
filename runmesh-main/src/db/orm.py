@@ -21,7 +21,6 @@ class Model:
         return data.get('id') or values[0]  # Return ID if provided
     
     async def find_one(self, table: str, where: str, *params) -> Optional[Dict[str, Any]]:
-        """Find one record"""
         query = f"SELECT * FROM {table} WHERE {where} LIMIT 1"
         result = await self.db.prepare(query).bind(*params).first()
         
@@ -82,7 +81,6 @@ class TaskModel(Model):
         super().__init__(db)
     
     async def create(self, task_data: Dict[str, Any]) -> str:
-        """Create a new task"""
         if not task_data.get('id'):
             
             task_data['id'] = str(uuid.uuid4())
@@ -124,7 +122,6 @@ class TaskModel(Model):
         )
     
     async def increment_retries(self, task_id: str, status: str) -> int:
-        """Increment retries and update status"""
         query = """
             UPDATE tasks 
             SET status = ?, retries = retries + 1, updated_at = ? 
@@ -177,7 +174,6 @@ class WorkflowModel(Model):
         super().__init__(db)
     
     async def create(self, workflow_data: Dict[str, Any]) -> str:
-        """Create a new workflow"""
         if not workflow_data.get('id'):
             workflow_data['id'] = str(uuid.uuid4())
         
@@ -239,7 +235,6 @@ class UserModel(Model):
         super().__init__(db)
     
     async def create(self, user_data: Dict[str, Any]) -> str:
-        """Create a new user"""
         if not user_data.get('id'):
             user_data['id'] = str(uuid.uuid4())
         
@@ -272,8 +267,6 @@ class ApiKeyModel(Model):
         return await self.find_one('api_keys', 'id = ?', key_id)
 
     async def create(self, api_key_data: Dict[str, Any]) -> str:
-        """Create a new API key"""
-        """Create a new API key"""
         if not api_key_data.get('id'):
             api_key_data['id'] = str(uuid.uuid4())
         
@@ -297,7 +290,6 @@ class ApiKeyModel(Model):
         return await self.find_many('api_keys', 'user_id = ? AND is_active = 1', user_id, limit=limit)
     
     async def update_last_used(self, key_id: str) -> int:
-        """Update last used timestamp"""
         return await self.update(
             'api_keys', 
             'id = ?', 
@@ -306,7 +298,6 @@ class ApiKeyModel(Model):
         )
     
     async def deactivate(self, key_id: str) -> int:
-        """Deactivate an API key"""
         return await self.update(
             'api_keys', 
             'id = ?', 

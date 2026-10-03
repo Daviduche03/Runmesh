@@ -8,7 +8,8 @@ from datetime import datetime, timedelta, timezone
 
 from fastapi import HTTPException, Request
 from starlette.responses import Response
-from workers import fetch
+from utils.log import log_info
+from runtime.http_fetch import fetch
 
 CONNECT_ACCOUNT_COOKIE = "rm_connect_account"
 CONNECT_ACCOUNT_TTL_DAYS = 30
@@ -85,7 +86,7 @@ async def send_connect_otp_email(env, to_email: str, code: str) -> None:
     from_email = getattr(env, "CONNECT_EMAIL_FROM", "Runmesh Connect <onboarding@resend.dev>")
     if not api_key:
         # Dev fallback: never log the code itself, only that a code was issued
-        print(f"[connect-otp] verification code issued for email={to_email}")
+        log_info("connect_otp_issued", email=to_email)
         return
     resp = await fetch(
         "https://api.resend.com/emails",

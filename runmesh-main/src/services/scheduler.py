@@ -3,6 +3,7 @@ import json
 from datetime import datetime, timezone
 from typing import List, Dict, Any
 from db.orm import TaskModel
+from utils.log import log_error
 
 class TaskScheduler:
     """Service for managing scheduled task execution"""
@@ -21,7 +22,6 @@ class TaskScheduler:
         """
         current_time = datetime.now(timezone.utc).isoformat()
         
-        # Find tasks that are scheduled and ready to run
         query = """
             SELECT * FROM tasks 
             WHERE status = 'queued' 
@@ -51,15 +51,13 @@ class TaskScheduler:
         
         for task in due_tasks:
             try:
-                # Send task to execution queue
                 await self.queue.send({"task_id": task["id"]})
                 
-                # Update task status to indicate it's been queued for execution
                 await self.task_model.update_status(task["id"], "dispatched")
                 enqueued_count += 1
                 
             except Exception as e:
-                print(f"Failed to enqueue task {task['id']}: {e}")
+                log_error("task_enqueue_failed", task_id=task["id"], error=str(e))
                 # Keep task as 'queued' so it can be retried
         
         return enqueued_count
@@ -158,7 +156,6 @@ class TaskScheduler:
             return False
         
         if task.get("execution_type") == "scheduled" and task.get("status") in ["queued", "failed"]:
-            # Update the scheduled time
             query = """
                 UPDATE tasks 
                 SET scheduled_at = ?, updated_at = ?, status = 'queued'

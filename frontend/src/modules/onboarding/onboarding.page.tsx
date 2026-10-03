@@ -8,7 +8,7 @@ import { Input } from "@/components/ui/input";
 import { SegmentedControl } from "@/components/segmented-control";
 import { FormSelect } from "@/components/form-select";
 import { OnboardingGraphic } from "@/modules/onboarding/onboarding-graphic";
-import { Loader2Icon, PlusIcon, Trash2Icon } from "lucide-react";
+import { CircleNotch, Plus, Trash } from "@phosphor-icons/react";
 
 type Invite = { email: string; role: "member" | "admin" };
 type WorkspaceType = "personal" | "work";
@@ -107,7 +107,7 @@ export function OnboardingPage() {
 	if (checking) {
 		return (
 			<main className="rm-surface grid min-h-screen place-items-center bg-[var(--rm-bg)]">
-				<Loader2Icon className="size-5 animate-spin text-[var(--rm-muted)]" />
+				<CircleNotch className="size-5 animate-spin text-[var(--rm-muted)]" />
 			</main>
 		);
 	}
@@ -237,7 +237,7 @@ export function OnboardingPage() {
 													onClick={() => setInvites((prev) => prev.filter((_, i) => i !== index))}
 													aria-label="Remove invite"
 												>
-													<Trash2Icon className="size-4 text-[var(--rm-muted)]" />
+													<Trash className="size-4 text-[var(--rm-muted)]" />
 												</Button>
 											</div>
 										))}
@@ -249,7 +249,7 @@ export function OnboardingPage() {
 											disabled={invites.length >= MAX_INVITES}
 											onClick={() => setInvites((prev) => [...prev, { email: "", role: "member" }])}
 										>
-											<PlusIcon className="me-1.5 size-3.5" />
+											<Plus className="me-1.5 size-3.5" />
 											Add invite
 										</Button>
 									</div>
@@ -264,7 +264,7 @@ export function OnboardingPage() {
 						) : null}
 
 						<Button type="submit" size="lg" className="mt-8 w-full" disabled={!canSubmit}>
-							{submitting ? <Loader2Icon className="me-1.5 size-4 animate-spin" /> : null}
+							{submitting ? <CircleNotch className="me-1.5 size-4 animate-spin" /> : null}
 							{submitting ? "Creating workspace…" : "Create workspace"}
 						</Button>
 

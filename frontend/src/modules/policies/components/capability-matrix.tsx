@@ -5,7 +5,7 @@ import { actionLabel, actionText } from "@/lib/policy";
 import { Skeleton } from "@/components/ui/skeleton";
 import EmptyState from "@/components/empty-state";
 import type { CapabilityMatrixData } from "@/lib/stores/policies-store";
-import { BotIcon } from "lucide-react";
+import { Robot } from "@phosphor-icons/react";
 import {
 	Table,
 	TableBody,
@@ -57,7 +57,7 @@ export function CapabilityMatrix({
 				<EmptyState
 					title="No agents yet"
 					description="Capability appears here once an agent exists in this workspace."
-					icon={<BotIcon className="size-6 text-muted-foreground" />}
+					icon={<Robot className="size-6 text-muted-foreground" />}
 				/>
 			</div>
 		);

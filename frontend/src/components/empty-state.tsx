@@ -1,5 +1,5 @@
 import { Empty, EmptyHeader, EmptyTitle, EmptyDescription, EmptyMedia } from "@/components/ui/empty";
-import { ListOrderedIcon } from "lucide-react";
+import { ListNumbers } from "@phosphor-icons/react";
 
 const EmptyState = ({ title, description, icon }: { title: string; description: string; icon?: React.ReactNode }) => {
 	return (
@@ -7,7 +7,7 @@ const EmptyState = ({ title, description, icon }: { title: string; description: 
 			<Empty>
 				<EmptyHeader>
 					<EmptyMedia>
-						{icon || <ListOrderedIcon className="size-5 text-muted-foreground" />}
+						{icon || <ListNumbers className="size-5 text-muted-foreground" />}
 					</EmptyMedia>
 					<EmptyTitle>{title}</EmptyTitle>
 					<EmptyDescription>

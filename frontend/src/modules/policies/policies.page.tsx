@@ -11,7 +11,7 @@ import { Sheet, SheetContent } from "@/components/ui/sheet";
 import { oversightVerdict, type PolicyRule } from "@/lib/policy";
 import { policyDraftRule } from "@/lib/policy-data";
 import { usePoliciesStore, type BackendPolicyRule } from "@/lib/stores/policies-store";
-import { PlusIcon, SlidersHorizontalIcon } from "lucide-react";
+import { Plus, SlidersHorizontal } from "@phosphor-icons/react";
 import EmptyState from "@/components/empty-state";
 import { Skeleton } from "@/components/ui/skeleton";
 
@@ -97,11 +97,11 @@ export function PoliciesPage() {
 	const enforcing = policyRules.filter((rule) => rule.enabled && rule.mode === "enforce").length;
 
 	return (
-		<div className="flex flex-col gap-4">
+		<div className="flex flex-col gap-6">
 			<div className="flex flex-col gap-4 md:flex-row md:items-end md:justify-between">
 				<div>
-					<h1 className="font-display text-[22px] font-medium tracking-[-0.02em]">Policies</h1>
-					<p className="mt-1 max-w-2xl text-sm text-muted-foreground">
+					<h1 className="font-display text-[24px] font-medium tracking-[-0.025em]">Policies</h1>
+					<p className="mt-1.5 max-w-2xl text-sm text-muted-foreground">
 						{enforcing > 0
 							? "Default-deny. Unmatched requests are blocked; rules decide what runs freely, what reaches a human, and what never runs."
 							: "Policy is off until you enable an enforcing rule. Issuance proceeds normally today."}
@@ -117,7 +117,7 @@ export function PoliciesPage() {
 							setSelectedRule(policyDraftRule);
 						}}
 					>
-						<PlusIcon className="me-1.5 size-4" />
+						<Plus className="me-1.5 size-4" />
 						New rule
 					</Button>
 				</div>
@@ -162,7 +162,7 @@ export function PoliciesPage() {
 							<EmptyState
 								title="No rules yet"
 								description="Policy stays off until you enable an enforcing rule. Create the first one."
-								icon={<SlidersHorizontalIcon className="size-6 text-muted-foreground" />}
+								icon={<SlidersHorizontal className="size-6 text-muted-foreground" />}
 							/>
 						</div>
 					)}

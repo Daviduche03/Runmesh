@@ -21,7 +21,7 @@ import {
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { SegmentedControl } from "@/components/segmented-control";
 import { FormSelect } from "@/components/form-select";
-import { SearchIcon, PlayIcon, ClockIcon, GitBranchIcon, Loader2Icon, MoreVerticalIcon, CopyIcon, CheckIcon, Trash2Icon } from "lucide-react";
+import { Check, CircleNotch, Clock, Copy, DotsThreeVertical, GitBranch, MagnifyingGlass, Play, Trash } from "@phosphor-icons/react";
 import { useNavigate } from "react-router-dom";
 import { toast } from "sonner";
 import { useWorkflowsStore, type Workflow } from "@/lib/stores/workflows-store";
@@ -42,8 +42,8 @@ const statusColor = (status: string) => {
 
 const triggerIcon = (trigger: string) => {
 	switch (trigger) {
-		case "Webhook": return <PlayIcon className="size-3.5 text-muted-foreground" />;
-		case "Schedule": return <ClockIcon className="size-3.5 text-muted-foreground" />;
+		case "Webhook": return <Play className="size-3.5 text-muted-foreground" />;
+		case "Schedule": return <Clock className="size-3.5 text-muted-foreground" />;
 		default: return null;
 	}
 };
@@ -173,16 +173,16 @@ export function WorkflowsPage() {
 	];
 
 	return (
-		<div className="flex flex-col gap-4">
+		<div className="flex flex-col gap-6">
 			<div className="flex flex-col gap-4 md:flex-row md:items-end md:justify-between">
 				<div>
-					<h1 className="font-display text-[22px] font-medium tracking-[-0.02em]">Workflows</h1>
-					<p className="mt-1 max-w-2xl text-sm text-muted-foreground">
+					<h1 className="font-display text-[24px] font-medium tracking-[-0.025em]">Workflows</h1>
+					<p className="mt-1.5 max-w-2xl text-sm text-muted-foreground">
 						Orchestrate durable agent runs with manual, webhook, and scheduled triggers.
 					</p>
 				</div>
 				<Button onClick={() => setModalOpen(true)}>
-					<GitBranchIcon className="me-1.5 size-4" />
+					<GitBranch className="me-1.5 size-4" />
 					New workflow
 				</Button>
 			</div>
@@ -195,7 +195,7 @@ export function WorkflowsPage() {
 							<CardDescription>Manual, webhook, and scheduled triggers.</CardDescription>
 						</div>
 						<div className="relative w-full max-w-xs">
-							<SearchIcon className="absolute top-1/2 left-2.5 size-3.5 -translate-y-1/2 text-muted-foreground" />
+							<MagnifyingGlass className="absolute top-1/2 left-2.5 size-3.5 -translate-y-1/2 text-muted-foreground" />
 							<Input
 								placeholder="Search workflows…"
 								className="h-8 pl-8"
@@ -239,7 +239,7 @@ export function WorkflowsPage() {
 										<EmptyState
 											title="No workflows yet"
 											description="Create a workflow to chain runs, retries, and agent handoffs."
-											icon={<GitBranchIcon className="size-6 text-muted-foreground" />}
+											icon={<GitBranch className="size-6 text-muted-foreground" />}
 										/>
 									</TableCell>
 								</TableRow>
@@ -271,24 +271,24 @@ export function WorkflowsPage() {
 											<DropdownMenu>
 												<DropdownMenuTrigger asChild>
 													<Button variant="ghost" size="icon-sm">
-														<MoreVerticalIcon className="size-4 text-muted-foreground" />
+														<DotsThreeVertical className="size-4 text-muted-foreground" />
 													</Button>
 												</DropdownMenuTrigger>
 												<DropdownMenuContent align="end" className="min-w-40">
 													<DropdownMenuItem onClick={() => copyValue(`id-${w.id}`, w.id)}>
 														{copied === `id-${w.id}` ? (
-															<CheckIcon className="size-4 text-emerald-400" />
+															<Check className="size-4 text-emerald-400" />
 														) : (
-															<CopyIcon className="size-4" />
+															<Copy className="size-4" />
 														)}
 														Copy workflow ID
 													</DropdownMenuItem>
 													{w.endpoint ? (
 														<DropdownMenuItem onClick={() => copyValue(`endpoint-${w.id}`, w.endpoint)}>
 															{copied === `endpoint-${w.id}` ? (
-																<CheckIcon className="size-4 text-emerald-400" />
+																<Check className="size-4 text-emerald-400" />
 															) : (
-																<CopyIcon className="size-4" />
+																<Copy className="size-4" />
 															)}
 															Copy endpoint
 														</DropdownMenuItem>
@@ -297,7 +297,7 @@ export function WorkflowsPage() {
 														variant="destructive"
 														onClick={() => setDeleteTarget({ id: w.id, name: w.name })}
 													>
-														<Trash2Icon className="size-4" />
+														<Trash className="size-4" />
 														Delete workflow
 													</DropdownMenuItem>
 												</DropdownMenuContent>
@@ -320,11 +320,11 @@ export function WorkflowsPage() {
 			<Modal open={modalOpen} onClose={() => { setModalOpen(false); setError(""); }} title="New workflow">
 				<form onSubmit={handleSubmit} className="grid gap-4">
 					<div className="grid gap-1.5">
-						<label className="font-mono text-[10.5px] uppercase tracking-[0.14em] text-muted-foreground">Name</label>
+						<label className="text-[11px] font-medium tracking-[0.02em] text-muted-foreground">Name</label>
 						<Input placeholder="Webhook sync" value={name} onChange={(e) => setName(e.target.value)} required />
 					</div>
 					<div className="grid gap-1.5">
-						<label className="font-mono text-[10.5px] uppercase tracking-[0.14em] text-muted-foreground">Description</label>
+						<label className="text-[11px] font-medium tracking-[0.02em] text-muted-foreground">Description</label>
 						<textarea
 							className="flex min-h-20 w-full rounded-[4px] border border-input bg-background px-3 py-2 text-sm focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
 							placeholder="What this agent workflow does and when it runs"
@@ -334,7 +334,7 @@ export function WorkflowsPage() {
 						/>
 					</div>
 					<div className="grid gap-1.5">
-						<label className="font-mono text-[10.5px] uppercase tracking-[0.14em] text-muted-foreground">Trigger type</label>
+						<label className="text-[11px] font-medium tracking-[0.02em] text-muted-foreground">Trigger type</label>
 						<FormSelect
 							value={triggerType as (typeof triggerTypeOptions)[number]["value"]}
 							onChange={setTriggerType}
@@ -342,7 +342,7 @@ export function WorkflowsPage() {
 						/>
 					</div>
 					<div className="grid gap-1.5">
-						<label className="font-mono text-[10.5px] uppercase tracking-[0.14em] text-muted-foreground">Trigger config (JSON)</label>
+						<label className="text-[11px] font-medium tracking-[0.02em] text-muted-foreground">Trigger config (JSON)</label>
 						<textarea
 							className="flex min-h-24 w-full rounded-[4px] border border-input bg-background px-3 py-2 font-mono text-sm focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
 							value={triggerConfig}
@@ -350,12 +350,12 @@ export function WorkflowsPage() {
 						/>
 					</div>
 					{error && <p className="text-sm text-red-400">{error}</p>}
-					<div className="flex justify-end gap-2 border-t border-border pt-4">
+					<div className="flex justify-end gap-2 pt-4">
 						<Button type="button" variant="outline" onClick={() => { setModalOpen(false); setError(""); }}>
 							Cancel
 						</Button>
 						<Button type="submit" disabled={creating}>
-							{creating && <Loader2Icon className="me-1.5 size-4 animate-spin" />}
+							{creating && <CircleNotch className="me-1.5 size-4 animate-spin" />}
 							Create workflow
 						</Button>
 					</div>

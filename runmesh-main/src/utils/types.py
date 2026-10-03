@@ -48,6 +48,9 @@ from utils.types_requests import (
     IngestRequest,
     ToolInvokeRequest,
     ToolForwardRequest,
+    TriggerCreateRequest,
+    TriggerUpdateRequest,
+    TriggerFireRequest,
 )
 
 from utils.types_connect import (
@@ -125,6 +128,9 @@ __all__ = [
     'IngestRequest',
     'ToolInvokeRequest',
     'ToolForwardRequest',
+    'TriggerCreateRequest',
+    'TriggerUpdateRequest',
+    'TriggerFireRequest',
     'ConnectOtpVerifyRequest',
     'ConnectOtpResendRequest',
     'ConnectSessionCreateRequest',

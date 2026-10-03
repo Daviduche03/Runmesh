@@ -15,7 +15,7 @@ import {
 import { useConnectAppsStore } from "@/lib/stores/connect-apps-store";
 import { apiGet } from "@/lib/api";
 import EmptyState from "@/components/empty-state";
-import { ArrowLeftIcon, SearchIcon, FilterIcon } from "lucide-react";
+import { ArrowLeft, Funnel, MagnifyingGlass } from "@phosphor-icons/react";
 import {
 	DropdownMenu,
 	DropdownMenuContent,
@@ -48,8 +48,8 @@ const auditEventTypes = [
 
 function Stat({ label, value, sub }: { label: string; value: ReactNode; sub?: string }) {
 	return (
-		<div className="bg-background p-5">
-			<dt className="font-mono text-[10.5px] uppercase tracking-[0.14em] text-muted-foreground">{label}</dt>
+		<div className="bg-card p-5">
+			<dt className="text-[11px] font-medium tracking-[0.02em] text-muted-foreground">{label}</dt>
 			<dd className="mt-2 text-[26px] font-medium leading-none tabular-nums">{value}</dd>
 			{sub ? <div className="mt-2 text-[12px] text-muted-foreground">{sub}</div> : null}
 		</div>
@@ -127,10 +127,10 @@ export function ConnectAppPage() {
 			<div className="flex flex-wrap items-center justify-between gap-4">
 				<div className="flex items-center gap-3">
 					<Button variant="ghost" size="icon-sm" onClick={() => navigate("/connect")} aria-label="Back to Connect">
-						<ArrowLeftIcon className="size-4" />
+						<ArrowLeft className="size-4" />
 					</Button>
 					<div>
-						<h1 className="font-display text-[22px] font-medium tracking-[-0.02em]">{app?.name ?? "Connect app"}</h1>
+						<h1 className="font-display text-[24px] font-medium tracking-[-0.025em]">{app?.name ?? "Connect app"}</h1>
 						{app && (
 							<p className="mt-1 font-mono text-[12px] text-muted-foreground">
 								{app.slug} · {app.status}
@@ -150,27 +150,27 @@ export function ConnectAppPage() {
 			)}
 
 			{app && (
-				<div className="border border-border bg-background">
+				<div className="border border-border bg-card">
 					<div className="border-b border-border px-5 py-3">
-						<h2 className="font-mono text-[11px] uppercase tracking-[0.16em] text-muted-foreground">Application</h2>
+						<h2 className="text-[11px] font-medium tracking-[0.02em] text-muted-foreground">Application</h2>
 					</div>
 					<dl className="grid gap-px bg-border sm:grid-cols-2 lg:grid-cols-4">
-						<div className="bg-background p-5">
-							<dt className="font-mono text-[10.5px] uppercase tracking-[0.14em] text-muted-foreground">Slug</dt>
+						<div className="bg-card p-5">
+							<dt className="text-[11px] font-medium tracking-[0.02em] text-muted-foreground">Slug</dt>
 							<dd className="mt-1.5 font-mono text-[13px]">{app.slug}</dd>
 						</div>
-						<div className="bg-background p-5">
-							<dt className="font-mono text-[10.5px] uppercase tracking-[0.14em] text-muted-foreground">Status</dt>
+						<div className="bg-card p-5">
+							<dt className="text-[11px] font-medium tracking-[0.02em] text-muted-foreground">Status</dt>
 							<dd className="mt-1.5 text-[13px]">{app.status}</dd>
 						</div>
-						<div className="bg-background p-5">
-							<dt className="font-mono text-[10.5px] uppercase tracking-[0.14em] text-muted-foreground">Allowed providers</dt>
+						<div className="bg-card p-5">
+							<dt className="text-[11px] font-medium tracking-[0.02em] text-muted-foreground">Allowed providers</dt>
 							<dd className="mt-1.5 text-[13px]">
 								{app.allowed_providers.length ? app.allowed_providers.join(", ") : "any"}
 							</dd>
 						</div>
-						<div className="bg-background p-5">
-							<dt className="font-mono text-[10.5px] uppercase tracking-[0.14em] text-muted-foreground">Created</dt>
+						<div className="bg-card p-5">
+							<dt className="text-[11px] font-medium tracking-[0.02em] text-muted-foreground">Created</dt>
 							<dd className="mt-1.5 text-[13px]">
 								{app.created_at ? new Date(app.created_at).toLocaleDateString() : "—"}
 							</dd>
@@ -179,12 +179,12 @@ export function ConnectAppPage() {
 				</div>
 			)}
 
-			<div className="border border-border bg-background">
+			<div className="border border-border bg-card">
 				<div className="flex flex-wrap items-center justify-between gap-3 border-b border-border px-5 py-3">
-					<h2 className="font-mono text-[11px] uppercase tracking-[0.16em] text-muted-foreground">Activity log</h2>
+					<h2 className="text-[11px] font-medium tracking-[0.02em] text-muted-foreground">Activity log</h2>
 					<div className="flex items-center gap-3">
 						<div className="relative w-56">
-							<SearchIcon className="absolute left-3 top-1/2 size-3.5 -translate-y-1/2 text-muted-foreground" />
+							<MagnifyingGlass className="absolute left-3 top-1/2 size-3.5 -translate-y-1/2 text-muted-foreground" />
 							<Input
 								placeholder="Search events..."
 								className="h-8 pl-8 text-[13px]"
@@ -195,7 +195,7 @@ export function ConnectAppPage() {
 						<DropdownMenu>
 							<DropdownMenuTrigger asChild>
 								<Button variant="outline" size="sm" className="gap-2">
-									<FilterIcon className="size-3.5" />
+									<Funnel className="size-3.5" />
 									{auditEventTypes.find((t) => t.value === eventTypeFilter)?.label ?? "All events"}
 								</Button>
 							</DropdownMenuTrigger>
