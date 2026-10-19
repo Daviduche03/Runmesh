@@ -23,7 +23,7 @@ export function Hero() {
 							</span>
 						</div>
 
-						<h1 className="mt-7 text-balance font-display-sans text-[clamp(42px,6.4vw,80px)] font-medium leading-[1.05] tracking-[-0.025em] text-[var(--rm-fg)]">
+						<h1 className="mt-7 text-balance font-display-sans text-[clamp(38px,5.2vw,64px)] font-medium leading-[1.06] tracking-[-0.025em] text-[var(--rm-fg)]">
 							Consent, policy, and a receipt{" "}
 							<span className="text-[var(--rm-accent)]">for everything your agents do.</span>
 						</h1>
