@@ -276,10 +276,10 @@
   font-display: swap;
 }
 .rm-landing {
-  --rm-bg: #f9f9f9;
-  --rm-bg-trans: rgba(249, 249, 249, 0.82);
-  --rm-panel: #ffffff;
-  --rm-panel-2: #f3f3f4;
+  --rm-bg: #ffffff;
+  --rm-bg-trans: rgba(255, 255, 255, 0.85);
+  --rm-panel: #f7f7f8;
+  --rm-panel-2: #efeff1;
   --rm-fg: #0a0e19;
   --rm-fg-2: #2b3140;
   --rm-muted: #565d6e;
@@ -515,7 +515,7 @@ html, body {
    the page background has to follow it or overscroll flashes dark. */
 html.rm-landing-root,
 html.rm-landing-root body {
-  background: #f9f9f9;
+  background: #ffffff;
   color: #0a0e19;
 }
 
