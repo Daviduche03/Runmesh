@@ -1,39 +1,61 @@
-import { container } from "./constants"
+import { container, sectionY } from "./constants"
 import { Eyebrow } from "./primitives"
 
 const steps = [
 	{
 		step: "01",
 		title: "The agent asks",
-		copy: "An agent requests access for one specific action, on behalf of one specific user. The request carries no authority of its own.",
+		question: "What does the agent want to do, and for whom?",
+		rows: [
+			{ tone: "accent", label: "triage-bot", note: "acme/api" },
+			{ tone: "gray", label: "On behalf of", note: "dev@helios.dev" },
+		],
 	},
 	{
 		step: "02",
 		title: "Policy decides",
-		copy: "Your rules decide whether it runs, whether the user has to agree, or whether a person has to look at it first.",
+		question: "Does it run, wait for the user, or wait for a person?",
+		rows: [
+			{ tone: "green", label: "allow", note: "auto-approved" },
+			{ tone: "accent", label: "escalate", note: "human review" },
+		],
 	},
 	{
 		step: "03",
 		title: "The action runs",
-		copy: "The scoped credential is spent, the work is queued, and retries and failures are handled for you.",
+		question: "What happens when something breaks?",
+		rows: [
+			{ tone: "green", label: "executed", note: "durable queue" },
+			{ tone: "gray", label: "retried", note: "idempotency keys" },
+		],
 	},
 	{
 		step: "04",
 		title: "The receipt is written",
-		copy: "Agent, grant, approver, action, result — one trail, traceable to the human it was taken on behalf of.",
+		question: "Who can trace it, and back to whom?",
+		rows: [
+			{ tone: "green", label: "agent → grant → approver", note: "result" },
+			{ tone: "gray", label: "ledger", note: "immutable · exportable" },
+		],
 	},
 ]
+
+const dotTone: Record<string, string> = {
+	accent: "bg-[var(--rm-accent)]",
+	green: "bg-emerald-500",
+	gray: "bg-[var(--rm-line-strong)]",
+}
 
 export function HowItWorks() {
 	return (
 		<section
 			id="how-it-works"
-			className="scroll-mt-16 border-t border-[var(--rm-line)] bg-[var(--rm-panel)] py-20 lg:py-28"
+			className={`scroll-mt-16 border-t border-[var(--rm-line)] bg-[var(--rm-panel)] ${sectionY}`}
 		>
 			<div className={container}>
 				<div className="max-w-[720px]">
 					<Eyebrow>How it works</Eyebrow>
-					<h2 className="mt-5 text-balance font-display-sans text-[clamp(30px,4.2vw,52px)] font-medium leading-[1.06] tracking-[-0.03em] text-[var(--rm-fg)]">
+					<h2 className="mt-5 text-balance font-sans text-[clamp(30px,4.2vw,52px)] font-medium leading-[1.06] tracking-[-0.03em] text-[var(--rm-fg)]">
 						One request, end to end
 					</h2>
 					<p className="mt-5 max-w-[560px] text-pretty text-[17px] leading-7 text-[var(--rm-muted)]">
@@ -42,16 +64,39 @@ export function HowItWorks() {
 					</p>
 				</div>
 
-				<ol className="mt-14 grid gap-px overflow-hidden rounded-xl border border-[var(--rm-line)] bg-[var(--rm-line)] md:grid-cols-2 xl:grid-cols-4">
+				<ol className="mt-14 grid items-stretch gap-6 md:grid-cols-2 xl:grid-cols-4">
 					{steps.map((item) => (
-						<li className="flex flex-col gap-3 bg-[var(--rm-bg)] p-6 lg:p-7" key={item.step}>
-							<span className="font-mono text-[11px] uppercase tracking-[0.2em] text-[var(--rm-accent)]">
+						<li
+							className="flex flex-col rounded-xl border border-[var(--rm-line)] bg-white p-6"
+							key={item.step}
+						>
+							<span className="text-[12px] font-medium tracking-[0.1em] text-[var(--rm-accent)]">
 								{item.step}
 							</span>
-							<h3 className="font-sans text-[19px] font-medium tracking-[-0.02em] text-[var(--rm-fg)]">
+							<h3 className="mt-3 font-display-sans text-[17px] font-medium tracking-[-0.01em] text-[var(--rm-fg)]">
 								{item.title}
 							</h3>
-							<p className="text-[14.5px] leading-6 text-[var(--rm-muted)]">{item.copy}</p>
+							<p className="mt-1.5 text-[14px] leading-5 text-[var(--rm-muted)]">{item.question}</p>
+
+							<ul className="mt-auto grid gap-2 pt-5">
+								{item.rows.map((row) => (
+									<li
+										className="flex items-center gap-2.5 rounded-lg bg-[var(--rm-panel)] px-3 py-2"
+										key={row.note}
+									>
+										<span
+											aria-hidden="true"
+											className={`size-2 shrink-0 rounded-full ${dotTone[row.tone]}`}
+										/>
+										<span className="truncate text-[13px] font-medium text-[var(--rm-fg)]">
+											{row.label}
+										</span>
+										<span className="ml-auto shrink-0 font-mono text-[11px] text-[var(--rm-faint)]">
+											{row.note}
+										</span>
+									</li>
+								))}
+							</ul>
 						</li>
 					))}
 				</ol>
