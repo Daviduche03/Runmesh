@@ -243,6 +243,33 @@
   --rm-btn-fg: #0a0a0b;
 }
 
+/* The landing page is a fixed, art-directed surface: it does not follow the
+   app's light/dark toggle. Same token names, pinned to the light palette, so
+   the marketing page never changes shape under the reader. */
+.rm-landing {
+  --rm-bg: #f4f1ea;
+  --rm-bg-trans: rgba(244, 241, 234, 0.82);
+  --rm-panel: #ffffff;
+  --rm-panel-2: #faf8f3;
+  --rm-fg: #141311;
+  --rm-fg-2: #33312d;
+  --rm-muted: #5f5c55;
+  --rm-faint: #9a968d;
+  --rm-line: #e3dfd6;
+  --rm-line-strong: #d5d0c5;
+  --rm-accent: #c2491f;
+  --rm-accent-2: #b8431e;
+  --rm-btn-bg: #141311;
+  --rm-btn-fg: #f4f1ea;
+  /* Inverted band: the CTA and the footer sit on ink, not on cream. */
+  --rm-ink: #17160f;
+  --rm-ink-fg: #f4f1ea;
+  --rm-ink-2: #e2dfd3;
+  --rm-ink-muted: #97938a;
+  --rm-ink-line: #2e2c22;
+  --rm-ink-accent: #f08452;
+}
+
 html.light .rm-surface {
   --rm-bg: #f4f1ea;
   --rm-bg-trans: rgba(244, 241, 234, 0.85);
@@ -453,6 +480,14 @@ html, body {
   background: var(--background);
   color: var(--foreground);
   font-family: var(--font-sans);
+}
+
+/* The landing page is a fixed cream surface regardless of the app theme, so
+   the page background has to follow it or overscroll flashes dark. */
+html.rm-landing-root,
+html.rm-landing-root body {
+  background: #f4f1ea;
+  color: #141311;
 }
 
 @media (prefers-reduced-motion: reduce) {

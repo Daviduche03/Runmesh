@@ -113,11 +113,11 @@ The repositioning is **partially implemented**. Know what already exists before 
   - `GET /api/v1/connect/tokens`
   - `GET /api/v1/tasks/{task_id}/grant_status`
   - `GET/POST/DELETE /api/workspace/projects`
-- Landing page + README already tell the control-plane story.
+- Landing page + README already tell the control-plane story. The landing page is an art-directed cream surface that shows **real** app screenshots (captured from a running instance — see "Product screenshots for the landing page" in §4), not mockups.
 
 ### Not built / gaps
 
-- **Policies** — no rule engine for auto-approval, scope caps, spend limits, or auto-revoke.
+- **Policies** — the rule engine exists (`services/policy_engine.py`, `services/policies.py`, `policy_decisions` ledger, `/api/v1/policies/*` routes) but there is no scope-cap, spend-limit, or auto-revoke rule type yet.
 - **Agents as first-class entities** — there is no `agents` table or `/api/v1/agents` route; `agent_id` is currently a free-form string on tasks/grants.
 - **Dashboard IA** — the app still navigates as a workflow builder (see §6). No control-room home, no dedicated Agents/Grants/Approvals/Policies/Audit screens.
 - **Unified audit** — actions (`tasks`) and access (`connect_audit_events`) are separate streams; there is no single "agent → grant → action → result" timeline.
@@ -202,10 +202,30 @@ across `fetch` / `queue` / `scheduled`:
 ### Frontend conventions
 
 - Landing pages use the `--rm-*` CSS tokens and the components in `modules/landing/` (`SectionHeading`, `SectionLabel`, `constants`). Extend those; do not introduce a parallel design system.
+- The main landing page (`/`) is an **art-directed cream surface** that does not follow the app's light/dark toggle. It uses its own `.rm-landing` token scope (same `--rm-*` names, pinned to the light palette) plus `--rm-ink*` for the inverted CTA/footer bands. `landing.page.tsx` adds `rm-landing-root` to `<html>` while mounted so the body background matches — keep those two in sync.
 - Dashboard routes are wired in `src/app/router.tsx` (nested: `RequireAuth` → `AppShell` via `Outlet`); sidebar items in `src/config/nav.tsx` (`navGroups`).
 - Data fetching via zustand stores in `src/lib/stores/` calling `src/lib/api.ts`. New feature UI goes in `src/modules/<feature>/` (`*.page.tsx` + colocated `components/`); only truly shared primitives go in `src/components/`.
 - Icons come from `@phosphor-icons/react` (fill-based; use `weight`, not `stroke`/`strokeWidth`). Size with Tailwind `size-*` classes. The sidebar renders icons via `NavIcon` in `components/layout/nav-group.tsx` (fill on active).
 - Run `pnpm typecheck` and `pnpm lint` before finishing. (There are pre-existing lint errors in `use-mobile.ts` and `workflow-graph.ts` — do not add new ones.)
+
+### Product screenshots for the landing page
+
+The landing page shows **real** app screenshots, not mockups. They are captured from a running instance and committed as `frontend/public/shots/*.webp`.
+
+```bash
+# 1. Seed a local instance with realistic demo data (idempotent; wipes its tables first)
+cd runmesh-main && uv run python scripts/seed_demo.py runmesh.db
+
+# 2. Run the API and the frontend, then log in with a dashboard JWT
+uv run python src/main.py                       # :8787
+cd ../frontend && pnpm dev                     # :5173
+
+# 3. Capture each app route in a browser, then crop them into webp assets
+python3 scripts/prepare_shots.py <browser-artifact-dir>
+```
+
+`scripts/seed_demo.py` fills users, workspaces, agents, connect apps/users/connections, grants, policy rules, policy decisions, agent runs, agent events, audit events, and tasks. Audit events must reference real tasks/runs/decisions or the ledger cannot chain them into threads — that is why the seed creates them in that order.
+
 
 ---
 

@@ -31,6 +31,12 @@ __pycache__/
 # Runmesh Workspace CLI local state
 .runmesh/
 
+# Local SQLite database and scratch SQL (seed with scripts/seed_demo.py)
+runmesh-main/runmesh.db
+runmesh-main/runmesh.db-shm
+runmesh-main/runmesh.db-wal
+runmesh-main/prod.sql
+
 # CLI binary (build with: go build ./cmd/runmesh)
 runmesh-main/workspace/runmesh
 

@@ -1,77 +1,118 @@
-import { container, sectionY } from "./constants"
-import { SectionHeading } from "./section-heading"
-import { ProductShot, type ProductShotVariant } from "@/components/product-shot"
+import type React from "react"
+import { cn } from "@/lib/utils"
 
-const primitives: {
-	index: string
-	label: string
-	title: string
-	copy: string
-	shot: ProductShotVariant
-}[] = [
-	{
-		index: "01",
-		label: "Identity",
-		title: "Every agent gets an identity, not a shared key",
-		copy: "Register agents and tie every action to the agent, task, or workflow run that requested it. Know exactly who did what.",
-		shot: "agents",
-	},
-	{
-		index: "02",
-		label: "Access",
-		title: "Scoped, revocable, time-limited credentials",
-		copy: "Mint tokens bound to an agent, a task, a resource, and an expiry. No long-lived secrets, no all-or-nothing scopes.",
-		shot: "grants",
-	},
-	{
-		index: "03",
-		label: "Approvals",
-		title: "Human in the loop, by policy",
-		copy: "Decide what runs freely and what waits for a person — a token, a refund, a destructive action — before it happens.",
-		shot: "approvals",
-	},
-	{
-		index: "04",
-		label: "Execution",
-		title: "Run the work, durably",
-		copy: "HTTP tasks, scheduled jobs, and multi-step workflows with retries, idempotency, and replay — on the same queues.",
-		shot: "actions",
-	},
-]
-
-export function Primitives() {
+/**
+ * A browser chrome frame around a product screenshot. Reference sites lean on
+ * this to make a flat image read as "a real app someone is running".
+ */
+export function BrowserFrame({
+	src,
+	alt,
+	className,
+	frameClassName,
+	url = "app.runmesh.dev",
+}: {
+	src: string
+	alt: string
+	className?: string
+	frameClassName?: string
+	url?: string
+}) {
 	return (
-		<section id="primitives" className={`scroll-mt-14 border-b border-[var(--rm-line)] ${sectionY}`}>
-			<div className={container}>
-				<SectionHeading index="01" label="What Runmesh does" title="Identity, access, and control in one plane">
-					The four things you would otherwise stitch together yourself — agent identity, scoped credentials,
-					approval gates, and durable execution — behind one API and one dashboard.
-				</SectionHeading>
-
-				<div className="mt-14 grid gap-px bg-[var(--rm-line)] md:grid-cols-2">
-					{primitives.map((item) => (
-						<article className="group flex flex-col gap-6 bg-[var(--rm-bg)] p-6 lg:p-8" key={item.index}>
-							<div className="flex items-baseline justify-between gap-4">
-								<span className="font-mono text-[11px] uppercase tracking-[0.2em] text-[var(--rm-accent)]">
-									{item.index} / {item.label}
-								</span>
-							</div>
-							<div className="border border-[var(--rm-line)] bg-[var(--rm-panel)] p-3">
-								<ProductShot
-									variant={item.shot}
-									className="transition-transform duration-200 ease-[var(--ease-out)] group-hover:-translate-y-0.5"
-								/>
-							</div>
-							<div className="mt-auto max-w-[540px]">
-								<h3 className="font-display text-[20px] font-medium leading-[1.2] tracking-[-0.02em] text-[var(--rm-fg)]">
-									{item.title}
-								</h3>
-								<p className="mt-2 text-[15px] leading-6 text-[var(--rm-muted)]">{item.copy}</p>
-							</div>
-						</article>
-					))}
+		<div
+			className={cn(
+				"overflow-hidden rounded-xl border border-[var(--rm-line)] bg-white shadow-[0_1px_2px_rgba(20,19,17,0.04),0_18px_48px_-24px_rgba(20,19,17,0.28)]",
+				frameClassName
+			)}
+		>
+			<div className="flex h-9 items-center gap-2 border-b border-[var(--rm-line)] bg-[var(--rm-panel-2)] px-3">
+				<span className="size-2.5 rounded-full bg-[#ff5f57]" />
+				<span className="size-2.5 rounded-full bg-[#febc2e]" />
+				<span className="size-2.5 rounded-full bg-[#28c840]" />
+				<div className="mx-auto flex h-5 w-2/5 max-w-[280px] items-center justify-center gap-1.5 rounded-[4px] bg-white px-3 font-mono text-[10px] text-[var(--rm-faint)]">
+					<svg viewBox="0 0 12 12" className="size-2.5 shrink-0 fill-none stroke-current" strokeWidth="1.4">
+						<rect x="2.6" y="5" width="6.8" height="5" rx="1" />
+						<path d="M4 5V3.6a2 2 0 0 1 4 0V5" />
+					</svg>
+					<span className="truncate">{url}</span>
 				</div>
 			</div>
-		</section>
+			<img
+				src={src}
+				alt={alt}
+				loading="lazy"
+				decoding="async"
+				className={cn("block w-full", className)}
+			/>
+		</div>
+	)
+}
+
+/**
+ * DotField — a grid of small squares where some are lit. Used as a texture
+ * behind feature cards, echoing the dot-matrix graphics on reference sites.
+ * `lit` is a list of indices (row * cols + col) to fill.
+ */
+export function DotField({
+	cols = 10,
+	rows = 10,
+	lit = [],
+	className,
+	size = 6,
+	gap = 4,
+}: {
+	cols?: number
+	rows?: number
+	lit?: number[]
+	className?: string
+	size?: number
+	gap?: number
+}) {
+	const cells = []
+	for (let r = 0; r < rows; r++) {
+		for (let c = 0; c < cols; c++) {
+			const index = r * cols + c
+			const isLit = lit.includes(index)
+			cells.push(
+				<span
+					key={index}
+					className={cn(
+						"rounded-[1.5px]",
+						isLit ? "bg-[var(--rm-accent)]" : "bg-[var(--rm-line-strong)]"
+					)}
+					style={{ width: size, height: size }}
+				/>
+			)
+		}
+	}
+	return (
+		<div
+			aria-hidden="true"
+			className={cn("grid", className)}
+			style={{ gridTemplateColumns: `repeat(${cols}, ${size}px)`, gap }}
+		>
+			{cells}
+		</div>
+	)
+}
+
+/** Small uppercase eyebrow label with a leading rule. */
+export function Eyebrow({
+	children,
+	className,
+}: {
+	children: React.ReactNode
+	className?: string
+}) {
+	return (
+		<div
+			className={cn(
+				"flex items-center gap-2.5 font-mono text-[11px] uppercase tracking-[0.18em] text-[var(--rm-faint)]",
+				className
+			)}
+		>
+			<span className="h-px w-6 bg-[var(--rm-line-strong)]" />
+			{children}
+		</div>
 	)
 }

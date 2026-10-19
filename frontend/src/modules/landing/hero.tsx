@@ -1,59 +1,75 @@
 import { Link } from "react-router-dom"
+import { ArrowRight } from "@phosphor-icons/react"
 import { container } from "./constants"
-import { SectionLabel } from "./section-label"
-import { HeroVisual } from "./hero-visual"
-
-const facts = [
-	{ k: "identity", v: "agents · tasks · workflow runs" },
-	{ k: "access", v: "scoped · revocable · time-limited" },
-	{ k: "control", v: "approvals · policy · audit" },
-]
+import { BrowserFrame, DotField } from "./primitives"
 
 export function Hero() {
 	return (
-		<section className="relative border-b border-[var(--rm-line)] pt-32 pb-16 lg:pt-40 lg:pb-20">
-			<div className={container}>
-				<div className="grid gap-12 lg:grid-cols-[minmax(0,1fr)_minmax(0,340px)] lg:items-end">
-					<div>
-						<SectionLabel index="00">Identity · Access · Control</SectionLabel>
-						<h1 className="mt-6 max-w-[760px] text-balance font-display text-[clamp(38px,5vw,64px)] font-medium leading-[1.02] tracking-[-0.03em] text-[var(--rm-fg)]">
-							The control plane for AI agents
+		<section className="relative overflow-hidden pt-20 pb-16 lg:pt-28 lg:pb-24">
+			<div
+				aria-hidden="true"
+				className="pointer-events-none absolute inset-x-0 top-0 h-[520px] bg-[radial-gradient(120%_100%_at_50%_0%,rgba(194,73,31,0.10),transparent_62%)]"
+			/>
+			<div className="relative">
+				<div className={container}>
+					<div className="max-w-[1000px]">
+						<div className="flex items-center gap-3">
+							<DotField
+								cols={4}
+								rows={2}
+								size={5}
+								gap={3}
+								lit={[0, 3, 4, 7]}
+								className="shrink-0"
+							/>
+							<span className="font-mono text-[11px] uppercase tracking-[0.2em] text-[var(--rm-faint)]">
+								The control plane for AI agents
+							</span>
+						</div>
+
+						<h1 className="mt-7 text-balance font-display text-[clamp(38px,5.4vw,68px)] font-medium leading-[1.04] tracking-[-0.035em] text-[var(--rm-fg)]">
+							Consent, policy, and a receipt{" "}
+							<span className="text-[var(--rm-faint)]">for everything your agents do.</span>
 						</h1>
-						<p className="mt-6 max-w-[580px] text-[17px] leading-7 tracking-[-0.01em] text-[var(--rm-muted)]">
-							Every agent gets an identity and a scoped, revocable, auditable credential — tied to the task that
-							requested it. See what they did, decide what they can do, and stop them when they shouldn't.
+
+						<p className="mt-7 max-w-[620px] text-pretty text-[18px] leading-7 tracking-[-0.01em] text-[var(--rm-muted)]">
+							Runmesh sits between an agent&rsquo;s intent and a real action. It decides whether the action
+							is allowed, executes it durably, and records it — so you can see what they did, decide what
+							they can do, and stop them when they shouldn&rsquo;t.
 						</p>
-						<div className="mt-8 flex items-center gap-3">
+
+						<div className="mt-9 flex flex-wrap items-center gap-3">
 							<Link
 								to="/signup"
-								className="inline-flex h-9 items-center rounded-[4px] bg-[var(--rm-btn-bg)] px-4 text-[13px] font-medium text-[var(--rm-btn-fg)] no-underline transition-[opacity,transform] duration-150 ease-[var(--ease-out)] hover:opacity-90 active:scale-[0.96]"
+								className="inline-flex h-11 items-center gap-2 rounded-[8px] bg-[var(--rm-btn-bg)] px-5 text-[15px] font-medium text-[var(--rm-btn-fg)] no-underline transition-[opacity,transform] duration-150 ease-[var(--ease-out)] hover:opacity-90 active:scale-[0.98]"
 							>
-								Start building
+								Get started free
+								<ArrowRight className="size-4" weight="bold" />
 							</Link>
-							<Link
-								to="/login"
-								className="inline-flex h-9 items-center rounded-[4px] border border-[var(--rm-line-strong)] px-4 text-[13px] font-medium text-[var(--rm-fg-2)] no-underline transition-[color,transform] duration-150 ease-[var(--ease-out)] hover:text-[var(--rm-fg)] active:scale-[0.96]"
+							<a
+								href="https://github.com/Daviduche03/Runmesh"
+								target="_blank"
+								rel="noreferrer"
+								className="inline-flex h-11 items-center rounded-[8px] border border-[var(--rm-line-strong)] bg-white px-5 text-[15px] font-medium text-[var(--rm-fg)] no-underline transition-[border-color,transform] duration-150 ease-[var(--ease-out)] hover:border-[var(--rm-faint)] active:scale-[0.98]"
 							>
-								View the API
-							</Link>
+								Read the source
+							</a>
 						</div>
-					</div>
 
-					<dl className="grid gap-y-4 border-t border-[var(--rm-line)] pt-6 lg:border-t-0 lg:pt-0">
-						{facts.map((fact) => (
-							<div className="flex flex-col gap-1" key={fact.k}>
-								<dt className="font-mono text-[11px] uppercase tracking-[0.16em] text-[var(--rm-faint)]">
-									{fact.k}
-								</dt>
-								<dd className="font-mono text-[13px] text-[var(--rm-fg-2)]">{fact.v}</dd>
-							</div>
-						))}
-					</dl>
+						<p className="mt-5 font-mono text-[12px] text-[var(--rm-faint)]">
+							MIT licensed · Self-host or run it as a service · No agent SDK required
+						</p>
+					</div>
 				</div>
 
-					<div className="mt-14 overflow-hidden border border-[var(--rm-line)] bg-[var(--rm-panel)] p-4 lg:mt-16">
-						<HeroVisual />
-					</div>
+				<div className={`${container} mt-16 lg:mt-20`}>
+					<BrowserFrame
+						src="/shots/control-room.webp"
+						alt="The Runmesh control room: pending consent, active agents, action throughput, action outcomes, and a live audit feed."
+						url="app.runmesh.dev/control-room"
+						className="w-full"
+					/>
+				</div>
 			</div>
 		</section>
 	)
