@@ -41,24 +41,12 @@ export function Header() {
 							{label}
 						</Link>
 					))}
-					<Link
-						to="/workspace"
-						className="text-inherit no-underline transition-[color] duration-150 ease-[var(--ease-out)] hover:text-[var(--rm-fg)]"
-					>
-						Workspace
-					</Link>
-					<a
-						href="https://github.com/Daviduche03/Runmesh"
-						className="text-inherit no-underline transition-[color] duration-150 ease-[var(--ease-out)] hover:text-[var(--rm-fg)]"
-					>
-						GitHub
-					</a>
 				</div>
 
 				<div className="flex items-center gap-2">
 					<Link
 						to="/login"
-						className="hidden h-9 items-center rounded-[6px] px-3 text-[14px] text-[var(--rm-muted)] no-underline transition-[color] duration-150 ease-[var(--ease-out)] hover:text-[var(--rm-fg)] md:flex"
+						className="inline-flex h-9 items-center rounded-[6px] border border-[var(--rm-line-strong)] bg-white px-4 text-[14px] font-medium text-[var(--rm-fg)] no-underline transition-[border-color,transform] duration-150 ease-[var(--ease-out)] hover:border-[var(--rm-faint)] active:scale-[0.97]"
 					>
 						Log in
 					</Link>
@@ -93,26 +81,6 @@ export function Header() {
 								{label}
 							</Link>
 						))}
-						<Link
-							to="/workspace"
-							onClick={() => setOpen(false)}
-							className="rounded-[6px] px-2 py-2.5 text-[16px] text-[var(--rm-fg-2)] no-underline transition-colors duration-150 hover:bg-[var(--rm-panel)] hover:text-[var(--rm-fg)]"
-						>
-							Workspace
-						</Link>
-						<a
-							href="https://github.com/Daviduche03/Runmesh"
-							className="rounded-[6px] px-2 py-2.5 text-[16px] text-[var(--rm-fg-2)] no-underline transition-colors duration-150 hover:bg-[var(--rm-panel)] hover:text-[var(--rm-fg)]"
-						>
-							GitHub
-						</a>
-						<Link
-							to="/login"
-							onClick={() => setOpen(false)}
-							className="rounded-[6px] px-2 py-2.5 text-[16px] text-[var(--rm-fg-2)] no-underline transition-colors duration-150 hover:bg-[var(--rm-panel)] hover:text-[var(--rm-fg)] md:hidden"
-						>
-							Log in
-						</Link>
 					</div>
 				</div>
 			) : null}

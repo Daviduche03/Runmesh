@@ -5,6 +5,5 @@ export const sectionY = "py-24 lg:py-32"
 export const headerNavLinks = [
 	{ label: "Platform", id: "product" },
 	{ label: "Use cases", id: "use-cases" },
-	{ label: "Open source", id: "open-source" },
 	{ label: "FAQ", id: "faq" },
 ] as const
