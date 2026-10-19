@@ -6,10 +6,6 @@ import { BrowserFrame, DotField } from "./primitives"
 export function Hero() {
 	return (
 		<section className="relative overflow-hidden pt-20 pb-16 lg:pt-28 lg:pb-24">
-			<div
-				aria-hidden="true"
-				className="pointer-events-none absolute inset-x-0 top-0 h-[560px] bg-[radial-gradient(120%_100%_at_50%_0%,rgba(10,14,25,0.06),transparent_60%)]"
-			/>
 			<div className="relative">
 				<div className={container}>
 					<div className="max-w-[1000px]">
