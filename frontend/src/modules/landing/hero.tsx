@@ -1,7 +1,7 @@
 import { Link } from "react-router-dom"
 import { ArrowRight } from "@phosphor-icons/react"
 import { container } from "./constants"
-import { BrowserFrame, DotField } from "./primitives"
+import { BrowserFrame } from "./primitives"
 
 export function Hero() {
 	return (
@@ -9,21 +9,7 @@ export function Hero() {
 			<div className="relative">
 				<div className={container}>
 					<div className="max-w-[1000px]">
-						<div className="flex items-center gap-3">
-							<DotField
-								cols={4}
-								rows={2}
-								size={5}
-								gap={3}
-								lit={[0, 3, 4, 7]}
-								className="shrink-0"
-							/>
-							<span className="font-mono text-[11px] uppercase tracking-[0.2em] text-[var(--rm-faint)]">
-								The control plane for AI agents
-							</span>
-						</div>
-
-						<h1 className="mt-7 text-balance font-display-sans text-[clamp(36px,4.4vw,56px)] font-medium leading-[1.08] tracking-[-0.025em] text-[var(--rm-fg)]">
+						<h1 className="text-balance font-display-sans text-[clamp(36px,4.4vw,56px)] font-medium leading-[1.08] tracking-[-0.025em] text-[var(--rm-fg)]">
 							Consent, policy, and a receipt{" "}
 							<span className="text-[var(--rm-accent)]">for everything your agents do.</span>
 						</h1>
