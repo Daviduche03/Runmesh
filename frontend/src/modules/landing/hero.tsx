@@ -25,7 +25,7 @@ export function Hero() {
 
 						<h1 className="mt-7 text-balance font-display-sans text-[clamp(42px,6.4vw,80px)] font-medium leading-[1.05] tracking-[-0.025em] text-[var(--rm-fg)]">
 							Consent, policy, and a receipt{" "}
-							<span className="text-[var(--rm-muted)]">for everything your agents do.</span>
+							<span className="text-[var(--rm-accent)]">for everything your agents do.</span>
 						</h1>
 
 						<p className="mt-7 max-w-[600px] text-pretty text-[18px] leading-7 tracking-[-0.01em] text-[var(--rm-muted)]">
