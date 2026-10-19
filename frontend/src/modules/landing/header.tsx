@@ -19,7 +19,7 @@ export function Header() {
 	}
 
 	return (
-		<header className="sticky top-0 z-40 bg-[var(--rm-bg-trans)] backdrop-blur-xl">
+		<header className="fixed inset-x-0 top-0 z-40 bg-[var(--rm-bg-trans)] backdrop-blur-xl">
 			<nav className={`${container} flex h-16 items-center justify-between gap-6`}>
 				<Link
 					to="/"

@@ -33,6 +33,8 @@ export function LinearLanding() {
 
 	return (
 		<main className="rm-landing relative min-h-screen overflow-x-hidden bg-[var(--rm-bg)] font-sans text-[var(--rm-fg)] antialiased">
+			{/* Spacer for the fixed header. */}
+			<div aria-hidden="true" className="h-16" />
 			<Header />
 			<Hero />
 			<Product />

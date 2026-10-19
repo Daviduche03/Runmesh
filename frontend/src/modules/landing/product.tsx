@@ -27,7 +27,10 @@ const verbs = [
 
 export function Product() {
 	return (
-		<section id="product" className={`scroll-mt-16 border-t border-[var(--rm-line)] ${sectionY}`}>
+		<section
+			id="product"
+			className={`scroll-mt-16 border-t border-[var(--rm-line)] bg-[var(--rm-panel)] ${sectionY}`}
+		>
 			<div className={container}>
 				<div className="max-w-[720px]">
 					<Eyebrow>What Runmesh does</Eyebrow>
@@ -43,7 +46,7 @@ export function Product() {
 				<div className="mt-14 grid gap-px overflow-hidden rounded-xl border border-[var(--rm-line)] bg-[var(--rm-line)] md:grid-cols-3">
 					{verbs.map((verb) => (
 						<article
-							className="flex flex-col gap-6 bg-[var(--rm-panel)] p-7 lg:p-8"
+							className="flex flex-col gap-6 bg-white p-7 lg:p-8"
 							key={verb.index}
 						>
 							<div className="flex items-start justify-between gap-4">
