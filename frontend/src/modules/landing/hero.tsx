@@ -28,31 +28,31 @@ export function Hero() {
 							<span className="text-[var(--rm-accent)]">for everything your agents do.</span>
 						</h1>
 
-						<p className="mt-7 max-w-[600px] text-pretty text-[18px] leading-7 tracking-[-0.01em] text-[var(--rm-muted)]">
+						<p className="mt-6 max-w-[540px] text-pretty text-[16px] leading-6 text-[var(--rm-muted)]">
 							Runmesh sits between an agent&rsquo;s intent and a real action. It decides whether the action
 							is allowed, executes it durably, and records it — so you can see what they did, decide what
 							they can do, and stop them when they shouldn&rsquo;t.
 						</p>
 
-						<div className="mt-9 flex flex-wrap items-center gap-3">
+						<div className="mt-8 flex flex-wrap items-center gap-3">
 							<Link
 								to="/signup"
-								className="inline-flex h-11 items-center gap-2 rounded-[8px] bg-[var(--rm-btn-bg)] px-5 text-[15px] font-medium text-[var(--rm-btn-fg)] no-underline transition-[opacity,transform] duration-150 ease-[var(--ease-out)] hover:opacity-90 active:scale-[0.98]"
+								className="inline-flex h-10 items-center gap-2 rounded-[8px] bg-[var(--rm-btn-bg)] px-4 text-[14px] font-medium text-[var(--rm-btn-fg)] no-underline transition-[opacity,transform] duration-150 ease-[var(--ease-out)] hover:opacity-90 active:scale-[0.98]"
 							>
 								Get started free
-								<ArrowRight className="size-4" weight="bold" />
+								<ArrowRight className="size-3.5" weight="bold" />
 							</Link>
 							<a
 								href="https://github.com/Daviduche03/Runmesh"
 								target="_blank"
 								rel="noreferrer"
-								className="inline-flex h-11 items-center rounded-[8px] border border-[var(--rm-line-strong)] bg-white px-5 text-[15px] font-medium text-[var(--rm-fg)] no-underline transition-[border-color,transform] duration-150 ease-[var(--ease-out)] hover:border-[var(--rm-faint)] active:scale-[0.98]"
+								className="inline-flex h-10 items-center rounded-[8px] border border-[var(--rm-line-strong)] bg-white px-4 text-[14px] font-medium text-[var(--rm-fg)] no-underline transition-[border-color,transform] duration-150 ease-[var(--ease-out)] hover:border-[var(--rm-faint)] active:scale-[0.98]"
 							>
 								Read the source
 							</a>
 						</div>
 
-						<p className="mt-6 text-[13.5px] text-[var(--rm-faint)]">
+						<p className="mt-5 text-[13px] text-[var(--rm-faint)]">
 							MIT licensed. Runs on your own infrastructure. Nothing to install in the agent.
 						</p>
 					</div>
