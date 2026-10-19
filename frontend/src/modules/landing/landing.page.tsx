@@ -5,8 +5,8 @@ import { Hero } from "./hero"
 import { Product } from "./product"
 import { HowItWorks } from "./how-it-works"
 import { ControlRoom } from "./control-room"
+import { UseCases } from "./use-cases"
 import { Stats } from "./stats"
-import { Developers } from "./developers"
 import { Integrations } from "./integrations"
 import { SelfHost } from "./self-host"
 import { Faq } from "./faq"
@@ -38,8 +38,8 @@ export function LinearLanding() {
 			<Product />
 			<HowItWorks />
 			<ControlRoom />
+			<UseCases />
 			<Stats />
-			<Developers />
 			<Integrations />
 			<SelfHost />
 			<Faq />

@@ -5,26 +5,22 @@ const steps = [
 	{
 		step: "01",
 		title: "The agent asks",
-		copy: "An agent requests a token for a specific action, on behalf of a specific user. The request carries no authority of its own.",
-		mono: "POST /api/v1/connect/token",
+		copy: "An agent requests access for one specific action, on behalf of one specific user. The request carries no authority of its own.",
 	},
 	{
 		step: "02",
 		title: "Policy decides",
-		copy: "Rules are evaluated at issuance. Allow, consent, escalate, or deny — and the decision, with its reason, lands in the ledger.",
-		mono: "policy_decisions → allow",
+		copy: "Your rules decide whether it runs, whether the user has to agree, or whether a person has to look at it first.",
 	},
 	{
 		step: "03",
 		title: "The action runs",
-		copy: "The scoped token is spent on a durable queue. Retries, idempotency, and replay are handled for you.",
-		mono: "POST /api/v1/tasks → 200",
+		copy: "The scoped credential is spent, the work is queued, and retries and failures are handled for you.",
 	},
 	{
 		step: "04",
 		title: "The receipt is written",
-		copy: "Agent, grant, approver, action, result. One thread, traceable to the human it was taken on behalf of.",
-		mono: "connect_audit_events → recorded",
+		copy: "Agent, grant, approver, action, result — one trail, traceable to the human it was taken on behalf of.",
 	},
 ]
 
@@ -37,11 +33,11 @@ export function HowItWorks() {
 			<div className={container}>
 				<div className="max-w-[720px]">
 					<Eyebrow>How it works</Eyebrow>
-					<h2 className="mt-5 text-balance font-display text-[clamp(30px,4.2vw,52px)] font-medium leading-[1.06] tracking-[-0.03em] text-[var(--rm-fg)]">
+					<h2 className="mt-5 text-balance font-sans text-[clamp(30px,4.2vw,52px)] font-medium leading-[1.06] tracking-[-0.03em] text-[var(--rm-fg)]">
 						One request, end to end
 					</h2>
 					<p className="mt-5 max-w-[560px] text-pretty text-[17px] leading-7 text-[var(--rm-muted)]">
-						No SDK to adopt, no sidecar to run. If your agent can make an HTTP request, it can act through
+						Nothing to adopt and no sidecar to run. If your agent can make a request, it can act through
 						Runmesh.
 					</p>
 				</div>
@@ -52,13 +48,10 @@ export function HowItWorks() {
 							<span className="font-mono text-[11px] uppercase tracking-[0.2em] text-[var(--rm-accent)]">
 								{item.step}
 							</span>
-							<h3 className="font-display text-[19px] font-medium tracking-[-0.02em] text-[var(--rm-fg)]">
+							<h3 className="font-sans text-[19px] font-medium tracking-[-0.02em] text-[var(--rm-fg)]">
 								{item.title}
 							</h3>
 							<p className="text-[14.5px] leading-6 text-[var(--rm-muted)]">{item.copy}</p>
-							<code className="mt-auto block overflow-x-auto rounded-[6px] border border-[var(--rm-line)] bg-[var(--rm-panel-2)] px-3 py-2 font-mono text-[12px] whitespace-nowrap text-[var(--rm-fg-2)]">
-								{item.mono}
-							</code>
 						</li>
 					))}
 				</ol>

@@ -52,6 +52,7 @@
   --color-chart-4: var(--chart-4);
   --color-chart-5: var(--chart-5);
   --font-display: "Space Grotesk", ui-sans-serif, system-ui, sans-serif;
+  --font-display-serif: "Newsreader", ui-serif, Georgia, serif;
   --font-sans: "Geist", ui-sans-serif, system-ui, sans-serif;
   --font-mono: "IBM Plex Mono", ui-monospace, "SF Mono", Menlo, monospace;
   --radius-sm: calc(var(--radius) - 4px);
@@ -244,29 +245,34 @@
 }
 
 /* The landing page is a fixed, art-directed surface: it does not follow the
-   app's light/dark toggle. Same token names, pinned to the light palette, so
-   the marketing page never changes shape under the reader. */
+   app's light/dark toggle. Same token names, pinned to a neutral near-white
+   and a near-black ink, so the marketing page never changes shape under the
+   reader.
+
+   The display face is a serif (Newsreader) used only for the hero, the stat
+   numbers and the closing statement — the way a marketing page sets its one
+   typographic moment. Everything else is Geist, the app's own UI face. */
 .rm-landing {
-  --rm-bg: #f4f1ea;
-  --rm-bg-trans: rgba(244, 241, 234, 0.82);
+  --rm-bg: #f9f9f9;
+  --rm-bg-trans: rgba(249, 249, 249, 0.82);
   --rm-panel: #ffffff;
-  --rm-panel-2: #faf8f3;
-  --rm-fg: #141311;
-  --rm-fg-2: #33312d;
-  --rm-muted: #5f5c55;
-  --rm-faint: #9a968d;
-  --rm-line: #e3dfd6;
-  --rm-line-strong: #d5d0c5;
+  --rm-panel-2: #f3f3f4;
+  --rm-fg: #0a0e19;
+  --rm-fg-2: #2b3140;
+  --rm-muted: #565d6e;
+  --rm-faint: #6f7686;
+  --rm-line: #e6e6e9;
+  --rm-line-strong: #d5d5da;
   --rm-accent: #c2491f;
-  --rm-accent-2: #b8431e;
-  --rm-btn-bg: #141311;
-  --rm-btn-fg: #f4f1ea;
+  --rm-accent-2: #a83c17;
+  --rm-btn-bg: #0a0e19;
+  --rm-btn-fg: #ffffff;
   /* Inverted band: the CTA and the footer sit on ink, not on cream. */
-  --rm-ink: #17160f;
-  --rm-ink-fg: #f4f1ea;
-  --rm-ink-2: #e2dfd3;
-  --rm-ink-muted: #97938a;
-  --rm-ink-line: #2e2c22;
+  --rm-ink: #0a0e19;
+  --rm-ink-fg: #ffffff;
+  --rm-ink-2: #d8dbe4;
+  --rm-ink-muted: #8b92a4;
+  --rm-ink-line: #1d2333;
   --rm-ink-accent: #f08452;
 }
 
@@ -486,8 +492,8 @@ html, body {
    the page background has to follow it or overscroll flashes dark. */
 html.rm-landing-root,
 html.rm-landing-root body {
-  background: #f4f1ea;
-  color: #141311;
+  background: #f9f9f9;
+  color: #0a0e19;
 }
 
 @media (prefers-reduced-motion: reduce) {

@@ -60,7 +60,7 @@ export function ControlRoom() {
 			<div className={container}>
 				<div className="max-w-[720px]">
 					<Eyebrow>The control room</Eyebrow>
-					<h2 className="mt-5 text-balance font-display text-[clamp(30px,4.2vw,52px)] font-medium leading-[1.06] tracking-[-0.03em] text-[var(--rm-fg)]">
+					<h2 className="mt-5 text-balance font-sans text-[clamp(30px,4.2vw,52px)] font-medium leading-[1.06] tracking-[-0.03em] text-[var(--rm-fg)]">
 						The place your team runs agents from
 					</h2>
 					<p className="mt-5 max-w-[560px] text-pretty text-[17px] leading-7 text-[var(--rm-muted)]">
@@ -79,7 +79,7 @@ export function ControlRoom() {
 							>
 								<div className={flipped ? "lg:order-2" : undefined}>
 									<Eyebrow>{feature.eyebrow}</Eyebrow>
-									<h3 className="mt-4 text-balance font-display text-[clamp(24px,2.6vw,32px)] font-medium leading-[1.12] tracking-[-0.025em] text-[var(--rm-fg)]">
+									<h3 className="mt-4 text-balance font-sans text-[clamp(24px,2.6vw,32px)] font-medium leading-[1.12] tracking-[-0.025em] text-[var(--rm-fg)]">
 										{feature.title}
 									</h3>
 									<p className="mt-4 text-pretty text-[16px] leading-7 text-[var(--rm-muted)]">

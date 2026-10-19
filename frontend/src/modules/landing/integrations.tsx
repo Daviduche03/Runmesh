@@ -36,12 +36,12 @@ const providers = [
 
 export function Integrations() {
 	return (
-		<section className="border-t border-[var(--rm-line)] py-16 lg:py-20">
+		<section id="integrations" className="scroll-mt-16 border-t border-[var(--rm-line)] py-16 lg:py-20">
 			<div className={container}>
 				<div className="flex flex-col gap-6 lg:flex-row lg:items-end lg:justify-between">
 					<div className="max-w-[520px]">
 						<Eyebrow>Connect</Eyebrow>
-						<h2 className="mt-4 text-balance font-display text-[clamp(24px,3vw,36px)] font-medium leading-[1.1] tracking-[-0.025em] text-[var(--rm-fg)]">
+						<h2 className="mt-4 text-balance font-sans text-[clamp(24px,3vw,36px)] font-medium leading-[1.1] tracking-[-0.025em] text-[var(--rm-fg)]">
 							Your users connect the accounts your agents act on
 						</h2>
 						<p className="mt-4 text-pretty text-[16px] leading-7 text-[var(--rm-muted)]">

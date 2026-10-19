@@ -4,30 +4,33 @@ import { BrowserFrame, Eyebrow } from "./primitives"
 const points = [
 	{
 		title: "One process, one file",
-		copy: "A plain Python server on FastAPI with a SQLite file for storage. No control plane service, no external database, no sidecar to operate.",
+		copy: "A single server with a single database file. No control-plane service to buy, no external database, no sidecar to operate.",
 	},
 	{
 		title: "Any host",
-		copy: "A VM, a container, your own Kubernetes cluster. It ships as a Dockerfile and a compose file. Nothing about the runtime is proprietary.",
+		copy: "A VM, a container, your own cluster. It ships as a Dockerfile and a compose file, and nothing about the runtime is proprietary.",
 	},
 	{
 		title: "Your data stays yours",
-		copy: "Grants, audit events, and policy decisions live in your database. Export them at any time. There is no telemetry and no third-party processing.",
+		copy: "Grants, decisions and receipts live in your database. Export them whenever you like. There is no telemetry and no third-party processing.",
 	},
 ]
 
 export function SelfHost() {
 	return (
-		<section className="border-t border-[var(--rm-line)] bg-[var(--rm-panel)] py-20 lg:py-28">
+		<section
+			id="open-source"
+			className="scroll-mt-16 border-t border-[var(--rm-line)] bg-[var(--rm-panel)] py-20 lg:py-28"
+		>
 			<div className={container}>
 				<div className="grid gap-12 lg:grid-cols-[minmax(0,1fr)_minmax(0,1.05fr)] lg:items-center lg:gap-16">
 					<div>
 						<Eyebrow>Open source</Eyebrow>
-						<h2 className="mt-5 text-balance font-display text-[clamp(28px,3.8vw,46px)] font-medium leading-[1.08] tracking-[-0.03em] text-[var(--rm-fg)]">
+						<h2 className="mt-5 text-balance font-sans text-[clamp(28px,3.8vw,46px)] font-medium leading-[1.08] tracking-[-0.03em] text-[var(--rm-fg)]">
 							Run it where your agents already run
 						</h2>
 						<p className="mt-5 max-w-[480px] text-pretty text-[16px] leading-7 text-[var(--rm-muted)]">
-							MIT licensed, and deliberately boring to deploy. If you can run a Python process, you can run
+							MIT licensed, and deliberately boring to deploy. If you can run a container, you can run
 							Runmesh.
 						</p>
 

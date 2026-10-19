@@ -8,7 +8,7 @@ export function Hero() {
 		<section className="relative overflow-hidden pt-20 pb-16 lg:pt-28 lg:pb-24">
 			<div
 				aria-hidden="true"
-				className="pointer-events-none absolute inset-x-0 top-0 h-[520px] bg-[radial-gradient(120%_100%_at_50%_0%,rgba(194,73,31,0.10),transparent_62%)]"
+				className="pointer-events-none absolute inset-x-0 top-0 h-[560px] bg-[radial-gradient(120%_100%_at_50%_0%,rgba(10,14,25,0.06),transparent_60%)]"
 			/>
 			<div className="relative">
 				<div className={container}>
@@ -27,12 +27,12 @@ export function Hero() {
 							</span>
 						</div>
 
-						<h1 className="mt-7 text-balance font-display text-[clamp(38px,5.4vw,68px)] font-medium leading-[1.04] tracking-[-0.035em] text-[var(--rm-fg)]">
+						<h1 className="mt-7 text-balance font-display-serif text-[clamp(42px,6.4vw,80px)] font-light leading-[1.02] tracking-[-0.03em] text-[var(--rm-fg)]">
 							Consent, policy, and a receipt{" "}
-							<span className="text-[var(--rm-faint)]">for everything your agents do.</span>
+							<span className="text-[var(--rm-muted)]">for everything your agents do.</span>
 						</h1>
 
-						<p className="mt-7 max-w-[620px] text-pretty text-[18px] leading-7 tracking-[-0.01em] text-[var(--rm-muted)]">
+						<p className="mt-7 max-w-[600px] text-pretty text-[18px] leading-7 tracking-[-0.01em] text-[var(--rm-muted)]">
 							Runmesh sits between an agent&rsquo;s intent and a real action. It decides whether the action
 							is allowed, executes it durably, and records it — so you can see what they did, decide what
 							they can do, and stop them when they shouldn&rsquo;t.
@@ -56,8 +56,8 @@ export function Hero() {
 							</a>
 						</div>
 
-						<p className="mt-5 font-mono text-[12px] text-[var(--rm-faint)]">
-							MIT licensed · Self-host or run it as a service · No agent SDK required
+						<p className="mt-6 text-[13.5px] text-[var(--rm-faint)]">
+							MIT licensed. Runs on your own infrastructure. Nothing to install in the agent.
 						</p>
 					</div>
 				</div>

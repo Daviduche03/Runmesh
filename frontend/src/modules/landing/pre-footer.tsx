@@ -8,11 +8,11 @@ export function PreFooter() {
 			<div className={container}>
 				<div className="grid gap-10 lg:grid-cols-[minmax(0,1fr)_auto] lg:items-end">
 					<div>
-						<h2 className="max-w-[820px] text-balance font-display text-[clamp(30px,4.6vw,58px)] font-medium leading-[1.04] tracking-[-0.035em] text-[var(--rm-ink-fg)]">
+						<h2 className="max-w-[820px] text-balance font-display-serif text-[clamp(34px,5vw,64px)] font-light leading-[1.06] tracking-[-0.03em] text-[var(--rm-ink-fg)]">
 							Give your agents access you can prove and revoke
 						</h2>
 						<p className="mt-5 max-w-[520px] text-pretty text-[17px] leading-7 text-[var(--rm-ink-muted)]">
-							Start with one agent and one provider. The API is a handful of endpoints and a SQLite file.
+							Start with one agent and one provider. No migration, no sidecar, no new runtime.
 						</p>
 					</div>
 					<div className="flex flex-wrap items-center gap-3">

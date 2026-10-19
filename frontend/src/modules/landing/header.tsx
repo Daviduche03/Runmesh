@@ -27,7 +27,7 @@ export function Header() {
 					aria-label="Runmesh home"
 				>
 					<LogoIcon className="size-[18px] text-[var(--rm-accent)]" />
-					<span className="font-display">Runmesh</span>
+					<span className="font-sans font-medium">Runmesh</span>
 				</Link>
 
 				<div className="hidden items-center gap-7 text-[14px] text-[var(--rm-muted)] lg:flex">

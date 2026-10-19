@@ -4,7 +4,7 @@ const stats = [
 	{
 		value: "0",
 		label: "long-lived credentials",
-		detail: "every token is scoped, expiring, and revocable",
+		detail: "every one is scoped, expiring, and revocable",
 	},
 	{
 		value: "3",
@@ -18,8 +18,8 @@ const stats = [
 	},
 	{
 		value: "1",
-		label: "API to integrate",
-		detail: "one HTTP API for identity, access, and execution",
+		label: "place to look",
+		detail: "one view of every agent, grant, policy and receipt",
 	},
 ]
 
@@ -30,7 +30,7 @@ export function Stats() {
 				<div className="grid gap-10 sm:grid-cols-2 lg:grid-cols-4 lg:gap-8">
 					{stats.map((stat) => (
 						<div key={stat.label}>
-							<div className="font-display text-[clamp(40px,5vw,60px)] font-medium leading-none tracking-[-0.04em] text-[var(--rm-ink-fg)] tabular-nums">
+							<div className="font-display-serif text-[clamp(44px,5.4vw,66px)] font-light leading-none tracking-[-0.035em] text-[var(--rm-ink-fg)] tabular-nums">
 								{stat.value}
 							</div>
 							<div className="mt-3 text-[15px] font-medium text-[var(--rm-ink-2)]">{stat.label}</div>

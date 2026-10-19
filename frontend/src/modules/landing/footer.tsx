@@ -4,21 +4,21 @@ import { container } from "./constants"
 
 const columns = [
 	{
-		title: "Product",
+		title: "Platform",
 		items: [
+			{ label: "How it works", href: "/#how-it-works" },
 			{ label: "Control room", href: "/#control-room" },
-			{ label: "Grants", href: "/grants" },
 			{ label: "Policies", href: "/policies" },
 			{ label: "Audit", href: "/audit" },
-			{ label: "Connect", href: "/connect" },
+			{ label: "Grants", href: "/grants" },
 		],
 	},
 	{
-		title: "Developers",
+		title: "Resources",
 		items: [
-			{ label: "API reference", href: "/#developers" },
-			{ label: "Quickstart", href: "/#developers" },
-			{ label: "How it works", href: "/#how-it-works" },
+			{ label: "Use cases", href: "/#use-cases" },
+			{ label: "Integrations", href: "/#integrations" },
+			{ label: "Open source", href: "/#open-source" },
 			{ label: "FAQ", href: "/#faq" },
 		],
 	},
@@ -43,7 +43,7 @@ export function Footer() {
 						className="flex items-center gap-2.5 text-[15px] font-medium text-[var(--rm-ink-fg)] no-underline"
 					>
 						<LogoIcon className="size-5 text-[var(--rm-ink-accent)]" />
-						<span className="font-display">Runmesh</span>
+						<span className="font-sans font-medium">Runmesh</span>
 					</Link>
 					<p className="mt-5 max-w-[300px] text-[14px] leading-6 text-[var(--rm-ink-muted)]">
 						The control plane for AI agents — identity, access, approvals, and audit in one layer.

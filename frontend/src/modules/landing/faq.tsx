@@ -7,27 +7,27 @@ import { Eyebrow } from "./primitives"
 const faqs = [
 	{
 		q: "Is this an agent framework?",
-		a: "No. Runmesh governs actions an agent wants to take; it does not build agents or call models. Your agent keeps its runtime — OpenCode, Claude Code, your own service — and routes anything with a side effect through Runmesh first.",
+		a: "No. Runmesh governs the actions an agent wants to take; it does not build agents or run models. Your agent keeps its runtime, and anything with a side effect goes through Runmesh first.",
 	},
 	{
 		q: "Do I have to change how my agent works?",
-		a: "Only where it acts. If a call can mutate something outside your sandbox, it should go through Runmesh so the action is authorized and recorded. Everything else keeps working as it does today.",
+		a: "Only where it acts. If a call can change something outside your sandbox, route it through Runmesh so the action is authorized and recorded. Everything else keeps working as it does today.",
 	},
 	{
 		q: "Who approves an action?",
-		a: "Whoever is the authority for it: policy (the default), the end user the action is taken on behalf of, or an operator. Policy can forbid and escalate; only the end user's own consent can auto-approve on their behalf.",
+		a: "Whoever is the authority for it: your policy by default, the end user the action is taken on behalf of, or an operator. Policy can forbid and escalate; only the end user's own agreement can approve on their behalf.",
 	},
 	{
-		q: "What happens if a token leaks?",
-		a: "It expires. Tokens carry a TTL and a use count, so a leaked credential is self-limiting. Revocation takes effect on the next request, and the audit trail shows where it was used.",
+		q: "What happens if a credential leaks?",
+		a: "It expires. Every credential carries a lifetime and a use count, so a leaked one is self-limiting. You can revoke it at any time, and the trail shows where it was used.",
 	},
 	{
-		q: "Can I self-host it?",
-		a: "Yes. It is a plain Python server (FastAPI + SQLite) that runs on any VM or container host. No managed control plane required, and the whole thing is MIT licensed.",
+		q: "Can I run it myself?",
+		a: "Yes. It is a single process with a single database file, and it runs on any machine you can run a container on. No managed control plane required, and the whole thing is MIT licensed.",
 	},
 	{
 		q: "What does it not do?",
-		a: "It cannot enforce policy on an action it never sees. Agents that copy data out by hand leave no trace for any control plane to inspect. The model assumes that and keeps blast radius small: per-action least privilege, and human gating above a threshold.",
+		a: "It cannot enforce anything on an action it never sees. An agent that copies data out by hand leaves no trace for any control plane to inspect. The model assumes that: least privilege per action, and a human above a threshold.",
 	},
 ]
 
@@ -40,7 +40,7 @@ export function Faq() {
 				<div className="grid gap-12 lg:grid-cols-[minmax(0,360px)_minmax(0,1fr)] lg:gap-20">
 					<div>
 						<Eyebrow>FAQ</Eyebrow>
-						<h2 className="mt-5 text-balance font-display text-[clamp(28px,3.6vw,44px)] font-medium leading-[1.08] tracking-[-0.03em] text-[var(--rm-fg)]">
+						<h2 className="mt-5 text-balance font-sans text-[clamp(28px,3.6vw,44px)] font-medium leading-[1.08] tracking-[-0.03em] text-[var(--rm-fg)]">
 							The questions worth asking
 						</h2>
 						<p className="mt-5 text-pretty text-[16px] leading-7 text-[var(--rm-muted)]">
