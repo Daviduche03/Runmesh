@@ -50,10 +50,6 @@ export function Hero() {
 								Read the source
 							</a>
 						</div>
-
-						<p className="mt-5 text-[13px] text-[var(--rm-faint)]">
-							MIT licensed. Runs on your own infrastructure. Nothing to install in the agent.
-						</p>
 					</div>
 				</div>
 
