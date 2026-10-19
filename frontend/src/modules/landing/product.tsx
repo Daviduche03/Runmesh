@@ -31,7 +31,7 @@ export function Product() {
 			<div className={container}>
 				<div className="max-w-[720px]">
 					<Eyebrow>What Runmesh does</Eyebrow>
-					<h2 className="mt-5 text-balance font-sans text-[clamp(30px,4.2vw,52px)] font-medium leading-[1.06] tracking-[-0.03em] text-[var(--rm-fg)]">
+					<h2 className="mt-5 text-balance font-display-sans text-[clamp(30px,4.2vw,52px)] font-medium leading-[1.06] tracking-[-0.03em] text-[var(--rm-fg)]">
 						Three verbs, done as one thing
 					</h2>
 					<p className="mt-5 max-w-[560px] text-pretty text-[17px] leading-7 text-[var(--rm-muted)]">
@@ -59,7 +59,7 @@ export function Product() {
 									className="shrink-0"
 								/>
 							</div>
-							<h3 className="font-sans text-[24px] font-medium tracking-[-0.02em] text-[var(--rm-fg)]">
+							<h3 className="font-display-sans text-[24px] font-medium tracking-[-0.02em] text-[var(--rm-fg)]">
 								{verb.title}
 							</h3>
 							<p className="text-[15px] leading-6 text-[var(--rm-muted)]">{verb.copy}</p>

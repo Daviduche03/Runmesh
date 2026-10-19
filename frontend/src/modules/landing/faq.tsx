@@ -40,7 +40,7 @@ export function Faq() {
 				<div className="grid gap-12 lg:grid-cols-[minmax(0,360px)_minmax(0,1fr)] lg:gap-20">
 					<div>
 						<Eyebrow>FAQ</Eyebrow>
-						<h2 className="mt-5 text-balance font-sans text-[clamp(28px,3.6vw,44px)] font-medium leading-[1.08] tracking-[-0.03em] text-[var(--rm-fg)]">
+						<h2 className="mt-5 text-balance font-display-sans text-[clamp(28px,3.6vw,44px)] font-medium leading-[1.08] tracking-[-0.03em] text-[var(--rm-fg)]">
 							The questions worth asking
 						</h2>
 						<p className="mt-5 text-pretty text-[16px] leading-7 text-[var(--rm-muted)]">

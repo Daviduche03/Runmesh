@@ -48,7 +48,7 @@ export function UseCases() {
 			<div className={container}>
 				<div className="max-w-[720px]">
 					<Eyebrow>What teams build</Eyebrow>
-					<h2 className="mt-5 text-balance font-sans text-[clamp(30px,4.2vw,52px)] font-medium leading-[1.06] tracking-[-0.03em] text-[var(--rm-fg)]">
+					<h2 className="mt-5 text-balance font-display-sans text-[clamp(30px,4.2vw,52px)] font-medium leading-[1.06] tracking-[-0.03em] text-[var(--rm-fg)]">
 						Agents that are allowed to do real work
 					</h2>
 					<p className="mt-5 max-w-[560px] text-pretty text-[17px] leading-7 text-[var(--rm-muted)]">

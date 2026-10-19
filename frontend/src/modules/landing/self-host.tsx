@@ -26,7 +26,7 @@ export function SelfHost() {
 				<div className="grid gap-12 lg:grid-cols-[minmax(0,1fr)_minmax(0,1.05fr)] lg:items-center lg:gap-16">
 					<div>
 						<Eyebrow>Open source</Eyebrow>
-						<h2 className="mt-5 text-balance font-sans text-[clamp(28px,3.8vw,46px)] font-medium leading-[1.08] tracking-[-0.03em] text-[var(--rm-fg)]">
+						<h2 className="mt-5 text-balance font-display-sans text-[clamp(28px,3.8vw,46px)] font-medium leading-[1.08] tracking-[-0.03em] text-[var(--rm-fg)]">
 							Run it where your agents already run
 						</h2>
 						<p className="mt-5 max-w-[480px] text-pretty text-[16px] leading-7 text-[var(--rm-muted)]">

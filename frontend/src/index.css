@@ -52,7 +52,7 @@
   --color-chart-4: var(--chart-4);
   --color-chart-5: var(--chart-5);
   --font-display: "Space Grotesk", ui-sans-serif, system-ui, sans-serif;
-  --font-display-serif: "Newsreader", ui-serif, Georgia, serif;
+  --font-display-sans: "General Sans", "Geist", ui-sans-serif, system-ui, sans-serif;
   --font-sans: "Geist", ui-sans-serif, system-ui, sans-serif;
   --font-mono: "IBM Plex Mono", ui-monospace, "SF Mono", Menlo, monospace;
   --radius-sm: calc(var(--radius) - 4px);
@@ -249,9 +249,32 @@
    and a near-black ink, so the marketing page never changes shape under the
    reader.
 
-   The display face is a serif (Newsreader) used only for the hero, the stat
-   numbers and the closing statement — the way a marketing page sets its one
-   typographic moment. Everything else is Geist, the app's own UI face. */
+   The display face is General Sans — a near match for Gellix, the face behind
+   the reference sites' headlines — self-hosted from Fontshare (ITF FFL, free
+   for commercial use). Body is Geist, the app's own UI face. */
+
+/* Self-hosted General Sans (400/500/600), from Fontshare. */
+@font-face {
+  font-family: "General Sans";
+  src: url("/fonts/GeneralSans-400.woff2") format("woff2");
+  font-weight: 400;
+  font-style: normal;
+  font-display: swap;
+}
+@font-face {
+  font-family: "General Sans";
+  src: url("/fonts/GeneralSans-500.woff2") format("woff2");
+  font-weight: 500;
+  font-style: normal;
+  font-display: swap;
+}
+@font-face {
+  font-family: "General Sans";
+  src: url("/fonts/GeneralSans-600.woff2") format("woff2");
+  font-weight: 600;
+  font-style: normal;
+  font-display: swap;
+}
 .rm-landing {
   --rm-bg: #f9f9f9;
   --rm-bg-trans: rgba(249, 249, 249, 0.82);

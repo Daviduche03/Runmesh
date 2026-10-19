@@ -30,7 +30,7 @@ export function Stats() {
 				<div className="grid gap-10 sm:grid-cols-2 lg:grid-cols-4 lg:gap-8">
 					{stats.map((stat) => (
 						<div key={stat.label}>
-							<div className="font-display-serif text-[clamp(44px,5.4vw,66px)] font-light leading-none tracking-[-0.035em] text-[var(--rm-ink-fg)] tabular-nums">
+							<div className="font-display-sans text-[clamp(44px,5.4vw,66px)] font-medium leading-none tracking-[-0.035em] text-[var(--rm-ink-fg)] tabular-nums">
 								{stat.value}
 							</div>
 							<div className="mt-3 text-[15px] font-medium text-[var(--rm-ink-2)]">{stat.label}</div>
