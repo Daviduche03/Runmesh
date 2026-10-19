@@ -4,24 +4,24 @@ import { Eyebrow } from "./primitives"
 
 function RequestGraphic() {
 	return (
-		<div className="mt-auto pt-5">
+		<div className="mt-auto pt-7">
 			<div className="flex items-center">
-				<span className="grid size-9 place-items-center rounded-full bg-[rgba(194,73,31,0.10)]">
-					<Robot className="size-4 text-[var(--rm-accent)]" weight="fill" />
+				<span className="grid size-11 place-items-center rounded-full bg-[rgba(194,73,31,0.10)]">
+					<Robot className="size-5 text-[var(--rm-accent)]" weight="fill" />
 				</span>
 				<span
 					aria-hidden="true"
-					className="mx-2 flex-1 border-t border-dashed border-[var(--rm-line-strong)]"
+					className="mx-2.5 flex-1 border-t border-dashed border-[var(--rm-line-strong)]"
 				/>
-				<span className="grid size-9 place-items-center rounded-full bg-[var(--rm-panel-2)]">
-					<User className="size-4 text-[var(--rm-fg-2)]" weight="fill" />
+				<span className="grid size-11 place-items-center rounded-full bg-[var(--rm-panel-2)]">
+					<User className="size-5 text-[var(--rm-fg-2)]" weight="fill" />
 				</span>
 			</div>
-			<div className="mt-2 flex items-center justify-between">
-				<span className="text-[11.5px] font-medium text-[var(--rm-fg)]">triage-bot</span>
-				<span className="font-mono text-[11px] text-[var(--rm-faint)]">dev@helios.dev</span>
+			<div className="mt-2.5 flex items-center justify-between">
+				<span className="text-[12.5px] font-medium text-[var(--rm-fg)]">triage-bot</span>
+				<span className="font-mono text-[12px] text-[var(--rm-faint)]">dev@helios.dev</span>
 			</div>
-			<span className="mt-3 inline-block rounded-md bg-[var(--rm-panel)] px-2.5 py-1.5 font-mono text-[11px] text-[var(--rm-faint)]">
+			<span className="mt-4 inline-block rounded-md bg-[var(--rm-panel)] px-3 py-2 font-mono text-[11.5px] text-[var(--rm-faint)]">
 				issues:write · acme/api
 			</span>
 		</div>
@@ -35,14 +35,14 @@ function DecisionGraphic() {
 		{ label: "Escalate", pct: "13%", width: "13%", fill: "bg-[var(--rm-accent)]" },
 	]
 	return (
-		<div className="mt-auto grid gap-3.5 pt-5">
+		<div className="mt-auto grid gap-4 pt-7">
 			{decisions.map((d) => (
 				<div key={d.label}>
 					<div className="flex items-baseline justify-between">
-						<span className="text-[13px] font-medium text-[var(--rm-fg)]">{d.label}</span>
-						<span className="font-mono text-[11px] text-[var(--rm-faint)]">{d.pct}</span>
+						<span className="text-[13.5px] font-medium text-[var(--rm-fg)]">{d.label}</span>
+						<span className="font-mono text-[12px] text-[var(--rm-faint)]">{d.pct}</span>
 					</div>
-					<div className="mt-1.5 h-2 overflow-hidden rounded-full bg-[var(--rm-panel-2)]">
+					<div className="mt-1.5 h-2.5 overflow-hidden rounded-full bg-[var(--rm-panel-2)]">
 						<div className={`h-full rounded-full ${d.fill}`} style={{ width: d.width }} />
 					</div>
 				</div>
@@ -53,16 +53,16 @@ function DecisionGraphic() {
 
 function PipelineGraphic() {
 	return (
-		<div className="mt-auto pt-5">
-			<div className="relative h-1.5 rounded-full bg-[var(--rm-panel-2)]">
+		<div className="mt-auto pt-7">
+			<div className="relative h-2 rounded-full bg-[var(--rm-panel-2)]">
 				<div className="absolute inset-y-0 left-0 w-2/3 rounded-full bg-emerald-500" />
 			</div>
-			<div className="mt-2 flex justify-between text-[11px] font-medium text-[var(--rm-muted)]">
+			<div className="mt-2.5 flex justify-between text-[12px] font-medium text-[var(--rm-muted)]">
 				<span>Queued</span>
 				<span>Executing</span>
 				<span>Receipted</span>
 			</div>
-			<span className="mt-3 inline-block rounded-md bg-[var(--rm-panel)] px-2.5 py-1.5 font-mono text-[11px] text-[var(--rm-faint)]">
+			<span className="mt-4 inline-block rounded-md bg-[var(--rm-panel)] px-3 py-2 font-mono text-[11.5px] text-[var(--rm-faint)]">
 				retries · idempotency keys
 			</span>
 		</div>
@@ -71,8 +71,8 @@ function PipelineGraphic() {
 
 function GaugeGraphic() {
 	return (
-		<div className="relative mt-auto pt-5">
-			<svg viewBox="0 0 120 66" className="mx-auto w-full max-w-[150px]">
+		<div className="relative mt-auto pt-7">
+			<svg viewBox="0 0 120 66" className="mx-auto w-full max-w-[180px]">
 				<defs>
 					<linearGradient id="hiw-gauge" x1="0" y1="0" x2="1" y2="0">
 						<stop offset="0%" stopColor="#6ee7b7" />
@@ -96,12 +96,12 @@ function GaugeGraphic() {
 				/>
 			</svg>
 			<div className="absolute inset-x-0 bottom-3 text-center">
-				<div className="font-display-sans text-[22px] font-medium tracking-[-0.02em] text-[var(--rm-fg)]">
+				<div className="font-display-sans text-[24px] font-medium tracking-[-0.02em] text-[var(--rm-fg)]">
 					100%
 				</div>
-				<div className="text-[11px] text-[var(--rm-faint)]">attributable · 128 actions</div>
+				<div className="mt-0.5 text-[11.5px] text-[var(--rm-faint)]">attributable · 128 actions</div>
 			</div>
-			<div className="mt-2 flex items-center justify-center gap-4 text-[11px] text-[var(--rm-muted)]">
+			<div className="mt-3 flex items-center justify-center gap-4 text-[12px] text-[var(--rm-muted)]">
 				<span className="flex items-center gap-1.5">
 					<span aria-hidden="true" className="size-1.5 rounded-full bg-emerald-500" />
 					traced
@@ -160,19 +160,21 @@ export function HowItWorks() {
 					</p>
 				</div>
 
-				<ol className="mt-14 grid items-stretch gap-6 md:grid-cols-2 xl:grid-cols-4">
+				<ol className="mt-14 grid items-stretch gap-6 md:grid-cols-2">
 					{steps.map(({ Graphic, ...item }) => (
 						<li
-							className="flex flex-col rounded-xl border border-[var(--rm-line)] bg-white p-6"
+							className="flex flex-col rounded-xl border border-[var(--rm-line)] bg-white p-7 lg:p-8"
 							key={item.step}
 						>
 							<span className="text-[12px] font-medium tracking-[0.1em] text-[var(--rm-accent)]">
 								{item.step}
 							</span>
-							<h3 className="mt-3 font-display-sans text-[17px] font-medium tracking-[-0.01em] text-[var(--rm-fg)]">
+							<h3 className="mt-3 font-display-sans text-[22px] font-medium tracking-[-0.02em] text-[var(--rm-fg)]">
 								{item.title}
 							</h3>
-							<p className="mt-1.5 text-[14px] leading-5 text-[var(--rm-muted)]">{item.question}</p>
+							<p className="mt-2 max-w-[440px] text-[15px] leading-6 text-[var(--rm-muted)]">
+								{item.question}
+							</p>
 							<Graphic />
 						</li>
 					))}
