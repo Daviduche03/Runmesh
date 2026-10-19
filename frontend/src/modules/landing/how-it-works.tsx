@@ -4,7 +4,7 @@ import { Eyebrow } from "./primitives"
 
 function RequestGraphic() {
 	return (
-		<div className="mt-auto pt-7">
+		<div className="pt-7">
 			<div className="flex items-center">
 				<span className="grid size-11 place-items-center rounded-full bg-[rgba(194,73,31,0.10)]">
 					<Robot className="size-5 text-[var(--rm-accent)]" weight="fill" />
@@ -35,7 +35,7 @@ function DecisionGraphic() {
 		{ label: "Escalate", pct: "13%", width: "13%", fill: "bg-[var(--rm-accent)]" },
 	]
 	return (
-		<div className="mt-auto grid gap-4 pt-7">
+		<div className="grid gap-4 pt-7">
 			{decisions.map((d) => (
 				<div key={d.label}>
 					<div className="flex items-baseline justify-between">
@@ -53,7 +53,7 @@ function DecisionGraphic() {
 
 function PipelineGraphic() {
 	return (
-		<div className="mt-auto pt-7">
+		<div className="pt-7">
 			<div className="relative h-2 rounded-full bg-[var(--rm-panel-2)]">
 				<div className="absolute inset-y-0 left-0 w-2/3 rounded-full bg-emerald-500" />
 			</div>
@@ -71,7 +71,7 @@ function PipelineGraphic() {
 
 function GaugeGraphic() {
 	return (
-		<div className="relative mt-auto pt-7">
+		<div className="relative pt-7">
 			<svg viewBox="0 0 120 66" className="mx-auto w-full max-w-[180px]">
 				<defs>
 					<linearGradient id="hiw-gauge" x1="0" y1="0" x2="1" y2="0">
@@ -160,10 +160,10 @@ export function HowItWorks() {
 					</p>
 				</div>
 
-				<ol className="mt-14 grid items-stretch gap-6 md:grid-cols-2">
+				<ol className="mt-14 grid gap-px overflow-hidden rounded-xl border border-[var(--rm-line)] bg-[var(--rm-line)] md:grid-cols-2">
 					{steps.map(({ Graphic, ...item }) => (
 						<li
-							className="flex flex-col rounded-xl border border-[var(--rm-line)] bg-white p-7 lg:p-8"
+							className="flex flex-col bg-white p-7 lg:p-8"
 							key={item.step}
 						>
 							<span className="text-[12px] font-medium tracking-[0.1em] text-[var(--rm-accent)]">
@@ -175,7 +175,9 @@ export function HowItWorks() {
 							<p className="mt-2 max-w-[440px] text-[15px] leading-6 text-[var(--rm-muted)]">
 								{item.question}
 							</p>
-							<Graphic />
+							<div className="mt-auto flex h-[200px] flex-col justify-end">
+								<Graphic />
+							</div>
 						</li>
 					))}
 				</ol>
