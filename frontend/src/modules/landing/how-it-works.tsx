@@ -13,7 +13,7 @@ function RequestGraphic() {
 					aria-hidden="true"
 					className="mx-2.5 flex-1 border-t border-dashed border-[var(--rm-line-strong)]"
 				/>
-				<span className="grid size-10 place-items-center rounded-full bg-[var(--rm-panel-2)]">
+				<span className="grid size-10 place-items-center rounded-full bg-white">
 					<User className="size-[18px] text-[var(--rm-fg-2)]" weight="fill" />
 				</span>
 			</div>
@@ -21,7 +21,7 @@ function RequestGraphic() {
 				<span className="text-[12.5px] font-medium text-[var(--rm-fg)]">triage-bot</span>
 				<span className="font-mono text-[11.5px] text-[var(--rm-faint)]">dev@helios.dev</span>
 			</div>
-			<span className="mt-3 inline-block rounded-md bg-[var(--rm-panel)] px-3 py-1.5 font-mono text-[11px] text-[var(--rm-faint)]">
+			<span className="mt-3 inline-block rounded-md bg-white px-3 py-1.5 font-mono text-[11px] text-[var(--rm-faint)]">
 				issues:write · acme/api
 			</span>
 		</div>
@@ -42,7 +42,7 @@ function DecisionGraphic() {
 						<span className="text-[13px] font-medium text-[var(--rm-fg)]">{d.label}</span>
 						<span className="font-mono text-[11px] text-[var(--rm-faint)]">{d.pct}</span>
 					</div>
-					<div className="mt-1.5 h-2 overflow-hidden rounded-full bg-[var(--rm-panel-2)]">
+					<div className="mt-1.5 h-2 overflow-hidden rounded-full bg-white">
 						<div className={`h-full rounded-full ${d.fill}`} style={{ width: d.width }} />
 					</div>
 				</div>
@@ -54,7 +54,7 @@ function DecisionGraphic() {
 function PipelineGraphic() {
 	return (
 		<div>
-			<div className="relative h-2 rounded-full bg-[var(--rm-panel-2)]">
+			<div className="relative h-2 rounded-full bg-white">
 				<div className="absolute inset-y-0 left-0 w-2/3 rounded-full bg-emerald-500" />
 			</div>
 			<div className="mt-2 flex justify-between text-[12px] font-medium text-[var(--rm-muted)]">
@@ -62,7 +62,7 @@ function PipelineGraphic() {
 				<span>Executing</span>
 				<span>Receipted</span>
 			</div>
-			<span className="mt-3 inline-block rounded-md bg-[var(--rm-panel)] px-3 py-1.5 font-mono text-[11px] text-[var(--rm-faint)]">
+			<span className="mt-3 inline-block rounded-md bg-white px-3 py-1.5 font-mono text-[11px] text-[var(--rm-faint)]">
 				agent → grant → approver
 			</span>
 		</div>
@@ -97,7 +97,7 @@ export function HowItWorks() {
 	return (
 		<section
 			id="how-it-works"
-			className={`scroll-mt-16 border-t border-[var(--rm-line)] bg-[var(--rm-panel)] ${sectionY}`}
+			className={`scroll-mt-16 border-t border-[var(--rm-line)] ${sectionY}`}
 		>
 			<div className={container}>
 				<div className="max-w-[720px]">
@@ -113,7 +113,7 @@ export function HowItWorks() {
 
 				<div className="mt-14 grid gap-px overflow-hidden rounded-xl border border-[var(--rm-line)] bg-[var(--rm-line)] md:grid-cols-3">
 					{steps.map(({ Graphic, ...item }) => (
-						<article className="flex flex-col gap-6 bg-white p-7 lg:p-8" key={item.index}>
+						<article className="flex flex-col gap-6 bg-[var(--rm-panel)] p-7 lg:p-8" key={item.index}>
 							<span className="font-mono text-[11px] uppercase tracking-[0.2em] text-[var(--rm-accent)]">
 								{item.index}
 							</span>
