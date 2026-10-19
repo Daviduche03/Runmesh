@@ -27,10 +27,10 @@ export function Header() {
 					aria-label="Runmesh home"
 				>
 					<LogoIcon className="size-[18px] text-[var(--rm-accent)]" />
-					<span className="font-sans font-medium">Runmesh</span>
+					<span className="font-display-sans text-[16px] font-semibold tracking-[-0.01em]">Runmesh</span>
 				</Link>
 
-				<div className="hidden items-center gap-7 text-[14px] text-[var(--rm-muted)] lg:flex">
+				<div className="hidden items-center gap-7 text-[14px] font-medium text-[var(--rm-fg-2)] lg:flex">
 					{headerNavLinks.map(({ label, id }) => (
 						<Link
 							to={`/#${id}`}
