@@ -28,10 +28,9 @@ export function Hero() {
 							<span className="text-[var(--rm-accent)]">for everything your agents do.</span>
 						</h1>
 
-						<p className="mt-6 max-w-[540px] text-pretty text-[16px] leading-6 text-[var(--rm-muted)]">
-							Runmesh sits between an agent&rsquo;s intent and a real action. It decides whether the action
-							is allowed, executes it durably, and records it — so you can see what they did, decide what
-							they can do, and stop them when they shouldn&rsquo;t.
+						<p className="mt-6 max-w-[520px] text-pretty text-[16px] leading-6 text-[var(--rm-muted)]">
+							Runmesh sits between an agent&rsquo;s intent and a real action — it decides what is
+							allowed, executes durably, and records the result.
 						</p>
 
 						<div className="mt-8 flex flex-wrap items-center gap-3">
