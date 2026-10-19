@@ -46,13 +46,13 @@ export function Header() {
 				<div className="flex items-center gap-2">
 					<Link
 						to="/login"
-						className="inline-flex h-9 items-center rounded-[6px] border border-[var(--rm-line-strong)] bg-white px-4 text-[14px] font-medium text-[var(--rm-fg)] no-underline transition-[border-color,transform] duration-150 ease-[var(--ease-out)] hover:border-[var(--rm-faint)] active:scale-[0.97]"
+						className="inline-flex h-9 w-[108px] items-center justify-center rounded-[6px] border border-[var(--rm-line-strong)] bg-white px-4 text-[14px] font-medium text-[var(--rm-fg)] no-underline transition-[border-color,transform] duration-150 ease-[var(--ease-out)] hover:border-[var(--rm-faint)] active:scale-[0.97]"
 					>
 						Log in
 					</Link>
 					<Link
 						to="/signup"
-						className="inline-flex h-9 items-center rounded-[6px] bg-[var(--rm-btn-bg)] px-4 text-[14px] font-medium text-[var(--rm-btn-fg)] no-underline transition-[opacity,transform] duration-150 ease-[var(--ease-out)] hover:opacity-90 active:scale-[0.97]"
+						className="inline-flex h-9 w-[108px] items-center justify-center rounded-[6px] bg-[var(--rm-btn-bg)] px-4 text-[14px] font-medium text-[var(--rm-btn-fg)] no-underline transition-[opacity,transform] duration-150 ease-[var(--ease-out)] hover:opacity-90 active:scale-[0.97]"
 					>
 						Get started
 					</Link>
