@@ -1,50 +1,81 @@
-import { Robot, User } from "@phosphor-icons/react"
+import { ArrowClockwise, ArrowUpRight, Check, Receipt, Robot, User } from "@phosphor-icons/react"
 import { container, sectionY } from "./constants"
 import { Eyebrow } from "./primitives"
 
 function RequestGraphic() {
 	return (
-		<div>
-			<div className="flex items-center">
-				<span className="grid size-10 place-items-center rounded-full bg-[rgba(194,73,31,0.10)]">
-					<Robot className="size-[18px] text-[var(--rm-accent)]" weight="fill" />
+		<div className="overflow-hidden rounded-lg border border-[var(--rm-line)] bg-white shadow-[0_1px_2px_rgba(16,18,55,0.06)]">
+			<div className="flex items-center gap-2.5 border-b border-[var(--rm-line)] px-3 py-2.5">
+				<span className="grid size-6 shrink-0 place-items-center rounded-full bg-[rgba(194,73,31,0.10)]">
+					<Robot className="size-3.5 text-[var(--rm-accent)]" weight="fill" />
 				</span>
-				<span
-					aria-hidden="true"
-					className="mx-2.5 flex-1 border-t border-dashed border-[var(--rm-line-strong)]"
-				/>
-				<span className="grid size-10 place-items-center rounded-full bg-white">
-					<User className="size-[18px] text-[var(--rm-fg-2)]" weight="fill" />
+				<span className="min-w-0">
+					<span className="block truncate text-[12.5px] font-medium leading-4 text-[var(--rm-fg)]">
+						triage-bot
+					</span>
+					<span className="block truncate font-mono text-[10.5px] leading-4 text-[var(--rm-faint)]">
+						act_01J9X7 · just now
+					</span>
+				</span>
+				<span className="ml-auto shrink-0 rounded-full bg-amber-50 px-2 py-0.5 text-[11px] font-medium text-amber-700">
+					requested
 				</span>
 			</div>
-			<div className="mt-2 flex items-center justify-between">
-				<span className="text-[12.5px] font-medium text-[var(--rm-fg)]">triage-bot</span>
-				<span className="font-mono text-[11.5px] text-[var(--rm-faint)]">dev@helios.dev</span>
+			<div className="px-3 py-2 font-mono text-[11px] leading-5 text-[var(--rm-fg)]">
+				issues:write <span className="text-[var(--rm-faint)]">→ acme/api #4821</span>
 			</div>
-			<span className="mt-3 inline-block rounded-md bg-white px-3 py-1.5 font-mono text-[11px] text-[var(--rm-faint)]">
-				issues:write · acme/api
-			</span>
+			<div className="flex gap-1.5 px-3 pb-3">
+				<span className="rounded bg-[var(--rm-panel)] px-1.5 py-0.5 font-mono text-[10px] text-[var(--rm-muted)]">
+					scope: repo
+				</span>
+				<span className="rounded bg-[var(--rm-panel)] px-1.5 py-0.5 font-mono text-[10px] text-[var(--rm-muted)]">
+					ttl: 10m
+				</span>
+			</div>
 		</div>
 	)
 }
 
 function DecisionGraphic() {
-	const decisions = [
-		{ label: "Allow", pct: "62%", width: "62%", fill: "bg-emerald-500" },
-		{ label: "Consent", pct: "25%", width: "25%", fill: "bg-amber-400" },
-		{ label: "Escalate", pct: "13%", width: "13%", fill: "bg-[var(--rm-accent)]" },
+	const rules = [
+		{
+			Icon: Check,
+			badge: "bg-emerald-50 text-emerald-600",
+			name: "repo in allowlist",
+			pill: "allow",
+			pillCls: "bg-emerald-50 text-emerald-700",
+		},
+		{
+			Icon: User,
+			badge: "bg-amber-50 text-amber-600",
+			name: "write:issues needs a user",
+			pill: "consent",
+			pillCls: "bg-amber-50 text-amber-700",
+		},
+		{
+			Icon: ArrowUpRight,
+			badge: "bg-[rgba(194,73,31,0.10)] text-[var(--rm-accent)]",
+			name: "outside standing grant",
+			pill: "escalate",
+			pillCls: "bg-[rgba(194,73,31,0.10)] text-[var(--rm-accent)]",
+		},
 	]
 	return (
-		<div className="grid gap-3">
-			{decisions.map((d) => (
-				<div key={d.label}>
-					<div className="flex items-baseline justify-between">
-						<span className="text-[13px] font-medium text-[var(--rm-fg)]">{d.label}</span>
-						<span className="font-mono text-[11px] text-[var(--rm-faint)]">{d.pct}</span>
-					</div>
-					<div className="mt-1.5 h-2 overflow-hidden rounded-full bg-white">
-						<div className={`h-full rounded-full ${d.fill}`} style={{ width: d.width }} />
-					</div>
+		<div className="overflow-hidden rounded-lg border border-[var(--rm-line)] bg-white shadow-[0_1px_2px_rgba(16,18,55,0.06)]">
+			{rules.map(({ Icon, badge, name, pill, pillCls }, i) => (
+				<div
+					className={`flex items-center gap-2.5 px-3 py-2 ${i > 0 ? "border-t border-[var(--rm-line)]" : ""}`}
+					key={name}
+				>
+					<span className={`grid size-6 shrink-0 place-items-center rounded-full ${badge}`}>
+						<Icon className="size-3.5" weight="bold" />
+					</span>
+					<span className="truncate text-[12.5px] text-[var(--rm-fg-2)]">{name}</span>
+					<span
+						className={`ml-auto shrink-0 rounded-full px-2 py-0.5 text-[11px] font-medium ${pillCls}`}
+					>
+						{pill}
+					</span>
 				</div>
 			))}
 		</div>
@@ -52,19 +83,46 @@ function DecisionGraphic() {
 }
 
 function PipelineGraphic() {
+	const events = [
+		{
+			Icon: Check,
+			badge: "bg-emerald-50 text-emerald-600",
+			name: "Executed",
+			detail: "200 · 412ms",
+			when: "2s ago",
+		},
+		{
+			Icon: ArrowClockwise,
+			badge: "bg-amber-50 text-amber-600",
+			name: "Retried",
+			detail: "replay #2",
+			when: "9s ago",
+		},
+		{
+			Icon: Receipt,
+			badge: "bg-[var(--rm-panel)] text-[var(--rm-fg-2)]",
+			name: "Receipted",
+			detail: "ledger #88231",
+			when: "11s ago",
+		},
+	]
 	return (
-		<div>
-			<div className="relative h-2 rounded-full bg-white">
-				<div className="absolute inset-y-0 left-0 w-2/3 rounded-full bg-emerald-500" />
-			</div>
-			<div className="mt-2 flex justify-between text-[12px] font-medium text-[var(--rm-muted)]">
-				<span>Queued</span>
-				<span>Executing</span>
-				<span>Receipted</span>
-			</div>
-			<span className="mt-3 inline-block rounded-md bg-white px-3 py-1.5 font-mono text-[11px] text-[var(--rm-faint)]">
-				agent → grant → approver
-			</span>
+		<div className="overflow-hidden rounded-lg border border-[var(--rm-line)] bg-white shadow-[0_1px_2px_rgba(16,18,55,0.06)]">
+			{events.map(({ Icon, badge, name, detail, when }, i) => (
+				<div
+					className={`flex items-center gap-2.5 px-3 py-2 ${i > 0 ? "border-t border-[var(--rm-line)]" : ""}`}
+					key={name}
+				>
+					<span className={`grid size-6 shrink-0 place-items-center rounded-full ${badge}`}>
+						<Icon className="size-3.5" weight="bold" />
+					</span>
+					<span className="truncate text-[12.5px] font-medium text-[var(--rm-fg)]">{name}</span>
+					<span className="truncate font-mono text-[10.5px] text-[var(--rm-faint)]">{detail}</span>
+					<span className="ml-auto shrink-0 font-mono text-[10.5px] text-[var(--rm-faint)]">
+						{when}
+					</span>
+				</div>
+			))}
 		</div>
 	)
 }
@@ -121,7 +179,7 @@ export function HowItWorks() {
 								{item.title}
 							</h3>
 							<p className="text-[15px] leading-6 text-[var(--rm-muted)]">{item.copy}</p>
-							<div className="flex h-[104px] flex-col justify-end">
+							<div className="flex h-[148px] flex-col justify-end">
 								<Graphic />
 							</div>
 							<ul className="mt-auto grid gap-2.5 border-t border-[var(--rm-line)] pt-5">
