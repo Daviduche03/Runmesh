@@ -59,7 +59,7 @@ export function ControlRoom() {
 						The place your team runs agents from
 					</h2>
 					<p className="mt-5 max-w-[560px] text-pretty text-[17px] leading-7 text-[var(--rm-muted)]">
-						The same screens your engineers use to operate agents in production — not a separate admin tool
+						The same controls your engineers use to run agents in production — not a separate admin tool
 						bolted on top.
 					</p>
 				</div>
