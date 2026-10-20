@@ -1,7 +1,8 @@
 import { Link } from "react-router-dom"
 import { ArrowRight } from "@phosphor-icons/react"
 import { container } from "./constants"
-import { BrowserFrame, Eyebrow } from "./primitives"
+import { AuditScene, GrantsScene, PoliciesScene } from "./control-room-art"
+import { Eyebrow } from "./primitives"
 
 const features = [
 	{
@@ -14,9 +15,7 @@ const features = [
 			"Use counts and TTLs enforced server-side",
 			"Revoke without revoking everything else",
 		],
-		shot: "/shots/grants.webp",
-		alt: "The Runmesh grants table: eight grants with user, scope, resource, expiry, use count, and status, including pending consent and one expired grant.",
-		url: "app.runmesh.dev/grants",
+		Scene: GrantsScene,
 		href: "/grants",
 		linkLabel: "See grants",
 	},
@@ -30,9 +29,7 @@ const features = [
 			"Log-only rules for watching before enforcing",
 			"Coverage gaps and a capability matrix",
 		],
-		shot: "/shots/policies.webp",
-		alt: "The Runmesh policies page: five ordered rules with their resolutions, escalation counts, and oversight flags.",
-		url: "app.runmesh.dev/policies",
+		Scene: PoliciesScene,
 		href: "/policies",
 		linkLabel: "See policies",
 	},
@@ -46,9 +43,7 @@ const features = [
 			"Attribution down to the individual and the tool",
 			"CSV export and dead-letter replay",
 		],
-		shot: "/shots/audit.webp",
-		alt: "The Runmesh audit page: denial and escalation counts, attribution rate, and five threads with their principal, agents, run count, and outcome.",
-		url: "app.runmesh.dev/audit",
+		Scene: AuditScene,
 		href: "/audit",
 		linkLabel: "See the audit trail",
 	},
@@ -74,7 +69,11 @@ export function ControlRoom() {
 						const flipped = i % 2 === 1
 						return (
 							<div
-								className="grid items-center gap-10 lg:grid-cols-[minmax(0,420px)_minmax(0,1fr)] lg:gap-16"
+								className={`grid items-center gap-10 lg:gap-16 ${
+									flipped
+										? "lg:grid-cols-[minmax(0,1fr)_minmax(0,420px)]"
+										: "lg:grid-cols-[minmax(0,420px)_minmax(0,1fr)]"
+								}`}
 								key={feature.id}
 							>
 								<div className={flipped ? "lg:order-2" : undefined}>
@@ -105,12 +104,9 @@ export function ControlRoom() {
 									</Link>
 								</div>
 
-								<BrowserFrame
-									src={feature.shot}
-									alt={feature.alt}
-									url={feature.url}
-									className={flipped ? "w-full lg:order-1" : "w-full"}
-								/>
+								<div className={flipped ? "lg:order-1" : undefined}>
+									<feature.Scene />
+								</div>
 							</div>
 						)
 					})}

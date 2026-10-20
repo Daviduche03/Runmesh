@@ -48,6 +48,21 @@ export function BrowserFrame({
 	)
 }
 
+/** Subtle film grain that keeps large flat tints from reading as a CSS panel. */
+export function Grain({ opacity = 0.16 }: { opacity?: number }) {
+	return (
+		<div
+			aria-hidden="true"
+			className="pointer-events-none absolute inset-0 mix-blend-multiply"
+			style={{
+				opacity,
+				backgroundImage:
+					"url(\"data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='140' height='140'><filter id='n'><feTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='3'/></filter><rect width='140' height='140' filter='url(%23n)'/></svg>\")",
+			}}
+		/>
+	)
+}
+
 /**
  * DotField — a grid of small squares where some are lit. Used as a texture
  * behind feature cards, echoing the dot-matrix graphics on reference sites.
