@@ -15,7 +15,7 @@ export function Hero() {
 						</h1>
 
 						<p className="mt-6 max-w-[520px] text-pretty text-[16px] leading-6 text-[var(--rm-muted)]">
-							Runmesh sits between an agent&rsquo;s intent and a real action — it decides what is
+							Runmesh sits between an agent&rsquo;s intent and a real action. It decides what is
 							allowed, executes durably, and records the result.
 						</p>
 

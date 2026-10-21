@@ -64,7 +64,7 @@ export function Grain({ opacity = 0.16 }: { opacity?: number }) {
 }
 
 /**
- * DotField — a grid of small squares where some are lit. Used as a texture
+ * DotField: a grid of small squares where some are lit. Used as a texture
  * behind feature cards, echoing the dot-matrix graphics on reference sites.
  * `lit` is a list of indices (row * cols + col) to fill.
  */

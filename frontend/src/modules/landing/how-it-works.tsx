@@ -204,7 +204,7 @@ const steps = [
 	{
 		index: "03",
 		title: "The action runs",
-		copy: "Durable execution with retries and idempotency — then a receipt written down: which agent, on whose behalf, approved by whom.",
+		copy: "Durable execution with retries and idempotency, then a receipt written down: which agent, on whose behalf, approved by whom.",
 		Scene: ExecutionScene,
 		points: ["Retries and idempotency keys", "One trail: agent → grant → approver → result"],
 	},

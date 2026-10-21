@@ -46,7 +46,7 @@ export function Footer() {
 						<span className="font-sans font-medium">Runmesh</span>
 					</Link>
 					<p className="mt-5 max-w-[300px] text-[14px] leading-6 text-[var(--rm-ink-muted)]">
-						The control plane for AI agents — identity, access, approvals, and audit in one layer.
+						The control plane for AI agents: identity, access, approvals, and audit in one layer.
 					</p>
 					<p className="mt-6 font-mono text-[11px] uppercase tracking-[0.16em] text-[var(--rm-ink-muted)]">
 						MIT licensed

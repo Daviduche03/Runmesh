@@ -13,7 +13,7 @@ const useCases = [
 	{
 		Icon: ChatCircleDots,
 		title: "Answer from a real account",
-		copy: "A support agent reads a customer’s actual billing history — through your product, on their behalf, never holding the card.",
+		copy: "A support agent reads a customer’s actual billing history through your product, on their behalf, never holding the card.",
 	},
 	{
 		Icon: CreditCard,
@@ -28,7 +28,7 @@ const useCases = [
 	{
 		Icon: FileText,
 		title: "Write the release notes",
-		copy: "Merged pull requests become a changelog in the channel you chose — by an agent that only ever had read access.",
+		copy: "Merged pull requests become a changelog in the channel you chose, written by an agent that only ever had read access.",
 	},
 	{
 		Icon: ArrowsClockwise,

@@ -25,7 +25,7 @@ const features = [
 		title: "Decide what runs freely",
 		copy: "Ordered rules that auto-approve, require consent, escalate to a human, or deny. First match wins. Every decision is written to the ledger, and a gate that never rejects is not a gate.",
 		points: [
-			"Allow, consent, escalate, or deny — in order",
+			"Allow, consent, escalate, or deny, in that order",
 			"Log-only rules for watching before enforcing",
 			"Coverage gaps and a capability matrix",
 		],
@@ -37,7 +37,7 @@ const features = [
 		id: "audit",
 		eyebrow: "Audit",
 		title: "Every action, on the record",
-		copy: "Threads group an agent session. Runs group one operation. Every event traces back to the human it was taken on behalf of — exportable, replayable, and explainable.",
+		copy: "Threads group an agent session. Runs group one operation. Every event traces back to the human it was taken on behalf of. It is exportable, replayable, and explainable.",
 		points: [
 			"Agent → grant → action → result in one stream",
 			"Attribution down to the individual and the tool",
@@ -59,7 +59,7 @@ export function ControlRoom() {
 						The place your team runs agents from
 					</h2>
 					<p className="mt-5 max-w-[560px] text-pretty text-[17px] leading-7 text-[var(--rm-muted)]">
-						The same controls your engineers use to run agents in production — not a separate admin tool
+						The same controls your engineers use to run agents in production, not a separate admin tool
 						bolted on top.
 					</p>
 				</div>

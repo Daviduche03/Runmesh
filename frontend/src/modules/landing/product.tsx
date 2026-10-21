@@ -12,14 +12,14 @@ const verbs = [
 	{
 		index: "02",
 		title: "Execute",
-		copy: "Scoped, time-limited credentials that die on their own. Durable work with retries, idempotency, and replay — so a failure never becomes a mystery.",
+		copy: "Scoped, time-limited credentials that die on their own. Durable work with retries, idempotency, and replay, so a failure never becomes a mystery.",
 		points: ["One credential per agent, action, resource, window", "Short lifetimes and use caps by default", "Durable queues, and outbound webhooks you can replay"],
 		lit: [10, 11, 20, 21, 22, 30, 31, 32, 33, 40, 41, 50, 51, 52, 53, 60, 61, 62, 71, 72],
 	},
 	{
 		index: "03",
 		title: "Record",
-		copy: "A receipt for everything. Which agent, on whose behalf, with what scope, approved by whom — and what it actually did.",
+		copy: "A receipt for everything: which agent, on whose behalf, with what scope, approved by whom, and what it actually did.",
 		points: ["One trail: agent → grant → action → result", "Every decision written down, with its reason", "Exportable, grouped by the session it belongs to"],
 		lit: [0, 10, 11, 20, 21, 22, 30, 31, 40, 41, 50, 60, 61, 70, 71, 72, 73, 80, 81, 82],
 	},
@@ -39,7 +39,7 @@ export function Product() {
 					</h2>
 					<p className="mt-5 max-w-[560px] text-pretty text-[17px] leading-7 text-[var(--rm-muted)]">
 						Most agent stacks give you execution and hope the rest sorts itself. Runmesh bundles the three
-						things you would otherwise stitch together — and they only work together.
+						things you would otherwise stitch together. They only work together.
 					</p>
 				</div>
 
