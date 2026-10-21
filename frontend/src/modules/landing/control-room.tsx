@@ -1,7 +1,7 @@
 import { Link } from "react-router-dom"
 import { ArrowRight } from "@phosphor-icons/react"
 import { container } from "./constants"
-import { AuditScene, GrantsScene, PoliciesScene } from "./control-room-art"
+import { AuditStage, GrantsStage, PoliciesStage } from "./control-room-stages"
 import { Eyebrow } from "./primitives"
 
 const features = [
@@ -15,7 +15,7 @@ const features = [
 			"Use counts and TTLs enforced server-side",
 			"Revoke without revoking everything else",
 		],
-		Scene: GrantsScene,
+		Stage: GrantsStage,
 		href: "/grants",
 		linkLabel: "See grants",
 	},
@@ -29,7 +29,7 @@ const features = [
 			"Log-only rules for watching before enforcing",
 			"Coverage gaps and a capability matrix",
 		],
-		Scene: PoliciesScene,
+		Stage: PoliciesStage,
 		href: "/policies",
 		linkLabel: "See policies",
 	},
@@ -43,7 +43,7 @@ const features = [
 			"Attribution down to the individual and the tool",
 			"CSV export and dead-letter replay",
 		],
-		Scene: AuditScene,
+		Stage: AuditStage,
 		href: "/audit",
 		linkLabel: "See the audit trail",
 	},
@@ -64,50 +64,53 @@ export function ControlRoom() {
 					</p>
 				</div>
 
-				<div className="mt-16 grid gap-20 lg:gap-28">
+				<div className="mt-14 grid gap-4 lg:mt-16 lg:gap-6">
 					{features.map((feature, i) => {
 						const flipped = i % 2 === 1
 						return (
-							<div
-								className={`grid items-center gap-10 lg:gap-16 ${
-									flipped
-										? "lg:grid-cols-[minmax(0,1fr)_minmax(0,420px)]"
-										: "lg:grid-cols-[minmax(0,420px)_minmax(0,1fr)]"
-								}`}
+							<article
+								className="rounded-2xl border border-[var(--rm-line)] bg-white p-2 lg:p-3"
 								key={feature.id}
 							>
-								<div className={flipped ? "lg:order-2" : undefined}>
-									<Eyebrow>{feature.eyebrow}</Eyebrow>
-									<h3 className="mt-4 text-balance font-display-sans text-[clamp(24px,2.6vw,32px)] font-medium leading-[1.12] tracking-[-0.025em] text-[var(--rm-fg)]">
-										{feature.title}
-									</h3>
-									<p className="mt-4 text-pretty text-[16px] leading-7 text-[var(--rm-muted)]">
-										{feature.copy}
-									</p>
-									<ul className="mt-6 grid gap-2.5">
-										{feature.points.map((point) => (
-											<li
-												className="flex gap-2.5 text-[14.5px] leading-5 text-[var(--rm-fg-2)]"
-												key={point}
-											>
-												<span className="mt-[7px] size-1.5 shrink-0 rounded-full bg-[var(--rm-accent)]" />
-												{point}
-											</li>
-										))}
-									</ul>
-									<Link
-										to={feature.href}
-										className="mt-7 inline-flex items-center gap-1.5 text-[15px] font-medium text-[var(--rm-accent)] no-underline transition-[opacity] duration-150 ease-[var(--ease-out)] hover:opacity-75"
+								<div className="grid gap-0 lg:grid-cols-2 lg:items-stretch">
+									<div className={`min-w-0 ${flipped ? "lg:order-2" : ""}`}>
+										<feature.Stage />
+									</div>
+									<div
+										className={`flex min-w-0 flex-col justify-center px-5 py-8 lg:px-10 lg:py-12 ${
+											flipped ? "lg:order-1" : ""
+										}`}
 									>
-										{feature.linkLabel}
-										<ArrowRight className="size-4" weight="bold" />
-									</Link>
+										<div className="max-w-[440px]">
+											<Eyebrow>{feature.eyebrow}</Eyebrow>
+											<h3 className="mt-4 text-balance font-display-sans text-[clamp(23px,2.3vw,30px)] font-medium leading-[1.12] tracking-[-0.025em] text-[var(--rm-fg)]">
+												{feature.title}
+											</h3>
+											<p className="mt-4 text-pretty text-[15.5px] leading-7 text-[var(--rm-muted)]">
+												{feature.copy}
+											</p>
+											<ul className="mt-6 grid gap-2.5">
+												{feature.points.map((point) => (
+													<li
+														className="flex gap-2.5 text-[14px] leading-5 text-[var(--rm-fg-2)]"
+														key={point}
+													>
+														<span className="mt-[7px] size-1.5 shrink-0 rounded-full bg-[var(--rm-accent)]" />
+														{point}
+													</li>
+												))}
+											</ul>
+											<Link
+												to={feature.href}
+												className="mt-7 inline-flex items-center gap-1.5 text-[14.5px] font-medium text-[var(--rm-accent)] no-underline transition-[opacity] duration-150 ease-[var(--ease-out)] hover:opacity-75"
+											>
+												{feature.linkLabel}
+												<ArrowRight className="size-4" weight="bold" />
+											</Link>
+										</div>
+									</div>
 								</div>
-
-								<div className={flipped ? "lg:order-1" : undefined}>
-									<feature.Scene />
-								</div>
-							</div>
+							</article>
 						)
 					})}
 				</div>
