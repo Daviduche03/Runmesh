@@ -35,7 +35,7 @@ const providers = [
 
 export function Integrations() {
 	return (
-		<section id="integrations" className="scroll-mt-16 border-t border-[var(--rm-line)] py-16 lg:py-20">
+		<section id="integrations" className="scroll-mt-16 border-t border-[var(--rm-line)] bg-[var(--rm-panel)] py-16 lg:py-20">
 			<div className={container}>
 				<div className="flex flex-col gap-6 lg:flex-row lg:items-end lg:justify-between">
 					<div className="max-w-[520px]">
@@ -51,7 +51,7 @@ export function Integrations() {
 				<ul className="mt-12 grid grid-cols-2 gap-px overflow-hidden rounded-xl border border-[var(--rm-line)] bg-[var(--rm-line)] sm:grid-cols-4 lg:grid-cols-7">
 					{providers.map(({ name, Icon }) => (
 						<li
-							className="flex flex-col items-center gap-3 bg-[var(--rm-panel)] px-4 py-7"
+							className="flex flex-col items-center gap-3 bg-white px-4 py-7"
 							key={name}
 						>
 							<Icon className="size-6" aria-hidden="true" />
