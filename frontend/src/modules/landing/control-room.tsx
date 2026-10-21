@@ -2,12 +2,10 @@ import { Link } from "react-router-dom"
 import { ArrowRight } from "@phosphor-icons/react"
 import { container } from "./constants"
 import { AuditStage, GrantsStage, PoliciesStage } from "./control-room-stages"
-import { Eyebrow } from "./primitives"
 
 const features = [
 	{
 		id: "grants",
-		eyebrow: "Grants",
 		title: "Consent, scoped to the byte",
 		copy: "A grant names the agent, the user it acts for, the scope, the resource, and the expiry. Revoke one without touching the rest. See every grant and who issued it.",
 		points: [
@@ -21,7 +19,6 @@ const features = [
 	},
 	{
 		id: "policies",
-		eyebrow: "Policies",
 		title: "Decide what runs freely",
 		copy: "Ordered rules that auto-approve, require consent, escalate to a human, or deny. First match wins. Every decision is written to the ledger, and a gate that never rejects is not a gate.",
 		points: [
@@ -35,7 +32,6 @@ const features = [
 	},
 	{
 		id: "audit",
-		eyebrow: "Audit",
 		title: "Every action, on the record",
 		copy: "Threads group an agent session. Runs group one operation. Every event traces back to the human it was taken on behalf of. It is exportable, replayable, and explainable.",
 		points: [
@@ -54,8 +50,7 @@ export function ControlRoom() {
 		<section id="control-room" className="scroll-mt-16 border-t border-[var(--rm-line)] py-20 lg:py-28">
 			<div className={container}>
 				<div className="max-w-[720px]">
-					<Eyebrow>The control room</Eyebrow>
-					<h2 className="mt-5 text-balance font-display-sans text-[clamp(30px,4.2vw,52px)] font-medium leading-[1.06] tracking-[-0.03em] text-[var(--rm-fg)]">
+					<h2 className="text-balance font-display-sans text-[clamp(30px,4.2vw,52px)] font-medium leading-[1.06] tracking-[-0.03em] text-[var(--rm-fg)]">
 						The place your team runs agents from
 					</h2>
 					<p className="mt-5 max-w-[560px] text-pretty text-[17px] leading-7 text-[var(--rm-muted)]">
@@ -82,8 +77,7 @@ export function ControlRoom() {
 										}`}
 									>
 										<div className="max-w-[440px]">
-											<Eyebrow>{feature.eyebrow}</Eyebrow>
-											<h3 className="mt-4 text-balance font-display-sans text-[clamp(23px,2.3vw,30px)] font-medium leading-[1.12] tracking-[-0.025em] text-[var(--rm-fg)]">
+											<h3 className="text-balance font-display-sans text-[clamp(23px,2.3vw,30px)] font-medium leading-[1.12] tracking-[-0.025em] text-[var(--rm-fg)]">
 												{feature.title}
 											</h3>
 											<p className="mt-4 text-pretty text-[15.5px] leading-7 text-[var(--rm-muted)]">

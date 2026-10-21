@@ -1,4 +1,3 @@
-import type React from "react"
 import { cn } from "@/lib/utils"
 
 /**
@@ -107,27 +106,6 @@ export function DotField({
 			style={{ gridTemplateColumns: `repeat(${cols}, ${size}px)`, gap }}
 		>
 			{cells}
-		</div>
-	)
-}
-
-/** Small uppercase eyebrow label with a leading rule. */
-export function Eyebrow({
-	children,
-	className,
-}: {
-	children: React.ReactNode
-	className?: string
-}) {
-	return (
-		<div
-			className={cn(
-				"flex items-center gap-2.5 font-mono text-[11px] uppercase tracking-[0.18em] text-[var(--rm-faint)]",
-				className
-			)}
-		>
-			<span className="h-px w-6 bg-[var(--rm-line-strong)]" />
-			{children}
 		</div>
 	)
 }

@@ -1,5 +1,5 @@
 import { container, sectionY } from "./constants"
-import { DotField, Eyebrow } from "./primitives"
+import { DotField } from "./primitives"
 
 const verbs = [
 	{
@@ -33,8 +33,7 @@ export function Product() {
 		>
 			<div className={container}>
 				<div className="max-w-[720px]">
-					<Eyebrow>What Runmesh does</Eyebrow>
-					<h2 className="mt-5 text-balance font-display-sans text-[clamp(30px,4.2vw,52px)] font-medium leading-[1.06] tracking-[-0.03em] text-[var(--rm-fg)]">
+					<h2 className="text-balance font-display-sans text-[clamp(30px,4.2vw,52px)] font-medium leading-[1.06] tracking-[-0.03em] text-[var(--rm-fg)]">
 						Three verbs, done as one thing
 					</h2>
 					<p className="mt-5 max-w-[560px] text-pretty text-[17px] leading-7 text-[var(--rm-muted)]">

@@ -1,6 +1,6 @@
 import { ArrowUpRight, Check, Receipt, Robot, User } from "@phosphor-icons/react"
 import { container, sectionY } from "./constants"
-import { Eyebrow, Grain } from "./primitives"
+import { Grain } from "./primitives"
 
 function RequestScene() {
 	return (
@@ -218,8 +218,7 @@ export function HowItWorks() {
 		>
 			<div className={container}>
 				<div className="max-w-[720px]">
-					<Eyebrow>How it works</Eyebrow>
-					<h2 className="mt-5 text-balance font-display-sans text-[clamp(30px,4.2vw,52px)] font-medium leading-[1.06] tracking-[-0.03em] text-[var(--rm-fg)]">
+					<h2 className="text-balance font-display-sans text-[clamp(30px,4.2vw,52px)] font-medium leading-[1.06] tracking-[-0.03em] text-[var(--rm-fg)]">
 						One request, end to end
 					</h2>
 					<p className="mt-5 max-w-[560px] text-pretty text-[17px] leading-7 text-[var(--rm-muted)]">
