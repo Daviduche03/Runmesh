@@ -47,7 +47,10 @@ const features = [
 
 export function ControlRoom() {
 	return (
-		<section id="control-room" className="scroll-mt-16 border-t border-[var(--rm-line)] py-20 lg:py-28">
+		<section
+			id="control-room"
+			className="scroll-mt-16 border-t border-[var(--rm-line)] bg-[var(--rm-panel)] py-20 lg:py-28"
+		>
 			<div className={container}>
 				<div className="max-w-[720px]">
 					<h2 className="text-balance font-display-sans text-[clamp(30px,4.2vw,52px)] font-medium leading-[1.06] tracking-[-0.03em] text-[var(--rm-fg)]">
