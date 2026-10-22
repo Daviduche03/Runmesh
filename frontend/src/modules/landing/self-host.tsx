@@ -1,5 +1,5 @@
 import { container } from "./constants"
-import { BrowserFrame } from "./primitives"
+import { SelfHostScene } from "./self-host-art"
 
 const points = [
 	{
@@ -20,7 +20,7 @@ export function SelfHost() {
 	return (
 		<section
 			id="open-source"
-			className="scroll-mt-16 border-t border-[var(--rm-line)] bg-[var(--rm-panel)] py-20 lg:py-28"
+			className="scroll-mt-16 border-t border-[var(--rm-line)] py-20 lg:py-28"
 		>
 			<div className={container}>
 				<div className="grid gap-12 lg:grid-cols-[minmax(0,1fr)_minmax(0,1.05fr)] lg:items-center lg:gap-16">
@@ -47,20 +47,7 @@ export function SelfHost() {
 						</dl>
 					</div>
 
-					<div className="grid gap-4">
-						<BrowserFrame
-							src="/shots/agents.webp"
-							alt="The Runmesh agents directory: six registered agents with their ids, status, and grant counts, including one suspended agent."
-							url="app.runmesh.dev/agents"
-							className="w-full"
-						/>
-						<BrowserFrame
-							src="/shots/connect.webp"
-							alt="The Runmesh connect page: available providers, connected users, the scopes each one granted, and when they connected."
-							url="app.runmesh.dev/connect"
-							className="w-full"
-						/>
-					</div>
+					<SelfHostScene />
 				</div>
 			</div>
 		</section>
