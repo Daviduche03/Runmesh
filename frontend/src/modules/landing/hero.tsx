@@ -40,12 +40,27 @@ export function Hero() {
 				</div>
 
 				<div className={`${container} mt-16 lg:mt-20`}>
-					<BrowserFrame
-						src="/shots/control-room.webp"
-						alt="The Runmesh control room: pending consent, active agents, action throughput, action outcomes, and a live audit feed."
-						url="app.runmesh.dev/control-room"
-						className="w-full"
-					/>
+					<div className="relative overflow-hidden rounded-2xl border border-white/10 bg-[#05070d]">
+						<img
+							src="/river.webp"
+							alt=""
+							aria-hidden="true"
+							className="absolute inset-0 size-full object-cover object-[50%_38%]"
+						/>
+						<div
+							aria-hidden="true"
+							className="absolute inset-0 bg-[linear-gradient(to_bottom,rgba(5,7,13,0.35)_0%,rgba(5,7,13,0.05)_30%,rgba(5,7,13,0.55)_100%)]"
+						/>
+						<div className="relative px-3 pb-3 pt-[clamp(140px,28vw,392px)] sm:px-6 sm:pb-6 lg:px-10 lg:pb-10">
+							<BrowserFrame
+								src="/shots/control-room.webp"
+								alt="The Runmesh control room: pending consent, active agents, action throughput, action outcomes, and a live audit feed."
+								url="app.runmesh.dev/control-room"
+								className="w-full"
+								frameClassName="shadow-[0_50px_120px_-40px_rgba(0,0,0,0.95)]"
+							/>
+						</div>
+					</div>
 				</div>
 			</div>
 		</section>

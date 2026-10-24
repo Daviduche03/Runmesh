@@ -4,7 +4,7 @@ import { container } from "./constants"
 
 export function PreFooter() {
 	return (
-		<section className="border-t border-[var(--rm-ink-line)] bg-[var(--rm-ink)] py-20 lg:py-28">
+		<section className="bg-black py-20 lg:py-28">
 			<div className={container}>
 				<div className="grid gap-10 lg:grid-cols-[minmax(0,1fr)_auto] lg:items-end">
 					<div>
