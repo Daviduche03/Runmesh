@@ -33,12 +33,6 @@ const columns = [
 	},
 ]
 
-const legal = [
-	{ label: "Security", href: "https://github.com/Daviduche03/Runmesh/blob/main/SECURITY.md" },
-	{ label: "Contributing", href: "https://github.com/Daviduche03/Runmesh/blob/main/CONTRIBUTING.md" },
-	{ label: "GitHub", href: "https://github.com/Daviduche03/Runmesh" },
-]
-
 export function Footer() {
 	return (
 		<footer className="relative overflow-hidden bg-black">
@@ -101,28 +95,9 @@ export function Footer() {
 						</div>
 					))}
 				</div>
-
-				<div className="mt-16 flex flex-col gap-4 pb-6 sm:flex-row sm:items-center sm:justify-between">
-					<span className="font-mono text-[11px] uppercase tracking-[0.14em] text-[var(--rm-ink-muted)]">
-						© {new Date().getFullYear()} Runmesh
-					</span>
-					<span className="flex flex-wrap gap-6">
-						{legal.map((item) => (
-							<a
-								key={item.label}
-								href={item.href}
-								target="_blank"
-								rel="noreferrer"
-								className="font-mono text-[11px] uppercase tracking-[0.14em] text-[var(--rm-ink-muted)] no-underline transition-[color] duration-150 ease-[var(--ease-out)] hover:text-[var(--rm-ink-fg)]"
-							>
-								{item.label}
-							</a>
-						))}
-					</span>
-				</div>
 			</div>
 
-			<div aria-hidden="true" className={`${container} select-none pt-8`}>
+			<div aria-hidden="true" className={`${container} select-none pb-8 pt-16`}>
 				<span className="block pb-8 font-display-sans text-[clamp(72px,13vw,176px)] font-medium leading-[0.95] tracking-[-0.055em] text-white/[0.07]">
 					Runmesh
 				</span>

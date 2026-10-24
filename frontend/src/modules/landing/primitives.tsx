@@ -1,52 +1,5 @@
 import { cn } from "@/lib/utils"
 
-/**
- * A browser chrome frame around a product screenshot. Reference sites lean on
- * this to make a flat image read as "a real app someone is running".
- */
-export function BrowserFrame({
-	src,
-	alt,
-	className,
-	frameClassName,
-	url = "app.runmesh.dev",
-}: {
-	src: string
-	alt: string
-	className?: string
-	frameClassName?: string
-	url?: string
-}) {
-	return (
-		<div
-			className={cn(
-				"overflow-hidden rounded-xl border border-[var(--rm-line)] bg-white shadow-[0_1px_2px_rgba(20,19,17,0.04),0_18px_48px_-24px_rgba(20,19,17,0.28)]",
-				frameClassName
-			)}
-		>
-			<div className="flex h-9 items-center gap-2 border-b border-[var(--rm-line)] bg-[var(--rm-panel-2)] px-3">
-				<span className="size-2.5 rounded-full bg-[#ff5f57]" />
-				<span className="size-2.5 rounded-full bg-[#febc2e]" />
-				<span className="size-2.5 rounded-full bg-[#28c840]" />
-				<div className="mx-auto flex h-5 w-2/5 max-w-[280px] items-center justify-center gap-1.5 rounded-[4px] bg-white px-3 font-mono text-[10px] text-[var(--rm-faint)]">
-					<svg viewBox="0 0 12 12" className="size-2.5 shrink-0 fill-none stroke-current" strokeWidth="1.4">
-						<rect x="2.6" y="5" width="6.8" height="5" rx="1" />
-						<path d="M4 5V3.6a2 2 0 0 1 4 0V5" />
-					</svg>
-					<span className="truncate">{url}</span>
-				</div>
-			</div>
-			<img
-				src={src}
-				alt={alt}
-				loading="lazy"
-				decoding="async"
-				className={cn("block w-full", className)}
-			/>
-		</div>
-	)
-}
-
 /** Subtle film grain that keeps large flat tints from reading as a CSS panel. */
 export function Grain({ opacity = 0.16 }: { opacity?: number }) {
 	return (
