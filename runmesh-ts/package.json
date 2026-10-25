@@ -10,7 +10,8 @@
     "build": "tsc --noEmit",
     "typecheck": "tsc --noEmit",
     "test": "bun test",
-    "smoke": "bun scripts/smoke.ts"
+    "smoke": "bun scripts/smoke.ts",
+    "e2e": "bun scripts/e2e.ts"
   },
   "dependencies": {
     "cors": "^2.8.6",
