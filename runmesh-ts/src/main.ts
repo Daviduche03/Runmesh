@@ -10,6 +10,8 @@ import {
   startRunner,
 } from "./core/runtime/runner.js";
 import { createApp } from "./app.js";
+import { processWebhookQueueMessage } from "./modules/webhooks/index.js";
+import { enqueueDueTasks, processTaskMessage } from "./modules/tasks/index.js";
 
 applyMigrations(config.dbPath);
 
@@ -23,10 +25,25 @@ const ctx: AppContext = {
 
 const app = createApp(ctx);
 
-const runner = startRunner(ctx, {}, {
-  pollIntervalMs: config.queuePollIntervalSeconds * 1000,
-  sweepIntervalMs: config.sweepIntervalSeconds * 1000,
-});
+const runner = startRunner(
+  ctx,
+  {
+    onTask: (payload) =>
+      processTaskMessage(ctx.db, ctx.taskQueue, ctx.webhookQueue, fetch, payload),
+    onWebhook: (payload) =>
+      processWebhookQueueMessage(ctx.db, ctx.webhookQueue, fetch, payload),
+    sweepSteps: [
+      {
+        name: "enqueue_due_tasks",
+        run: async () => enqueueDueTasks(ctx.db, ctx.taskQueue),
+      },
+    ],
+  },
+  {
+    pollIntervalMs: config.queuePollIntervalSeconds * 1000,
+    sweepIntervalMs: config.sweepIntervalSeconds * 1000,
+  },
+);
 
 const server = app.listen(config.port, config.host, () => {
   log("info", "server_listening", {
