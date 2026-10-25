@@ -86,11 +86,40 @@ Deliberately idiomatic (not byte-compatible with the Python server):
 
 ## Status
 
-Done: core layer (config, schema mirror, table models, auth, envelope/errors,
-middleware, migrations, queue, runner), `/`, `/health`, `/api/me`, tests.
+Done:
+
+- core layer (config, schema mirror, table models, auth, envelope/errors,
+  middleware, migrations, queue, runner), `/`, `/health`, `/api/me`
+- **policy evaluation engine** (`src/modules/policies/engine.ts`) — pure, no DB,
+  verified against 47 vectors generated from the Python engine by
+  `scripts/gen-policy-vectors.py`
 
 Pending: the domain modules in `src/modules/` (auth, tasks, workflows, webhooks,
-api keys, connect, workspace, dashboard), their route registration in
-`routes.ts`, and the task/webhook handlers injected into the runner in
-`main.ts`. Until those land the queue consumers and scheduler sweep are wired
-but have no handlers.
+api keys, policies service/routes, connect, workspace, dashboard), their route
+registration in `routes.ts`, and the task/webhook handlers injected into the
+runner in `main.ts`. Until those land the queue consumers and scheduler sweep are
+wired but have no handlers.
+
+Port order (dependencies, not preference): `auth` → `tasks`/`webhooks`/`api-keys`
+→ `workflows` → `policies` → `connect` → `workspace`/`dashboard`. Connect calls
+`enforceGrantIssuance`, so policy has to exist first.
+
+## Policy
+
+Policy is the default approver, not a detail of Connect. It is its own module with
+two tables (`policy_rules`, `policy_decisions`), a decision ledger, and eight
+endpoints under `/api/v1/policies`.
+
+The engine is a pure function and the only piece verified against the Python
+oracle before being wired up:
+
+- first match wins; `log-only` rules are recorded as shadows and never decide
+- unmatched falls to the default (`deny`); the *caller* decides whether the
+  default applies — at issuance it only applies once a workspace has at least one
+  enabled enforce rule, otherwise issuance proceeds
+- the action identity is derived server-side (`buildActionIdentity(provider)`),
+  never from a label the calling agent supplies
+
+`scripts/gen-policy-vectors.py` regenerates the vectors from
+`runmesh-main/src/services/policy_engine.py`; the TypeScript must reproduce them
+exactly.
