@@ -100,6 +100,20 @@ export async function postJson(
   return { status: response.status, body: await response.json() };
 }
 
+export async function putJson(
+  app: TestApp,
+  path: string,
+  body: unknown,
+  token?: string,
+): Promise<{ status: number; body: any }> {
+  const response = await fetch(`${app.base}${path}`, {
+    method: "PUT",
+    headers: { "Content-Type": "application/json", ...authHeaders(token) },
+    body: JSON.stringify(body),
+  });
+  return { status: response.status, body: await response.json() };
+}
+
 export async function deleteJson(
   app: TestApp,
   path: string,
