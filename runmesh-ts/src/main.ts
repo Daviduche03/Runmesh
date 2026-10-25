@@ -12,6 +12,11 @@ import {
 import { createApp } from "./app.js";
 import { processWebhookQueueMessage } from "./modules/webhooks/index.js";
 import { enqueueDueTasks, processTaskMessage } from "./modules/tasks/index.js";
+import {
+  recoverStaleWorkflowRuns,
+  runDueScheduledWorkflows,
+  workflowTaskHooks,
+} from "./modules/workflows/index.js";
 
 applyMigrations(config.dbPath);
 
@@ -29,13 +34,28 @@ const runner = startRunner(
   ctx,
   {
     onTask: (payload) =>
-      processTaskMessage(ctx.db, ctx.taskQueue, ctx.webhookQueue, fetch, payload),
+      processTaskMessage(
+        ctx.db,
+        ctx.taskQueue,
+        ctx.webhookQueue,
+        fetch,
+        payload,
+        workflowTaskHooks(ctx.db, ctx.taskQueue),
+      ),
     onWebhook: (payload) =>
       processWebhookQueueMessage(ctx.db, ctx.webhookQueue, fetch, payload),
     sweepSteps: [
       {
         name: "enqueue_due_tasks",
         run: async () => enqueueDueTasks(ctx.db, ctx.taskQueue),
+      },
+      {
+        name: "run_due_scheduled_workflows",
+        run: async () => runDueScheduledWorkflows(ctx.db, ctx.taskQueue),
+      },
+      {
+        name: "recover_stale_workflow_runs",
+        run: async () => recoverStaleWorkflowRuns(ctx.db),
       },
     ],
   },

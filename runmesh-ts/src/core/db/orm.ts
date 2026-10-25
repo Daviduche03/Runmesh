@@ -133,6 +133,16 @@ export class TaskModel {
     );
   }
 
+  updateById(taskId: string, patch: Partial<TaskInsert>): number {
+    return changedRows(
+      this.db
+        .update(tasks)
+        .set({ ...patch, updatedAt: now() })
+        .where(eq(tasks.id, taskId))
+        .run(),
+    );
+  }
+
   resetForWorkflowRun(taskId: string): number {
     return changedRows(
       this.db
@@ -195,6 +205,16 @@ export class WorkflowModel {
   deleteWorkflow(workflowId: string): number {
     return changedRows(this.db.delete(workflows).where(eq(workflows.id, workflowId)).run());
   }
+
+  updateById(workflowId: string, patch: Partial<WorkflowInsert>): number {
+    return changedRows(
+      this.db
+        .update(workflows)
+        .set({ ...patch, updatedAt: now() })
+        .where(eq(workflows.id, workflowId))
+        .run(),
+    );
+  }
 }
 
 export class WorkflowRunModel {
@@ -237,6 +257,12 @@ export class WorkflowRunModel {
   deleteByWorkflowId(workflowId: string): number {
     return changedRows(
       this.db.delete(workflowRuns).where(eq(workflowRuns.workflowId, workflowId)).run(),
+    );
+  }
+
+  updateById(runId: string, patch: Partial<WorkflowRunInsert>): number {
+    return changedRows(
+      this.db.update(workflowRuns).set(patch).where(eq(workflowRuns.id, runId)).run(),
     );
   }
 }

@@ -6,12 +6,14 @@ import { policiesRouter } from "./modules/policies/index.js";
 import { systemRouter } from "./modules/system/routes.js";
 import { tasksRouter } from "./modules/tasks/index.js";
 import { webhooksRouter } from "./modules/webhooks/index.js";
+import { workflowsRouter } from "./modules/workflows/index.js";
 import { workspaceRouter } from "./modules/workspace/index.js";
 
 /**
  * Registration order mirrors runmesh-main/src/entry.py: FastAPI matched routers in the order
  * they were included, and Express matches in mount order, so the list is not alphabetical.
- * Mounted so far: system, api keys, agents, policies, workspaces, auth, webhooks, tasks.
+ * Mounted so far: system, api keys, agents, policies, workspaces, auth, webhooks,
+ * tasks, workflows.
  */
 export function registerRoutes(app: Express): void {
   app.use(systemRouter);
@@ -22,4 +24,5 @@ export function registerRoutes(app: Express): void {
   app.use(authRouter);
   app.use(webhooksRouter);
   app.use(tasksRouter);
+  app.use(workflowsRouter);
 }
