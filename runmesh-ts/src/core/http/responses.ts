@@ -42,3 +42,29 @@ const STATUS_CODES: Record<number, string> = {
 export function errorFromStatus(statusCode: number, message: string): ErrorBody {
   return error(STATUS_CODES[statusCode] ?? "error", message);
 }
+
+/**
+ * Numeric-code error body. The Python connect/tools routes catch their own HTTPExceptions
+ * and return `error(status, detail)` — a *number* code on an HTTP 200 — so these endpoints
+ * keep that shape instead of the middleware's string-code envelope.
+ */
+export interface NumericErrorBody {
+  ok: false;
+  error: { code: number; message: string };
+}
+
+export function numericError(statusCode: number, message: string): NumericErrorBody {
+  return { ok: false, error: { code: statusCode, message } };
+}
+
+/** Status/message out of a caught http-errors error for the numeric-error routes. */
+export function numericFromCaught(err: unknown): { status: number; message: string } {
+  if (err instanceof Error) {
+    const status = (err as unknown as { status?: unknown }).status;
+    if (typeof status === "number") {
+      return { status, message: err.message || "Request failed" };
+    }
+    return { status: 500, message: err.message || "Request failed" };
+  }
+  return { status: 500, message: "Request failed" };
+}

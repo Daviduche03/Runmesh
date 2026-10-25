@@ -28,6 +28,8 @@ export function createApp(ctx: AppContext): Express {
   );
 
   app.use(express.json({ limit: "10mb" }));
+  // The Connect consent page posts a plain HTML form.
+  app.use(express.urlencoded({ extended: true }));
   app.use(withContext(ctx));
 
   registerRoutes(app);
