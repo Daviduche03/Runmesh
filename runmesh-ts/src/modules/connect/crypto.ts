@@ -13,11 +13,18 @@ const IV_LEN = 16;
 const TAG_LEN = 32;
 
 /** Mirror Python's `urlsafe_b64decode` strictness: valid alphabet, correct padding. */
-const STRICT_BASE64URL = /^(?:[A-Za-z0-9\-_]{4})*(?:[A-Za-z0-9\-_]{2}==|[A-Za-z0-9\-_]{3}=)?$/;
+const STRICT_BASE64URL = /^[A-Za-z0-9\-_]*={0,2}$/;
+
+function toPaddedBase64Url(raw: Buffer): string {
+  return raw.toString("base64").replace(/\+/g, "-").replace(/\//g, "_");
+}
 
 function decodeBase64UrlStrict(value: string): Buffer {
   if (!STRICT_BASE64URL.test(value)) throw new Error("invalid base64url");
-  return Buffer.from(value, "base64url");
+  const stripped = value.replace(/=+$/, "");
+  if (stripped.length % 4 === 1) throw new Error("invalid base64url");
+  const padded = stripped + "=".repeat((4 - (stripped.length % 4)) % 4);
+  return Buffer.from(padded, "base64");
 }
 
 const strictUtf8 = new TextDecoder("utf-8", { fatal: true });
@@ -55,7 +62,7 @@ export function encryptConnectSecret(plaintext: string, secret: string, iv?: Buf
   const data = Buffer.from(plaintext, "utf8");
   const ciphertext = xorWithStream(data, keystream(encKey, nonce, data.length));
   const tag = createHmac("sha256", macKey).update(Buffer.concat([nonce, ciphertext])).digest();
-  return V2_PREFIX + Buffer.concat([nonce, tag, ciphertext]).toString("base64url");
+  return V2_PREFIX + toPaddedBase64Url(Buffer.concat([nonce, tag, ciphertext]));
 }
 
 export function decryptConnectSecret(ciphertext: string | null | undefined, secret: string): string | null {

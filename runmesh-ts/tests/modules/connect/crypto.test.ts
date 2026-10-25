@@ -31,6 +31,14 @@ describe("connect crypto", () => {
     expect(decryptConnectSecret("", SECRET)).toBeNull();
   });
 
+  test("encrypts byte-identical padded output for padding-sensitive lengths", () => {
+    const iv = Buffer.from(Array.from({ length: 16 }, (_, i) => i));
+    expect(encryptConnectSecret("x", SECRET, iv)).toBe(
+      "v2.AAECAwQFBgcICQoLDA0ODxxix9MTmeii0yTlI_ySa1y5luNp_imt1ggZMDIxj9iIqg==",
+    );
+    expect(decryptConnectSecret(encryptConnectSecret("t", SECRET), SECRET)).toBe("t");
+  });
+
   test("roundtrips current-format values", () => {
     const enc = encryptConnectSecret("s3cr3t-token", SECRET);
     expect(enc.startsWith("v2.")).toBe(true);

@@ -28,6 +28,9 @@ export function createApp(ctx: AppContext): Express {
   );
 
   app.use(express.json({ limit: "10mb" }));
+  // The tool path-forward route carries opaque upstream bodies; parse text payloads so the
+  // raw bytes survive. JSON routes send application/json and are unaffected.
+  app.use(express.text({ type: "text/*", limit: "10mb" }));
   // The Connect consent page posts a plain HTML form.
   app.use(express.urlencoded({ extended: true }));
   app.use(withContext(ctx));
