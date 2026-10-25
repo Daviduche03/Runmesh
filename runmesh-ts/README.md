@@ -97,6 +97,9 @@ Done:
   workspace provisioning, onboard/list/invites, project links
 - **auth** (`src/modules/auth/`) — GitHub OAuth login/callback/exchange, CLI
   device-code flow, verification page
+- **agents** (`src/modules/agents/`) — create/list/archive identities (public
+  key kept private, fingerprint exposed)
+- **API keys** (`src/modules/api-keys/`) — mint/list/deactivate, workspace-scoped
 - **policies service + routes** (`src/modules/policies/`) — rule CRUD/reorder,
   dry-run, coverage gaps, capability matrix, issuance enforcement and the
   decision ledger (`policy_decisions` + `policy.decision` audit rows)
