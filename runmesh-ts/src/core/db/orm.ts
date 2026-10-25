@@ -108,12 +108,19 @@ export class TaskModel {
     );
   }
 
-  listByWorkflowId(workflowId: string): TaskRow[] {
-    return this.db
+  listByWorkflowId(workflowId: string): TaskRow[] {    return this.db
       .select()
       .from(tasks)
       .where(eq(tasks.workflowId, workflowId))
       .orderBy(asc(tasks.stepOrder), asc(tasks.createdAt))
+      .all();
+  }
+
+  listWaitingForGrant(grantId: string): TaskRow[] {
+    return this.db
+      .select()
+      .from(tasks)
+      .where(and(eq(tasks.connectGrantId, grantId), eq(tasks.status, "waiting_for_grant")))
       .all();
   }
 
@@ -266,6 +273,14 @@ export class WorkflowRunModel {
 
   listRunning(): WorkflowRunRow[] {
     return this.db.select().from(workflowRuns).where(eq(workflowRuns.status, "running")).all();
+  }
+
+  listWaitingForGrant(grantId: string): TaskRow[] {
+    return this.db
+      .select()
+      .from(tasks)
+      .where(and(eq(tasks.connectGrantId, grantId), eq(tasks.status, "waiting_for_grant")))
+      .all();
   }
 
   deleteByWorkflowId(workflowId: string): number {
