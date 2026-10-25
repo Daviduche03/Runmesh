@@ -7,6 +7,8 @@ import { changedRows, now } from "./client.js";
 import type { Db } from "./client.js";
 import {
   apiKeys,
+  policyDecisions,
+  policyRules,
   tasks,
   users,
   webhookDeadLetters,
@@ -14,6 +16,7 @@ import {
   workflowRuns,
   workflows,
   workspaceMembers,
+  workspaces,
 } from "./schema.js";
 
 export type TaskRow = typeof tasks.$inferSelect;
@@ -24,6 +27,9 @@ export type ApiKeyRow = typeof apiKeys.$inferSelect;
 export type WebhookRow = typeof webhooks.$inferSelect;
 export type WebhookDeadLetterRow = typeof webhookDeadLetters.$inferSelect;
 export type WorkspaceMemberRow = typeof workspaceMembers.$inferSelect;
+export type WorkspaceRow = typeof workspaces.$inferSelect;
+export type PolicyRuleRow = typeof policyRules.$inferSelect;
+export type PolicyDecisionRow = typeof policyDecisions.$inferSelect;
 
 /** Bookkeeping columns (`id`, `createdAt`, `updatedAt`) are optional — `create()` fills them. */
 type Insertable<T> = Omit<T, "id" | "createdAt" | "updatedAt"> & {
@@ -256,6 +262,16 @@ export class UserModel {
 
   findById(userId: string): UserRow | null {
     return this.db.select().from(users).where(eq(users.id, userId)).limit(1).get() ?? null;
+  }
+
+  update(userId: string, patch: Partial<UserInsert>): number {
+    return changedRows(
+      this.db
+        .update(users)
+        .set({ ...patch, updatedAt: patch.updatedAt ?? now() })
+        .where(eq(users.id, userId))
+        .run(),
+    );
   }
 }
 

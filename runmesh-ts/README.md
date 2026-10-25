@@ -93,16 +93,23 @@ Done:
 - **policy evaluation engine** (`src/modules/policies/engine.ts`) — pure, no DB,
   verified against 47 vectors generated from the Python engine by
   `scripts/gen-policy-vectors.py`
+- **workspace tenancy** (`src/modules/workspace/`) — membership gate, personal
+  workspace provisioning, onboard/list/invites, project links
+- **auth** (`src/modules/auth/`) — GitHub OAuth login/callback/exchange, CLI
+  device-code flow, verification page
+- **policies service + routes** (`src/modules/policies/`) — rule CRUD/reorder,
+  dry-run, coverage gaps, capability matrix, issuance enforcement and the
+  decision ledger (`policy_decisions` + `policy.decision` audit rows)
+- **audit ledger** (`src/modules/connect/audit.ts`) — the shared append-only
+  writer connect will build on
 
-Pending: the domain modules in `src/modules/` (auth, tasks, workflows, webhooks,
-api keys, policies service/routes, connect, workspace, dashboard), their route
-registration in `routes.ts`, and the task/webhook handlers injected into the
-runner in `main.ts`. Until those land the queue consumers and scheduler sweep are
-wired but have no handlers.
+Pending: the remaining domain modules (tasks, workflows, webhooks, api keys,
+connect, dashboard), their route registration in `routes.ts`, and the
+task/webhook handlers injected into the runner in `main.ts`. Until those land the
+queue consumers and scheduler sweep are wired but have no handlers.
 
-Port order (dependencies, not preference): `auth` → `tasks`/`webhooks`/`api-keys`
-→ `workflows` → `policies` → `connect` → `workspace`/`dashboard`. Connect calls
-`enforceGrantIssuance`, so policy has to exist first.
+Port order (dependencies, not preference): `tasks`/`webhooks`/`api-keys` →
+`workflows` → `connect` → `dashboard`.
 
 ## Policy
 
