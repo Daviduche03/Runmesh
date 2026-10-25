@@ -24,6 +24,7 @@ const schema = z.object({
   GOOGLE_CONNECT_CLIENT_ID: z.string().default(""),
   GOOGLE_CONNECT_CLIENT_SECRET: z.string().default(""),
   RESEND_API_KEY: z.string().default(""),
+  CONNECT_EMAIL_FROM: z.string().default("Runmesh Connect <onboarding@resend.dev>"),
 });
 
 const parsed = schema.safeParse(process.env);
@@ -57,6 +58,7 @@ export const config = Object.freeze({
     clientSecret: env.GOOGLE_CONNECT_CLIENT_SECRET,
   },
   resendApiKey: env.RESEND_API_KEY,
+  connectEmailFrom: env.CONNECT_EMAIL_FROM,
 });
 
 export type Config = typeof config;

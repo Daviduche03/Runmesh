@@ -2,14 +2,28 @@
  * Typed table access. Each class maps to one table and is the only place query construction
  * for that table lives — services call these methods.
  */
-import { and, asc, desc, eq, sql } from "drizzle-orm";
+import { and, asc, count, desc, eq, sql } from "drizzle-orm";
 import { changedRows, now } from "./client.js";
 import type { Db } from "./client.js";
+import { parseJsonArray, parseJsonObject } from "../types/helpers.js";
 import {
+  agentEvents,
+  agentRuns,
   apiKeys,
+  connectAccountSessions,
+  connectAppUsers,
+  connectApps,
+  connectAuditEvents,
+  connectConnections,
+  connectGrants,
+  connectIdentities,
+  connectOtpChallenges,
+  connectSessions,
+  connectUsers,
   policyDecisions,
   policyRules,
   tasks,
+  tools,
   users,
   webhookDeadLetters,
   webhooks,
@@ -498,4 +512,646 @@ export function findMembership(
       .limit(1)
       .get() ?? null
   );
+}
+
+// ---------------------------------------------------------------------------
+// Connect
+// ---------------------------------------------------------------------------
+
+function parseScopes(value: string | null): string[] {
+  return parseJsonArray(value, []);
+}
+
+export type ConnectAppRow = Omit<typeof connectApps.$inferSelect, "redirectUris" | "allowedProviders"> & {
+  redirectUris: string[];
+  allowedProviders: string[];
+};
+export type ConnectAppInsert = Omit<typeof connectApps.$inferInsert, "id" | "createdAt" | "updatedAt" | "redirectUris" | "allowedProviders"> & {
+  id?: string;
+  createdAt?: string;
+  updatedAt?: string;
+  redirectUris?: string[];
+  allowedProviders?: string[];
+};
+
+export type ConnectAppUserRow = typeof connectAppUsers.$inferSelect;
+export type ConnectAppUserInsert = Omit<typeof connectAppUsers.$inferInsert, "id" | "createdAt" | "updatedAt"> & {
+  id?: string;
+  createdAt?: string;
+  updatedAt?: string;
+};
+
+export type ConnectConnectionRow = Omit<typeof connectConnections.$inferSelect, "scopes" | "metadata"> & {
+  scopes: string[];
+  metadata: Record<string, unknown>;
+};
+export type ConnectConnectionInsert = Omit<typeof connectConnections.$inferInsert, "id" | "createdAt" | "updatedAt" | "scopes" | "metadata"> & {
+  id?: string;
+  createdAt?: string;
+  updatedAt?: string;
+  scopes?: string[];
+  metadata?: Record<string, unknown>;
+};
+
+export type ConnectUserRow = Omit<typeof connectUsers.$inferSelect, "primaryEmailVerified"> & {
+  primaryEmailVerified: boolean;
+};
+export type ConnectUserInsert = Omit<typeof connectUsers.$inferInsert, "id" | "createdAt" | "updatedAt" | "primaryEmailVerified"> & {
+  id?: string;
+  createdAt?: string;
+  updatedAt?: string;
+  primaryEmailVerified?: boolean;
+};
+
+export type ConnectIdentityRow = Omit<typeof connectIdentities.$inferSelect, "emailVerified"> & {
+  emailVerified: boolean;
+};
+export type ConnectIdentityInsert = Omit<typeof connectIdentities.$inferInsert, "id" | "createdAt" | "updatedAt" | "emailVerified"> & {
+  id?: string;
+  createdAt?: string;
+  updatedAt?: string;
+  emailVerified?: boolean;
+};
+
+export type ConnectOtpChallengeRow = typeof connectOtpChallenges.$inferSelect;
+export type ConnectOtpChallengeInsert = Omit<typeof connectOtpChallenges.$inferInsert, "id" | "createdAt"> & {
+  id?: string;
+  createdAt?: string;
+};
+
+export type ConnectSessionRow = Omit<typeof connectSessions.$inferSelect, "scopes"> & {
+  scopes: string[];
+};
+export type ConnectSessionInsert = Omit<typeof connectSessions.$inferInsert, "id" | "createdAt" | "scopes"> & {
+  id?: string;
+  createdAt?: string;
+  scopes?: string[];
+};
+
+export type ConnectGrantRow = Omit<typeof connectGrants.$inferSelect, "scopes" | "resourceFilters"> & {
+  scopes: string[];
+  resourceFilters: Record<string, unknown> | null;
+};
+export type ConnectGrantInsert = Omit<typeof connectGrants.$inferInsert, "id" | "grantedAt" | "createdAt" | "updatedAt" | "scopes" | "resourceFilters"> & {
+  id?: string;
+  grantedAt?: string;
+  createdAt?: string;
+  updatedAt?: string;
+  scopes?: string[];
+  resourceFilters?: Record<string, unknown> | null;
+};
+
+export type ConnectAccountSessionRow = typeof connectAccountSessions.$inferSelect;
+
+function parseConnectApp(row: typeof connectApps.$inferSelect): ConnectAppRow {
+  return {
+    ...row,
+    redirectUris: parseJsonArray(row.redirectUris, []),
+    allowedProviders: parseJsonArray(row.allowedProviders, []),
+  };
+}
+
+function parseConnectConnection(row: typeof connectConnections.$inferSelect): ConnectConnectionRow {
+  return {
+    ...row,
+    scopes: parseScopes(row.scopes),
+    metadata: parseJsonObject(row.metadata, {}),
+  };
+}
+
+function parseConnectSession(row: typeof connectSessions.$inferSelect): ConnectSessionRow {
+  return { ...row, scopes: parseScopes(row.scopes) };
+}
+
+function parseConnectGrant(row: typeof connectGrants.$inferSelect): ConnectGrantRow {
+  let resourceFilters: Record<string, unknown> | null = null;
+  if (row.resourceFilters) {
+    try {
+      const parsed: unknown = JSON.parse(row.resourceFilters);
+      if (parsed && typeof parsed === "object" && !Array.isArray(parsed)) {
+        resourceFilters = parsed as Record<string, unknown>;
+      }
+    } catch {
+      resourceFilters = null;
+    }
+  }
+  return { ...row, scopes: parseScopes(row.scopes), resourceFilters };
+}
+
+/** Fill bookkeeping columns for tables whose create() callers may omit them. */
+function stampConnectInsert<T extends { id?: string; createdAt?: string; updatedAt?: string }>(data: T): T & { id: string; createdAt: string; updatedAt: string } {
+  const ts = now();
+  return { ...data, id: data.id ?? crypto.randomUUID(), createdAt: data.createdAt ?? ts, updatedAt: data.updatedAt ?? ts };
+}
+
+export class ConnectAppModel {
+  constructor(private readonly db: Db) {}
+
+  create(data: ConnectAppInsert): ConnectAppRow {
+    const row = stampConnectInsert({
+      ...data,
+      redirectUris: JSON.stringify(data.redirectUris ?? []),
+      allowedProviders: JSON.stringify(data.allowedProviders ?? []),
+    });
+    this.db.insert(connectApps).values(row).run();
+    return this.findById(row.id)!;
+  }
+
+  findById(connectAppId: string): ConnectAppRow | null {
+    const row = this.db.select().from(connectApps).where(eq(connectApps.id, connectAppId)).limit(1).get() ?? null;
+    return row ? parseConnectApp(row) : null;
+  }
+
+  findBySlug(developerUserId: string, slug: string): ConnectAppRow | null {
+    const row =
+      this.db
+        .select()
+        .from(connectApps)
+        .where(and(eq(connectApps.developerUserId, developerUserId), eq(connectApps.slug, slug)))
+        .limit(1)
+        .get() ?? null;
+    return row ? parseConnectApp(row) : null;
+  }
+
+  listByDeveloperUserId(developerUserId: string): ConnectAppRow[] {
+    return this.db
+      .select()
+      .from(connectApps)
+      .where(eq(connectApps.developerUserId, developerUserId))
+      .orderBy(desc(connectApps.createdAt))
+      .all()
+      .map(parseConnectApp);
+  }
+
+  findByWorkspace(workspaceId: string): ConnectAppRow | null {
+    const row = this.db.select().from(connectApps).where(eq(connectApps.workspaceId, workspaceId)).limit(1).get() ?? null;
+    return row ? parseConnectApp(row) : null;
+  }
+
+  updateStatus(connectAppId: string, status: string): number {
+    return changedRows(
+      this.db.update(connectApps).set({ status, updatedAt: now() }).where(eq(connectApps.id, connectAppId)).run(),
+    );
+  }
+
+  deleteApp(connectAppId: string): number {
+    return changedRows(this.db.delete(connectApps).where(eq(connectApps.id, connectAppId)).run());
+  }
+}
+
+export class ConnectAppUserModel {
+  constructor(private readonly db: Db) {}
+
+  create(data: ConnectAppUserInsert): ConnectAppUserRow {
+    const row = stampConnectInsert(data);
+    this.db.insert(connectAppUsers).values(row).run();
+    return this.findById(row.id)!;
+  }
+
+  findById(appUserId: string): ConnectAppUserRow | null {
+    return this.db.select().from(connectAppUsers).where(eq(connectAppUsers.id, appUserId)).limit(1).get() ?? null;
+  }
+
+  findByExternalUser(connectAppId: string, externalUserId: string): ConnectAppUserRow | null {
+    return (
+      this.db
+        .select()
+        .from(connectAppUsers)
+        .where(and(eq(connectAppUsers.connectAppId, connectAppId), eq(connectAppUsers.externalUserId, externalUserId)))
+        .limit(1)
+        .get() ?? null
+    );
+  }
+
+  findByConnectUser(connectAppId: string, connectUserId: string): ConnectAppUserRow | null {
+    return (
+      this.db
+        .select()
+        .from(connectAppUsers)
+        .where(and(eq(connectAppUsers.connectAppId, connectAppId), eq(connectAppUsers.connectUserId, connectUserId)))
+        .limit(1)
+        .get() ?? null
+    );
+  }
+
+  linkUser(connectAppId: string, externalUserId: string, connectUserId: string): ConnectAppUserRow {
+    const existing = this.findByExternalUser(connectAppId, externalUserId);
+    const ts = now();
+    if (existing) {
+      if (existing.connectUserId === connectUserId) return existing;
+      this.db
+        .update(connectAppUsers)
+        .set({ connectUserId, updatedAt: ts })
+        .where(eq(connectAppUsers.id, existing.id))
+        .run();
+      return this.findById(existing.id)!;
+    }
+    return this.create({ connectAppId, externalUserId, connectUserId });
+  }
+}
+
+export class ConnectConnectionModel {
+  constructor(private readonly db: Db) {}
+
+  create(data: ConnectConnectionInsert): ConnectConnectionRow {
+    const row = stampConnectInsert({
+      ...data,
+      scopes: JSON.stringify(data.scopes ?? []),
+      metadata: JSON.stringify(data.metadata ?? {}),
+    });
+    this.db.insert(connectConnections).values(row).run();
+    return this.findById(row.id)!;
+  }
+
+  findById(connectionId: string): ConnectConnectionRow | null {
+    const row = this.db.select().from(connectConnections).where(eq(connectConnections.id, connectionId)).limit(1).get() ?? null;
+    return row ? parseConnectConnection(row) : null;
+  }
+
+  findByUserProvider(connectUserId: string, provider: string): ConnectConnectionRow | null {
+    const row =
+      this.db
+        .select()
+        .from(connectConnections)
+        .where(and(eq(connectConnections.connectUserId, connectUserId), eq(connectConnections.provider, provider)))
+        .limit(1)
+        .get() ?? null;
+    return row ? parseConnectConnection(row) : null;
+  }
+
+  updateConnection(connectionId: string, patch: Partial<ConnectConnectionInsert> & { revokedAt?: string | null }): number {
+    const { scopes, metadata, ...rest } = patch;
+    const data: Record<string, unknown> = { ...rest };
+    if (scopes !== undefined) data.scopes = JSON.stringify(scopes);
+    if (metadata !== undefined) data.metadata = JSON.stringify(metadata);
+    if (Object.keys(data).length === 0) return 0;
+    return changedRows(
+      this.db.update(connectConnections).set({ ...data, updatedAt: now() }).where(eq(connectConnections.id, connectionId)).run(),
+    );
+  }
+
+  listByWorkspace(workspaceId: string, filter: { provider?: string | null; status?: string | null; limit?: number; offset?: number } = {}): ConnectConnectionRow[] {
+    const conditions = [eq(connectConnections.workspaceId, workspaceId)];
+    if (filter.provider) conditions.push(eq(connectConnections.provider, filter.provider));
+    if (filter.status) conditions.push(eq(connectConnections.status, filter.status));
+    return this.db
+      .select()
+      .from(connectConnections)
+      .where(and(...conditions))
+      .orderBy(desc(connectConnections.createdAt))
+      .limit(filter.limit ?? 50)
+      .offset(filter.offset ?? 0)
+      .all()
+      .map(parseConnectConnection);
+  }
+
+  countByWorkspace(workspaceId: string, filter: { provider?: string | null; status?: string | null } = {}): number {
+    const conditions = [eq(connectConnections.workspaceId, workspaceId)];
+    if (filter.provider) conditions.push(eq(connectConnections.provider, filter.provider));
+    if (filter.status) conditions.push(eq(connectConnections.status, filter.status));
+    const row = this.db.select({ value: count() }).from(connectConnections).where(and(...conditions)).get();
+    return Number(row?.value ?? 0);
+  }
+
+  revoke(connectionId: string): number {
+    const ts = now();
+    return changedRows(
+      this.db
+        .update(connectConnections)
+        .set({ status: "revoked", revokedAt: ts, updatedAt: ts })
+        .where(eq(connectConnections.id, connectionId))
+        .run(),
+    );
+  }
+}
+
+export class ConnectUserModel {
+  constructor(private readonly db: Db) {}
+
+  create(data: ConnectUserInsert = {}): ConnectUserRow {
+    const row = stampConnectInsert({
+      ...data,
+      primaryEmailVerified: data.primaryEmailVerified ? 1 : 0,
+    });
+    this.db.insert(connectUsers).values(row).run();
+    return this.findById(row.id)!;
+  }
+
+  findById(connectUserId: string): ConnectUserRow | null {
+    const row = this.db.select().from(connectUsers).where(eq(connectUsers.id, connectUserId)).limit(1).get() ?? null;
+    return row ? { ...row, primaryEmailVerified: row.primaryEmailVerified === 1 } : null;
+  }
+
+  updateStatus(connectUserId: string, status: string): number {
+    return changedRows(
+      this.db.update(connectUsers).set({ status, updatedAt: now() }).where(eq(connectUsers.id, connectUserId)).run(),
+    );
+  }
+
+  findByPrimaryEmail(email: string): ConnectUserRow | null {
+    const row =
+      this.db
+        .select()
+        .from(connectUsers)
+        .where(sql`lower(${connectUsers.primaryEmail}) = lower(${email.trim()}) AND ${connectUsers.primaryEmailVerified} = 1`)
+        .limit(1)
+        .get() ?? null;
+    return row ? { ...row, primaryEmailVerified: row.primaryEmailVerified === 1 } : null;
+  }
+
+  updatePrimaryEmail(connectUserId: string, email: string, verified: boolean): number {
+    return changedRows(
+      this.db
+        .update(connectUsers)
+        .set({ primaryEmail: email.trim().toLowerCase(), primaryEmailVerified: verified ? 1 : 0, updatedAt: now() })
+        .where(eq(connectUsers.id, connectUserId))
+        .run(),
+    );
+  }
+}
+
+export class ConnectAccountSessionModel {
+  constructor(private readonly db: Db) {}
+
+  create(data: typeof connectAccountSessions.$inferInsert): ConnectAccountSessionRow {
+    const row = { ...data, id: data.id ?? crypto.randomUUID(), createdAt: data.createdAt ?? now() };
+    this.db.insert(connectAccountSessions).values(row).run();
+    return this.findByTokenHash(row.tokenHash)!;
+  }
+
+  findByTokenHash(tokenHash: string): ConnectAccountSessionRow | null {
+    return this.db.select().from(connectAccountSessions).where(eq(connectAccountSessions.tokenHash, tokenHash)).limit(1).get() ?? null;
+  }
+}
+
+export class ConnectOtpChallengeModel {
+  constructor(private readonly db: Db) {}
+
+  create(data: ConnectOtpChallengeInsert): ConnectOtpChallengeRow {
+    const row = { ...data, id: data.id ?? crypto.randomUUID(), createdAt: data.createdAt ?? now() };
+    this.db.insert(connectOtpChallenges).values(row).run();
+    return this.findById(row.id)!;
+  }
+
+  findById(challengeId: string): ConnectOtpChallengeRow | null {
+    return this.db.select().from(connectOtpChallenges).where(eq(connectOtpChallenges.id, challengeId)).limit(1).get() ?? null;
+  }
+
+  findPendingForSession(connectSessionId: string): ConnectOtpChallengeRow | null {
+    return (
+      this.db
+        .select()
+        .from(connectOtpChallenges)
+        .where(and(eq(connectOtpChallenges.connectSessionId, connectSessionId), eq(connectOtpChallenges.status, "pending")))
+        .orderBy(desc(connectOtpChallenges.createdAt))
+        .limit(1)
+        .get() ?? null
+    );
+  }
+
+  updateChallenge(challengeId: string, patch: Partial<typeof connectOtpChallenges.$inferInsert>): number {
+    if (Object.keys(patch).length === 0) return 0;
+    return changedRows(
+      this.db.update(connectOtpChallenges).set(patch).where(eq(connectOtpChallenges.id, challengeId)).run(),
+    );
+  }
+
+  countRecentForEmail(email: string, sinceIso: string): number {
+    const row =
+      this.db
+        .select({ value: count() })
+        .from(connectOtpChallenges)
+        .where(and(eq(connectOtpChallenges.email, email), sql`${connectOtpChallenges.createdAt} >= ${sinceIso}`))
+        .get();
+    return Number(row?.value ?? 0);
+  }
+}
+
+export class ConnectIdentityModel {
+  constructor(private readonly db: Db) {}
+
+  create(data: ConnectIdentityInsert): ConnectIdentityRow {
+    const row = stampConnectInsert({ ...data, emailVerified: data.emailVerified ? 1 : 0 });
+    this.db.insert(connectIdentities).values(row).run();
+    return this.findById(row.id)!;
+  }
+
+  findById(identityId: string): ConnectIdentityRow | null {
+    const row = this.db.select().from(connectIdentities).where(eq(connectIdentities.id, identityId)).limit(1).get() ?? null;
+    return row ? { ...row, emailVerified: row.emailVerified === 1 } : null;
+  }
+
+  findByProviderSubject(provider: string, providerSubject: string): ConnectIdentityRow | null {
+    const row =
+      this.db
+        .select()
+        .from(connectIdentities)
+        .where(and(eq(connectIdentities.provider, provider), eq(connectIdentities.providerSubject, providerSubject)))
+        .limit(1)
+        .get() ?? null;
+    return row ? { ...row, emailVerified: row.emailVerified === 1 } : null;
+  }
+
+  listVerifiedByEmail(email: string): ConnectIdentityRow[] {
+    return this.db
+      .select()
+      .from(connectIdentities)
+      .where(sql`lower(${connectIdentities.email}) = lower(${email.trim()}) AND ${connectIdentities.emailVerified} = 1`)
+      .orderBy(asc(connectIdentities.createdAt))
+      .all()
+      .map((row) => ({ ...row, emailVerified: row.emailVerified === 1 }));
+  }
+}
+
+export class ConnectGrantModel {
+  constructor(private readonly db: Db) {}
+
+  create(data: ConnectGrantInsert): ConnectGrantRow {
+    const ts = now();
+    const row = stampConnectInsert({
+      ...data,
+      scopes: JSON.stringify(data.scopes ?? []),
+      resourceFilters: data.resourceFilters === undefined ? null : data.resourceFilters === null ? null : JSON.stringify(data.resourceFilters),
+      grantedAt: data.grantedAt ?? ts,
+    });
+    this.db.insert(connectGrants).values(row).run();
+    return this.findById(row.id)!;
+  }
+
+  findById(grantId: string): ConnectGrantRow | null {
+    const row = this.db.select().from(connectGrants).where(eq(connectGrants.id, grantId)).limit(1).get() ?? null;
+    return row ? parseConnectGrant(row) : null;
+  }
+
+  /** Active by status; approval gating happens at token exchange, not here. */
+  findActive(connectAppId: string | null, connectUserId: string, connectionId: string, workspaceId?: string | null): ConnectGrantRow | null {
+    const conditions = [
+      eq(connectGrants.connectUserId, connectUserId),
+      eq(connectGrants.connectionId, connectionId),
+      eq(connectGrants.status, "active"),
+    ];
+    if (connectAppId === null) {
+      conditions.push(sql`${connectGrants.connectAppId} IS NULL`);
+    } else {
+      conditions.push(eq(connectGrants.connectAppId, connectAppId));
+    }
+    if (workspaceId) conditions.push(eq(connectGrants.workspaceId, workspaceId));
+    const row = this.db.select().from(connectGrants).where(and(...conditions)).limit(1).get() ?? null;
+    return row ? parseConnectGrant(row) : null;
+  }
+
+  private uiStatusConditions(uiStatus: string, now?: string | null): ReturnType<typeof eq>[] {
+    switch (uiStatus) {
+      case "pending":
+        return [eq(connectGrants.approvalStatus, "pending_approval"), eq(connectGrants.status, "active")];
+      case "active":
+        return [
+          eq(connectGrants.approvalStatus, "approved"),
+          eq(connectGrants.status, "active"),
+          ...(now ? [sql`(valid_until IS NULL OR valid_until > ${now})`] : []),
+        ];
+      case "expired":
+        return [
+          eq(connectGrants.approvalStatus, "approved"),
+          eq(connectGrants.status, "active"),
+          sql`valid_until IS NOT NULL`,
+          ...(now ? [sql`valid_until <= ${now}`] : []),
+        ];
+      case "revoked":
+        return [eq(connectGrants.status, "revoked")];
+      case "denied":
+        return [eq(connectGrants.approvalStatus, "denied")];
+      default:
+        return [];
+    }
+  }
+
+  listByWorkspace(workspaceId: string, filter: { uiStatus?: string | null; agentId?: string | null; now?: string | null; limit?: number; offset?: number } = {}): ConnectGrantRow[] {
+    const conditions = [eq(connectGrants.workspaceId, workspaceId)];
+    if (filter.agentId) conditions.push(eq(connectGrants.agentId, filter.agentId));
+    conditions.push(...this.uiStatusConditions(filter.uiStatus ?? "", filter.now));
+    return this.db
+      .select()
+      .from(connectGrants)
+      .where(and(...conditions))
+      .orderBy(desc(connectGrants.createdAt))
+      .limit(filter.limit ?? 50)
+      .offset(filter.offset ?? 0)
+      .all()
+      .map(parseConnectGrant);
+  }
+
+  countByWorkspace(workspaceId: string, filter: { uiStatus?: string | null; agentId?: string | null; now?: string | null } = {}): number {
+    const conditions = [eq(connectGrants.workspaceId, workspaceId)];
+    if (filter.agentId) conditions.push(eq(connectGrants.agentId, filter.agentId));
+    conditions.push(...this.uiStatusConditions(filter.uiStatus ?? "", filter.now));
+    const row = this.db.select({ value: count() }).from(connectGrants).where(and(...conditions)).get();
+    return Number(row?.value ?? 0);
+  }
+
+  revoke(grantId: string): number {
+    const ts = now();
+    return changedRows(
+      this.db
+        .update(connectGrants)
+        .set({ status: "revoked", revokedAt: ts, updatedAt: ts })
+        .where(eq(connectGrants.id, grantId))
+        .run(),
+    );
+  }
+
+  updateGrant(grantId: string, patch: Partial<ConnectGrantInsert> & { status?: string; approvalStatus?: string; useCount?: number; revokedAt?: string | null }): number {
+    const { scopes, resourceFilters, ...rest } = patch;
+    const data: Record<string, unknown> = { ...rest };
+    if (scopes !== undefined) data.scopes = JSON.stringify(scopes);
+    if (resourceFilters !== undefined) data.resourceFilters = resourceFilters === null ? null : JSON.stringify(resourceFilters);
+    return changedRows(
+      this.db.update(connectGrants).set({ ...data, updatedAt: now() }).where(eq(connectGrants.id, grantId)).run(),
+    );
+  }
+}
+
+export class ConnectSessionModel {
+  constructor(private readonly db: Db) {}
+
+  create(data: ConnectSessionInsert): ConnectSessionRow {
+    const row = { ...data, id: data.id ?? crypto.randomUUID(), createdAt: data.createdAt ?? now(), scopes: JSON.stringify(data.scopes ?? []) };
+    this.db.insert(connectSessions).values(row).run();
+    return this.findById(row.id)!;
+  }
+
+  findById(sessionId: string): ConnectSessionRow | null {
+    const row = this.db.select().from(connectSessions).where(eq(connectSessions.id, sessionId)).limit(1).get() ?? null;
+    return row ? parseConnectSession(row) : null;
+  }
+
+  findByState(state: string): ConnectSessionRow | null {
+    const row = this.db.select().from(connectSessions).where(eq(connectSessions.state, state)).limit(1).get() ?? null;
+    return row ? parseConnectSession(row) : null;
+  }
+
+  updateSession(sessionId: string, patch: Partial<ConnectSessionInsert> & { status?: string; completedAt?: string | null }): number {
+    const { scopes, ...rest } = patch;
+    const data: Record<string, unknown> = { ...rest };
+    if (scopes !== undefined) data.scopes = JSON.stringify(scopes);
+    if (Object.keys(data).length === 0) return 0;
+    return changedRows(
+      this.db.update(connectSessions).set(data).where(eq(connectSessions.id, sessionId)).run(),
+    );
+  }
+
+  complete(sessionId: string, connectUserId: string): number {
+    return changedRows(
+      this.db
+        .update(connectSessions)
+        .set({ connectUserId, status: "completed", completedAt: now() })
+        .where(eq(connectSessions.id, sessionId))
+        .run(),
+    );
+  }
+}
+
+export class ConnectAuditEventModel {
+  constructor(private readonly db: Db) {}
+
+  findById(eventId: string): typeof connectAuditEvents.$inferSelect | null {
+    return this.db.select().from(connectAuditEvents).where(eq(connectAuditEvents.id, eventId)).limit(1).get() ?? null;
+  }
+
+  findTokenExchanges(workspaceId: string, filter: { taskId?: string | null; workflowRunId?: string | null; workspaceProjectId?: string | null; limit?: number } = {}): Array<typeof connectAuditEvents.$inferSelect> {
+    const conditions = [eq(connectAuditEvents.eventType, "connect.token.exchanged"), eq(connectAuditEvents.workspaceId, workspaceId)];
+    if (filter.taskId != null) conditions.push(sql`json_extract(${connectAuditEvents.metadata}, '$.task_id') = ${filter.taskId}`);
+    if (filter.workflowRunId != null) conditions.push(sql`json_extract(${connectAuditEvents.metadata}, '$.workflow_run_id') = ${filter.workflowRunId}`);
+    if (filter.workspaceProjectId != null) conditions.push(sql`json_extract(${connectAuditEvents.metadata}, '$.workspace_project_id') = ${filter.workspaceProjectId}`);
+    return this.db
+      .select()
+      .from(connectAuditEvents)
+      .where(and(...conditions))
+      .orderBy(desc(connectAuditEvents.createdAt))
+      .limit(filter.limit ?? 50)
+      .all();
+  }
+
+  listAll(workspaceId: string, filter: { eventType?: string | null; connectUserId?: string | null; search?: string | null; limit?: number; offset?: number } = {}): { rows: Array<typeof connectAuditEvents.$inferSelect>; total: number } {
+    const conditions = [eq(connectAuditEvents.workspaceId, workspaceId)];
+    if (filter.eventType != null) conditions.push(eq(connectAuditEvents.eventType, filter.eventType));
+    if (filter.connectUserId != null) conditions.push(eq(connectAuditEvents.connectUserId, filter.connectUserId));
+    if (filter.search != null) {
+      const like = `%${filter.search}%`;
+      conditions.push(
+        sql`(${connectAuditEvents.eventType} LIKE ${like} OR ${connectAuditEvents.actorId} LIKE ${like} OR ${connectAuditEvents.resourceId} LIKE ${like} OR ${connectAuditEvents.connectUserId} LIKE ${like})`,
+      );
+    }
+    const where = and(...conditions);
+    const totalRow = this.db.select({ value: count() }).from(connectAuditEvents).where(where).get();
+    const rows = this.db
+      .select()
+      .from(connectAuditEvents)
+      .where(where)
+      .orderBy(desc(connectAuditEvents.createdAt))
+      .limit(filter.limit ?? 50)
+      .offset(filter.offset ?? 0)
+      .all();
+    return { rows, total: Number(totalRow?.value ?? 0) };
+  }
 }
