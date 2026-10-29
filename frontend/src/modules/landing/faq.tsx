@@ -22,7 +22,7 @@ const faqs = [
 	},
 	{
 		q: "Can I run it myself?",
-		a: "Yes. It is a single process with a single database file, and it runs on any machine you can run a container on. No managed control plane required, and the whole thing is MIT licensed.",
+		a: "Yes. It is a single process with a single database file, and it runs on any machine you can run a container on. No managed control plane, and no data leaves your box.",
 	},
 	{
 		q: "What does it not do?",

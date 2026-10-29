@@ -79,7 +79,7 @@ export function SelfHostScene() {
 
 			<span className="absolute right-6 top-6 inline-flex items-center gap-1.5 rounded-full bg-white/90 px-2.5 py-1 text-[10.5px] font-medium text-[var(--rm-fg-2)] shadow-[0_10px_20px_-14px_rgba(16,60,45,0.6)] ring-1 ring-black/[0.04]">
 				<span aria-hidden="true" className="size-1.5 rounded-full bg-[var(--rm-accent)]" />
-				MIT licensed
+				Self-hosted
 			</span>
 
 			<Grain opacity={0.1} />

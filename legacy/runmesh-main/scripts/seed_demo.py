@@ -53,7 +53,7 @@ def main() -> None:
         c.execute(f"DELETE FROM {t}")
 
     c.execute("INSERT OR REPLACE INTO users (id, name, email, password, created_at, updated_at) VALUES (?,?,?,?,?,?)",
-              (USER_ID, "Ada Okonkwo", "ada@acme.dev", "!", ago(days=200), ago(days=1)))
+              (USER_ID, "Sam Whitfield", "sam@acme.dev", "!", ago(days=200), ago(days=1)))
 
     c.execute(
         "INSERT OR REPLACE INTO workspaces (id, name, owner_user_id, status, created_at, updated_at, type, slug, plan, seats)"
@@ -72,14 +72,14 @@ def main() -> None:
     )
 
     people = [
-        ("Maya Lindqvist", "maya@northwind.io", "Northwind", "github"),
-        ("Dev Patel", "dev@helios.dev", "Helios", "google"),
-        ("Sara Okonkwo", "sara@meridian.co", "Meridian", "slack"),
-        ("Jonas Weber", "jonas@vela.app", "Vela", "notion"),
-        ("Ruth Adeyemi", "ruth@brightlabs.ai", "Brightlabs", "github"),
-        ("Tomás Ferreira", "tomas@crestline.io", "Crestline", "google"),
-        ("Ingrid Halvorsen", "ingrid@northgate.se", "Northgate", "github"),
-        ("Priyanka Rao", "priyanka@quillhq.in", "Quill", "notion"),
+        ("Alex Hartman", "alex@northwind.io", "Northwind", "github"),
+        ("Daniel Reese", "daniel@helios.dev", "Helios", "google"),
+        ("Kate Sullivan", "kate@meridian.co", "Meridian", "slack"),
+        ("Mark Jensen", "mark@vela.app", "Vela", "notion"),
+        ("Laura Bennett", "laura@brightlabs.ai", "Brightlabs", "github"),
+        ("Chris Palmer", "chris@crestline.io", "Crestline", "google"),
+        ("Erik Sandberg", "erik@northgate.se", "Northgate", "github"),
+        ("Nick Foster", "nick@quillhq.io", "Quill", "notion"),
     ]
     connect_users = []
     for name, email, account, provider in people:
@@ -279,7 +279,7 @@ def main() -> None:
             " grant_id, reason, created_at, enforcement, run_id) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)",
             (did, WORKSPACE_ID, rule_ids[["allow", "allow", "escalate", "consent", "deny"].index(decision)],
              decision, "enforce", 1, 0, decision, "all scopes", "acme/platform",
-             agent_ids["support-copilot"], "support-copilot", connect_users[0][0], "maya@northwind.io",
+             agent_ids["support-copilot"], "support-copilot", connect_users[0][0], "alex@northwind.io",
              source, grant_id, rule_name,
              ago(hours=2, minutes=i * 7), "cooperative", run_ids[run_idx]),
         )

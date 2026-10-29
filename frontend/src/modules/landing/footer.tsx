@@ -18,7 +18,7 @@ const columns = [
 		items: [
 			{ label: "Use cases", href: "/#use-cases" },
 			{ label: "Integrations", href: "/#integrations" },
-			{ label: "Open source", href: "/#open-source" },
+			{ label: "Self-hosted", href: "/#self-host" },
 			{ label: "FAQ", href: "/#faq" },
 		],
 	},
@@ -26,9 +26,8 @@ const columns = [
 		title: "Company",
 		items: [
 			{ label: "Workspace", href: "/workspace" },
-			{ label: "GitHub", href: "https://github.com/Daviduche03/Runmesh" },
-			{ label: "Changelog", href: "https://github.com/Daviduche03/Runmesh/commits/main" },
-			{ label: "Contributing", href: "https://github.com/Daviduche03/Runmesh/blob/main/CONTRIBUTING.md" },
+			{ label: "Get started", href: "/signup" },
+			{ label: "Log in", href: "/login" },
 		],
 	},
 ]
@@ -47,7 +46,7 @@ export function Footer() {
 							The control plane for AI agents: identity, access, approvals, and audit in one layer.
 						</p>
 						<p className="mt-6 font-mono text-[10.5px] uppercase tracking-[0.14em] text-[var(--rm-ink-muted)]">
-							MIT licensed
+							Self-hosted
 						</p>
 					</div>
 
@@ -57,38 +56,13 @@ export function Footer() {
 								{title}
 							</h3>
 							{items.map((item) => {
-								const external = item.href.startsWith("http")
-								const content = (
-									<>
-										{item.label}
-										{external ? (
-											<svg
-												viewBox="0 0 12 12"
-												className="ml-1 inline-block size-2.5 -translate-y-px fill-none stroke-current"
-												strokeWidth="1.3"
-												aria-hidden="true"
-											>
-												<path d="M4.5 2.5h5v5" />
-												<path d="M9.5 2.5 3 9" />
-											</svg>
-										) : null}
-									</>
-								)
-								const className =
-									"text-[14px] text-[var(--rm-ink-muted)] no-underline transition-[color] duration-150 ease-[var(--ease-out)] hover:text-[var(--rm-ink-fg)]"
-								return external ? (
-									<a
+								return (
+									<Link
 										key={item.label}
-										href={item.href}
-										className={className}
-										target="_blank"
-										rel="noreferrer"
+										to={item.href}
+										className="text-[14px] text-[var(--rm-ink-muted)] no-underline transition-[color] duration-150 ease-[var(--ease-out)] hover:text-[var(--rm-ink-fg)]"
 									>
-										{content}
-									</a>
-								) : (
-									<Link key={item.label} to={item.href} className={className}>
-										{content}
+										{item.label}
 									</Link>
 								)
 							})}

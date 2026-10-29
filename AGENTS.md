@@ -229,7 +229,7 @@ The landing page shows **real** app screenshots, not mockups. They are captured 
 
 ```bash
 # 1. Seed a local instance with realistic demo data (idempotent; wipes its tables first)
-cd runmesh-main && uv run python scripts/seed_demo.py runmesh.db
+cd legacy/runmesh-main && uv run python scripts/seed_demo.py runmesh.db
 
 # 2. Run the API and the frontend, then log in with a dashboard JWT
 uv run python src/main.py                       # :8787

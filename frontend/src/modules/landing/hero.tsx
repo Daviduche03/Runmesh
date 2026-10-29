@@ -26,14 +26,12 @@ export function Hero() {
 								Get started free
 								<ArrowRight className="size-3.5" weight="bold" />
 							</Link>
-							<a
-								href="https://github.com/Daviduche03/Runmesh"
-								target="_blank"
-								rel="noreferrer"
+							<Link
+								to="/#how-it-works"
 								className="inline-flex h-10 items-center rounded-[8px] border border-[var(--rm-line-strong)] bg-white px-4 text-[14px] font-medium text-[var(--rm-fg)] no-underline transition-[border-color,transform] duration-150 ease-[var(--ease-out)] hover:border-[var(--rm-faint)] active:scale-[0.98]"
 							>
-								Read the source
-							</a>
+								See how it works
+							</Link>
 						</div>
 					</div>
 				</div>

@@ -19,7 +19,7 @@ const points = [
 export function SelfHost() {
 	return (
 		<section
-			id="open-source"
+			id="self-host"
 			className="scroll-mt-16 border-t border-[var(--rm-line)] py-20 lg:py-28"
 		>
 			<div className={container}>
@@ -29,7 +29,7 @@ export function SelfHost() {
 							Run it where your agents already run
 						</h2>
 						<p className="mt-5 max-w-[480px] text-pretty text-[16px] leading-7 text-[var(--rm-muted)]">
-							MIT licensed, and deliberately boring to deploy. If you can run a container, you can run
+							Deliberately boring to deploy. If you can run a container, you can run
 							Runmesh.
 						</p>
 
