@@ -15,8 +15,6 @@ export interface ErrorBody {
   error: { code: string; message: string };
 }
 
-export type ResponseBody<T = unknown> = SuccessBody<T> | ErrorBody;
-
 export function success<T>(data: T, message?: string, meta?: Record<string, unknown>): SuccessBody<T> {
   const body: SuccessBody<T> = { ok: true, data };
   if (message !== undefined) body.message = message;

@@ -1,4 +1,4 @@
-import type { Request, RequestHandler } from "express";
+import type { RequestHandler } from "express";
 import createError from "http-errors";
 import type { ZodType } from "zod";
 
@@ -34,13 +34,4 @@ export function validateBody<T>(schema: ZodType<T>): RequestHandler {
       next(err);
     }
   };
-}
-
-/** Express 5 exposes `req.query` as a getter, so query parsing returns a value instead. */
-export function parseQuery<T>(schema: ZodType<T>, req: Request): T {
-  return parseOrThrow(schema, req.query);
-}
-
-export function parseParams<T>(schema: ZodType<T>, req: Request): T {
-  return parseOrThrow(schema, req.params);
 }

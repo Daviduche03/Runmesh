@@ -16,7 +16,6 @@ import { hashConnectSecret } from "../../../src/modules/connect/crypto.js";
 import {
   exchangeGoogleCode,
   fetchGoogleProviderAccount,
-  fetchGoogleUserinfo,
   buildGoogleAuthorizeUrl,
 } from "../../../src/modules/connect/google.js";
 import { upsertConnection } from "../../../src/modules/connect/sessions.js";
@@ -548,9 +547,6 @@ describe("google provider calls", () => {
     await expect(fetchGoogleProviderAccount("tok", badInfo)).rejects.toThrow(
       "Failed to parse Google token info",
     );
-
-    const userinfo: FetchLike = async () => new Response(JSON.stringify({ sub: "123" }), { status: 200 });
-    expect(await fetchGoogleUserinfo("tok", userinfo)).toEqual({ sub: "123" });
   });
 });
 

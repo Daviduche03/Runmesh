@@ -11,7 +11,6 @@ import type { ConnectSessionMode } from "./providers.js";
 
 export const GOOGLE_AUTH_URL = "https://accounts.google.com/o/oauth2/v2/auth";
 export const GOOGLE_TOKEN_URL = "https://oauth2.googleapis.com/token";
-export const GOOGLE_USERINFO_URL = "https://www.googleapis.com/oauth2/v3/userinfo";
 
 const fetchImplDefault: FetchLike = (url, init) => fetch(url, init);
 
@@ -107,17 +106,4 @@ export async function fetchGoogleProviderAccount(
     email: typeof data.email === "string" ? data.email : undefined,
     email_verified: Boolean(data.verified_email),
   };
-}
-
-export async function fetchGoogleUserinfo(
-  accessToken: string,
-  fetchImpl: FetchLike = fetchImplDefault,
-): Promise<Record<string, unknown>> {
-  const response = await fetchImpl(GOOGLE_USERINFO_URL, {
-    headers: { Authorization: `Bearer ${accessToken}` },
-    signal: AbortSignal.timeout(30_000),
-  });
-  const data = (await response.json().catch(() => null)) as Record<string, unknown> | null;
-  if (!data) throw new Error("Failed to fetch Google user info");
-  return data;
 }

@@ -31,7 +31,7 @@ describe("migrations", () => {
     const { Database } = await import("bun:sqlite");
     const db = new Database(DB);
     const rows = db.query("SELECT name FROM d1_migrations").all() as Array<{ name: string }>;
-    expect(rows.length).toBe(43);
+    expect(rows.length).toBe(44);
     db.close();
   });
 });

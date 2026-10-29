@@ -670,16 +670,6 @@ export function loadRules(db: Db, workspaceId: string): {
   return { rules, configured };
 }
 
-/** Load the workspace's rules and evaluate them against a verified context. */
-export function evaluateWorkspace(
-  db: Db,
-  workspaceId: string,
-  context: PolicyContext | Record<string, string>,
-): PolicyEvaluation & { configured: boolean } {
-  const { rules, configured } = loadRules(db, workspaceId);
-  return { ...evaluate(rules, context), configured };
-}
-
 /**
  * Evaluate a request whose capability is one of several candidates.
  *

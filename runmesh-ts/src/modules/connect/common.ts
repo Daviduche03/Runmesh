@@ -26,12 +26,10 @@ import type {
 import { hashConnectSecret } from "./crypto.js";
 import { isValidEmail, normalizeEmail } from "./providers.js";
 
-export const SLUG_PATTERN = /^[a-z0-9]+(?:-[a-z0-9]+)*$/;
 export const SESSION_TTL_MINUTES = 15;
 export const CONNECT_CODE_TTL_MINUTES = 5;
 export const GRANT_ACCESS_TTL_MINUTES = 60;
 export const VALID_SESSION_MODES = new Set(["authenticate", "connect", "grant"]);
-export const VALID_CONSENT_ACTIONS = new Set(["approve", "deny"]);
 export const GRANT_ACCESS_PREFIX = "rct_";
 export const OTP_ISSUE_MAX_PER_HOUR = 5;
 
@@ -46,10 +44,6 @@ export function bumpMetric(name: string, by = 1): void {
 export function recordLatency(seconds: number): void {
   CONNECT_LATENCY.push(seconds);
   if (CONNECT_LATENCY.length > 1000) CONNECT_LATENCY.splice(0, CONNECT_LATENCY.length - 1000);
-}
-
-export function otpIssueWindowStart(): string {
-  return new Date(Date.now() - 60 * 60_1000).toISOString();
 }
 
 export interface ConnectRedirect {
@@ -180,41 +174,6 @@ export function loadPendingSession(db: Db, state: string): ConnectSessionRow {
     throw createError(410, "Connect session expired");
   }
   return session;
-}
-
-export function normalizeSlug(slug: string): string {
-  const value = slug.trim().toLowerCase();
-  if (!value || !SLUG_PATTERN.test(value)) {
-    throw createError(400, "slug must be lowercase letters, numbers, and hyphens");
-  }
-  return value;
-}
-
-export function validateRedirectUris(redirectUris: string[]): string[] {
-  const cleaned: string[] = [];
-  for (const uri of redirectUris) {
-    const value = uri.trim();
-    if (!value) continue;
-    if (!value.startsWith("http://") && !value.startsWith("https://")) {
-      throw createError(400, "redirect_uris must use http or https");
-    }
-    cleaned.push(value);
-  }
-  if (cleaned.length === 0) throw createError(400, "at least one redirect_uri is required");
-  return cleaned;
-}
-
-export function serializeApp(app: ConnectAppRow): Record<string, unknown> {
-  return {
-    id: app.id,
-    name: app.name,
-    slug: app.slug,
-    redirect_uris: app.redirectUris,
-    allowed_providers: app.allowedProviders,
-    status: app.status,
-    created_at: app.createdAt,
-    updated_at: app.updatedAt,
-  };
 }
 
 export function serializeSession(

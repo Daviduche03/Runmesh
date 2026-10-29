@@ -50,34 +50,6 @@ export function formatDuration(row: {
   return `${diffSeconds.toFixed(1)}s`;
 }
 
-/** Agent-envelope columns exposed with the frontend's camelCase names. */
-export function publicActionMetadata(row: TaskRow): Record<string, unknown> {
-  let metadata: unknown = {};
-  if (row.metadata) {
-    try {
-      metadata = JSON.parse(row.metadata);
-    } catch {
-      metadata = {};
-    }
-  }
-  return {
-    actionKind: row.actionKind || "http",
-    actionName: row.actionName,
-    agentId: row.agentId,
-    agentSessionId: row.agentSessionId,
-    threadId: row.threadId,
-    toolName: row.toolName,
-    actorUserId: row.actorUserId,
-    approvalStatus: row.approvalStatus || "not_required",
-    approvalId: row.approvalId,
-    connectAppId: row.connectAppId,
-    connectGrantId: row.connectGrantId,
-    connectSessionId: row.connectSessionId,
-    workspaceProjectId: row.workspaceProjectId,
-    metadata,
-  };
-}
-
 export function createTask(
   db: Db,
   taskQueue: Queue,

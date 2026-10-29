@@ -4,7 +4,6 @@
  * Every access decision, grant transition and policy outcome lands in `connect_audit_events`.
  * Rows are append-only: there is no update or delete path, by design.
  */
-import { and, desc, eq, gte, like, or, sql } from "drizzle-orm";
 import type { Db } from "../../core/db/client.js";
 import { connectAuditEvents } from "../../core/db/schema.js";
 
@@ -98,88 +97,6 @@ export function recordAuditEvent(db: Db, input: AuditEventInput): string {
     .run();
 
   return id;
-}
-
-export interface AuditListOptions {
-  eventType?: string | null;
-  connectUserId?: string | null;
-  search?: string | null;
-  limit?: number;
-  offset?: number;
-}
-
-/** Workspace-scoped, newest first, optionally filtered. */
-export function listAuditEvents(
-  db: Db,
-  workspaceId: string,
-  options: AuditListOptions = {},
-): Record<string, unknown>[] {
-  const clauses = [eq(connectAuditEvents.workspaceId, workspaceId)];
-  if (options.eventType) clauses.push(eq(connectAuditEvents.eventType, options.eventType));
-  if (options.connectUserId) {
-    clauses.push(eq(connectAuditEvents.connectUserId, options.connectUserId));
-  }
-  if (options.search) {
-    const pattern = `%${options.search}%`;
-    const match = or(
-      like(connectAuditEvents.resourceId, pattern),
-      like(connectAuditEvents.actorId, pattern),
-      like(connectAuditEvents.denialReason, pattern),
-      like(connectAuditEvents.metadata, pattern),
-    );
-    if (match) clauses.push(match);
-  }
-
-  return db
-    .select()
-    .from(connectAuditEvents)
-    .where(and(...clauses))
-    .orderBy(desc(connectAuditEvents.createdAt))
-    .limit(options.limit ?? 50)
-    .offset(options.offset ?? 0)
-    .all()
-    .map((row) => ({
-      id: row.id,
-      event_type: row.eventType,
-      actor_type: row.actorType,
-      actor_id: row.actorId,
-      connect_user_id: row.connectUserId,
-      connect_app_id: row.connectAppId,
-      resource_type: row.resourceType,
-      resource_id: row.resourceId,
-      metadata: parseJsonObject(row.metadata),
-      created_at: row.createdAt,
-      agent_id: row.agentId,
-      task_id: row.taskId,
-      workflow_run_id: row.workflowRunId,
-      approval_required: Boolean(row.approvalRequired),
-      denial_reason: row.denialReason,
-      token_issued_at: row.tokenIssuedAt,
-      token_expires_at: row.tokenExpiresAt,
-      result: row.result,
-      error_code: row.errorCode,
-      error_message: row.errorMessage,
-      request_id: row.requestId,
-      workspace_id: row.workspaceId,
-    }));
-}
-
-export function countAuditEvents(
-  db: Db,
-  workspaceId: string,
-  options: AuditListOptions = {},
-): number {
-  const clauses = [eq(connectAuditEvents.workspaceId, workspaceId)];
-  if (options.eventType) clauses.push(eq(connectAuditEvents.eventType, options.eventType));
-  if (options.connectUserId) {
-    clauses.push(eq(connectAuditEvents.connectUserId, options.connectUserId));
-  }
-  const row = db
-    .select({ count: sql<number>`count(*)` })
-    .from(connectAuditEvents)
-    .where(and(...clauses))
-    .get();
-  return Number(row?.count ?? 0);
 }
 
 function parseJsonObject(raw: string | null): Record<string, unknown> {

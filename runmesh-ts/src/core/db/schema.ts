@@ -42,23 +42,6 @@ export const agentRuns = sqliteTable("agent_runs", {
   triggerId: text("trigger_id"),
 });
 
-export const agentSessions = sqliteTable("agent_sessions", {
-  id: text("id").primaryKey(),
-  userId: text("user_id").notNull(),
-  agentId: text("agent_id"),
-  threadId: text("thread_id"),
-  name: text("name"),
-  status: text("status").notNull().default("active"),
-  workflowId: text("workflow_id"),
-  connectAppId: text("connect_app_id"),
-  workspaceProjectId: text("workspace_project_id"),
-  metadata: text("metadata").notNull().default("{}"),
-  startedAt: text("started_at").notNull(),
-  endedAt: text("ended_at"),
-  createdAt: text("created_at").notNull(),
-  updatedAt: text("updated_at").notNull(),
-});
-
 export const agentVersions = sqliteTable("agent_versions", {
   id: text("id").primaryKey(),
   workspaceId: text("workspace_id").notNull(),
@@ -127,14 +110,6 @@ export const cliAuthCodes = sqliteTable("cli_auth_codes", {
   expiresAt: text("expires_at").notNull(),
   createdAt: text("created_at").notNull(),
   confirmedAt: text("confirmed_at"),
-});
-
-export const connectAccountSessions = sqliteTable("connect_account_sessions", {
-  id: text("id").primaryKey(),
-  connectUserId: text("connect_user_id").notNull(),
-  tokenHash: text("token_hash").notNull(),
-  expiresAt: text("expires_at").notNull(),
-  createdAt: text("created_at").notNull(),
 });
 
 export const connectAppUsers = sqliteTable("connect_app_users", {

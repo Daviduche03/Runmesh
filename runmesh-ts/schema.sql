@@ -30,28 +30,6 @@ CREATE TABLE IF NOT EXISTS agent_runs (
   created_at TEXT NOT NULL,
   updated_at TEXT NOT NULL
 , thread_id TEXT, connect_user_id TEXT, agent_version_id TEXT, mode TEXT NOT NULL DEFAULT 'live', replay_of_run_id TEXT);
-
-CREATE TABLE IF NOT EXISTS agent_sessions (
-  id TEXT PRIMARY KEY,
-  user_id TEXT NOT NULL,
-  agent_id TEXT,
-  thread_id TEXT,
-  name TEXT,
-  status TEXT NOT NULL DEFAULT 'active',
-  workflow_id TEXT,
-  connect_app_id TEXT,
-  workspace_project_id TEXT,
-  metadata TEXT NOT NULL DEFAULT '{}',
-  started_at TEXT NOT NULL,
-  ended_at TEXT,
-  created_at TEXT NOT NULL,
-  updated_at TEXT NOT NULL,
-  FOREIGN KEY (user_id) REFERENCES users(id),
-  FOREIGN KEY (workflow_id) REFERENCES workflows(id) ON DELETE SET NULL,
-  FOREIGN KEY (connect_app_id) REFERENCES connect_apps(id) ON DELETE SET NULL,
-  FOREIGN KEY (workspace_project_id) REFERENCES workspace_projects(id) ON DELETE SET NULL
-);
-
 CREATE TABLE IF NOT EXISTS agent_versions (
   id TEXT PRIMARY KEY,
   workspace_id TEXT NOT NULL REFERENCES workspaces(id),
@@ -114,16 +92,6 @@ CREATE TABLE IF NOT EXISTS cli_auth_codes (
   confirmed_at TEXT,
   FOREIGN KEY (user_id) REFERENCES users(id)
 );
-
-CREATE TABLE IF NOT EXISTS connect_account_sessions (
-  id TEXT PRIMARY KEY,
-  connect_user_id TEXT NOT NULL,
-  token_hash TEXT NOT NULL UNIQUE,
-  expires_at TEXT NOT NULL,
-  created_at TEXT NOT NULL,
-  FOREIGN KEY (connect_user_id) REFERENCES connect_users(id) ON DELETE CASCADE
-);
-
 CREATE TABLE IF NOT EXISTS connect_app_users (
   id TEXT PRIMARY KEY,
   connect_app_id TEXT NOT NULL,
@@ -500,18 +468,6 @@ CREATE INDEX IF NOT EXISTS idx_agent_runs_version
 CREATE INDEX IF NOT EXISTS idx_agent_runs_workspace
   ON agent_runs (workspace_id, created_at);
 
-CREATE INDEX IF NOT EXISTS idx_agent_sessions_agent
-  ON agent_sessions (user_id, agent_id, created_at);
-
-CREATE INDEX IF NOT EXISTS idx_agent_sessions_thread
-  ON agent_sessions (user_id, thread_id, created_at);
-
-CREATE INDEX IF NOT EXISTS idx_agent_sessions_user
-  ON agent_sessions (user_id, created_at);
-
-CREATE INDEX IF NOT EXISTS idx_agent_sessions_user_agent
-  ON agent_sessions (user_id, agent_id);
-
 CREATE INDEX IF NOT EXISTS idx_agent_versions_agent
   ON agent_versions (agent_id, version);
 
@@ -540,9 +496,6 @@ CREATE INDEX IF NOT EXISTS idx_cli_auth_codes_device_code
 
 CREATE INDEX IF NOT EXISTS idx_cli_auth_codes_user_code
   ON cli_auth_codes (user_code);
-
-CREATE INDEX IF NOT EXISTS idx_connect_account_sessions_user
-  ON connect_account_sessions (connect_user_id);
 
 CREATE INDEX IF NOT EXISTS idx_connect_app_users_connect_user
   ON connect_app_users (connect_user_id);

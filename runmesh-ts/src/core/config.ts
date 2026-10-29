@@ -60,5 +60,3 @@ export const config = Object.freeze({
   resendApiKey: env.RESEND_API_KEY,
   connectEmailFrom: env.CONNECT_EMAIL_FROM,
 });
-
-export type Config = typeof config;

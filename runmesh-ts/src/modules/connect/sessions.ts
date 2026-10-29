@@ -18,7 +18,7 @@ import {
   ConnectSessionModel,
   ConnectUserModel,
 } from "../../core/db/orm.js";
-import type { ConnectConnectionRow, ConnectSessionRow } from "../../core/db/orm.js";
+import type { ConnectSessionRow } from "../../core/db/orm.js";
 import { log } from "../../core/log.js";
 import { enforceRateLimit } from "../../core/rate-limit.js";
 import { recordAuditEvent } from "./audit.js";
@@ -33,7 +33,7 @@ import {
   serializeSession,
 } from "./common.js";
 import { OTP_ISSUE_MAX_PER_HOUR, SESSION_TTL_MINUTES, VALID_SESSION_MODES } from "./common.js";
-import { decryptConnectSecret, encryptConnectSecret, hashConnectSecret } from "./crypto.js";
+import { encryptConnectSecret, hashConnectSecret } from "./crypto.js";
 import {
   OAUTH_ENABLED_PROVIDERS,
   generateOtpCode,
@@ -280,10 +280,6 @@ export function upsertConnection(db: Db, input: UpsertConnectionInput): string {
     workspaceId: input.workspaceId ?? null,
   });
   return connection.id;
-}
-
-export function decryptConnectionToken(connection: ConnectConnectionRow): string {
-  return decryptConnectSecret(connection.accessTokenEnc, config.jwtSecret) ?? "";
 }
 
 export function completeSession(db: Db, session: ConnectSessionRow): void {

@@ -10,7 +10,6 @@ import {
   agentEvents,
   agentRuns,
   apiKeys,
-  connectAccountSessions,
   connectAppUsers,
   connectApps,
   connectAuditEvents,
@@ -616,8 +615,6 @@ export type ConnectGrantInsert = Omit<typeof connectGrants.$inferInsert, "id" | 
   resourceFilters?: Record<string, unknown> | null;
 };
 
-export type ConnectAccountSessionRow = typeof connectAccountSessions.$inferSelect;
-
 function parseConnectApp(row: typeof connectApps.$inferSelect): ConnectAppRow {
   return {
     ...row,
@@ -882,20 +879,6 @@ export class ConnectUserModel {
         .where(eq(connectUsers.id, connectUserId))
         .run(),
     );
-  }
-}
-
-export class ConnectAccountSessionModel {
-  constructor(private readonly db: Db) {}
-
-  create(data: typeof connectAccountSessions.$inferInsert): ConnectAccountSessionRow {
-    const row = { ...data, id: data.id ?? crypto.randomUUID(), createdAt: data.createdAt ?? now() };
-    this.db.insert(connectAccountSessions).values(row).run();
-    return this.findByTokenHash(row.tokenHash)!;
-  }
-
-  findByTokenHash(tokenHash: string): ConnectAccountSessionRow | null {
-    return this.db.select().from(connectAccountSessions).where(eq(connectAccountSessions.tokenHash, tokenHash)).limit(1).get() ?? null;
   }
 }
 

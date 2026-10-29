@@ -2,7 +2,7 @@ import { and, eq } from "drizzle-orm";
 import createError from "http-errors";
 import { randomBytes, randomInt } from "node:crypto";
 import type { Request } from "express";
-import { CLI_TOKEN_TTL_SECONDS, signToken, verifyToken } from "../../core/auth/tokens.js";
+import { CLI_TOKEN_TTL_SECONDS, SESSION_TOKEN_TTL_SECONDS, AUTH_CODE_TTL_SECONDS, signToken, verifyToken } from "../../core/auth/tokens.js";
 import { config } from "../../core/config.js";
 import type { Db } from "../../core/db/client.js";
 import { UserModel } from "../../core/db/orm.js";
@@ -13,12 +13,6 @@ export interface GithubUser {
   login: string;
   name?: string | null;
   avatar_url?: string | null;
-}
-
-export interface SessionUser {
-  id: string;
-  email: string;
-  name: string;
 }
 
 export function requestBaseUrl(req: Request): string {
@@ -159,7 +153,7 @@ export function findOrCreateUser(
 }
 
 export function authCodeFor(userId: string): Promise<string> {
-  return signToken({ type: "auth_code", sub: userId }, 120);
+  return signToken({ type: "auth_code", sub: userId }, AUTH_CODE_TTL_SECONDS);
 }
 
 // ---------------------------------------------------------------------------
@@ -272,7 +266,7 @@ export async function exchangeAuthCode(
 
   const token = await signToken(
     { sub: user.id, id: user.id, email: user.email, name: user.name },
-    24 * 60 * 60,
+    SESSION_TOKEN_TTL_SECONDS,
   );
 
   return {

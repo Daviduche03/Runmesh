@@ -1,6 +1,4 @@
 import createError from "http-errors";
-import { errorFromStatus } from "./responses.js";
-import type { ErrorBody } from "./responses.js";
 
 export { createError };
 
@@ -22,8 +20,4 @@ export function clientMessage(err: unknown, status: number): string {
     return err.message || "Request failed";
   }
   return status >= 500 ? "Internal server error" : "Request failed";
-}
-
-export function bodyForStatus(status: number, message: string): ErrorBody {
-  return errorFromStatus(status, message);
 }

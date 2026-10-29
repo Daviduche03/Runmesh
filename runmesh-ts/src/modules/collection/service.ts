@@ -48,8 +48,6 @@ export const EVENT_KINDS = [
   "log",
 ] as const;
 
-export const RUN_STATUSES = ["running", "completed", "failed"] as const;
-
 export const TOOL_KINDS = ["local", "managed"] as const;
 export const TOOL_METHODS = ["GET", "POST", "PUT", "PATCH", "DELETE"] as const;
 export const TOOL_AUTH_SCHEMES = ["none", "bearer", "api_key", "basic"] as const;

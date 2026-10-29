@@ -124,13 +124,6 @@ export function resolveOauthScopes(
   throw createError(501, `OAuth scope resolution not implemented for provider ${provider}`);
 }
 
-export function oauthNeedsOfflineAccess(
-  provider: ConnectProviderId,
-  mode: ConnectSessionMode,
-): boolean {
-  return mode === "connect" && provider === "google";
-}
-
 export function listProvidersCatalog(): Array<{
   id: ConnectProviderId;
   scopes: string[];
@@ -155,7 +148,6 @@ export function isValidEmail(email: string): boolean {
 
 export const OTP_TTL_MINUTES = 10;
 export const OTP_LENGTH = 6;
-export const OTP_MAX_ATTEMPTS = 5;
 
 export function generateOtpCode(): string {
   return Array.from({ length: OTP_LENGTH }, () => String(randomInt(0, 10))).join("");

@@ -24,12 +24,6 @@ export function parseJsonObject<T extends Record<string, unknown>>(value: unknow
   return { ...fallback };
 }
 
-export function toBool(value: unknown): boolean {
-  if (typeof value === "boolean") return value;
-  if (value === null || value === undefined) return false;
-  return Number(value) === 1;
-}
-
 export function sleep(ms: number): Promise<void> {
   return new Promise((resolve) => setTimeout(resolve, ms));
 }
