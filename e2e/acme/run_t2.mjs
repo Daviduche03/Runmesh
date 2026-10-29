@@ -10,7 +10,7 @@ import path from "node:path";
 
 const HERE = path.dirname(fileURLToPath(import.meta.url));
 const ROOT = path.resolve(HERE, "..", "..");
-const RM = path.join(ROOT, "runmesh-main");
+const RM = path.join(ROOT, "legacy", "runmesh-main");
 const API = process.env.RUNMESH_URL ?? "http://localhost:8787";
 const MOCK = process.env.MOCK_URL ?? "http://localhost:8799";
 const WS = "ws_2c2d5a5148e64b5cb6898b7b8772dd31";
@@ -453,7 +453,7 @@ try {
       const rows = sql(`SELECT thread_id, id, input, status FROM agent_runs WHERE workspace_id='${WS}' AND input LIKE 'Acme t2%' AND created_at >= '${t0.replace(/'/g, "''")}' ORDER BY created_at`);
       for (const r of rows) console.log(`  thread ${r.thread_id}  run ${r.id}  ${r.input}  (${r.status})`);
       console.log("\n  UI: Audit → Threads → open a th_ id above (localhost:5173/audit)");
-      console.log(`  clean later: cd runmesh-main && PYTHONPATH=src uv run python "${path.join(HERE, "dbrunner.py")}" cleanup '${t0}'`);
+      console.log(`  clean later: cd legacy/runmesh-main && PYTHONPATH=src uv run python "${path.join(HERE, "dbrunner.py")}" cleanup '${t0}'`);
     } catch (err) {
       failures += 1;
       console.log(`[FAIL] listing kept runs: ${err}`);

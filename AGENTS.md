@@ -1,6 +1,11 @@
 # AGENTS.md — Runmesh orientation
 
-This is the **root orientation document** for anyone (human or agent) working on Runmesh. Read this first, then read [`runmesh-main/AGENTS.md`](./runmesh-main/AGENTS.md) for Cloudflare-specific rules.
+This is the **root orientation document** for anyone (human or agent) working on Runmesh.
+
+The server is **`runmesh-ts/`** (Bun + Express + Drizzle + SQLite). The FastAPI
+implementation it replaced lives in [`legacy/runmesh-main/`](./legacy/runmesh-main/)
+as a read-only parity oracle — its [`AGENTS.md`](./legacy/runmesh-main/AGENTS.md)
+still documents Cloudflare-era history, which applies only to that tree.
 
 If you only remember one thing: **Runmesh is being repositioned from "async infrastructure" into the control plane for AI agents.** Most work should move the product toward identity, access, approvals, execution, and audit — in that order of emphasis. Do not add features that pull it back toward being a generic task queue.
 
@@ -117,12 +122,12 @@ The repositioning is **partially implemented**. Know what already exists before 
 
 ### Not built / gaps
 
-- **Policies** — no rule engine for auto-approval, scope caps, spend limits, or auto-revoke.
-- **Agents as first-class entities** — there is no `agents` table or `/api/v1/agents` route; `agent_id` is currently a free-form string on tasks/grants.
+- ~~**Policies**~~ — landed: `services/policy_engine.py` (now `runmesh-ts/src/modules/policies/engine.ts`) with issuance enforcement, a decision ledger, and eight routes.
+- ~~**Agents as first-class entities**~~ — landed: `agents` table + `/api/v1/agents` create/list/archive.
 - **Dashboard IA** — the app still navigates as a workflow builder (see §6). No control-room home, no dedicated Agents/Grants/Approvals/Policies/Audit screens.
 - **Unified audit** — actions (`tasks`) and access (`connect_audit_events`) are separate streams; there is no single "agent → grant → action → result" timeline.
 - **Async token issuance** — the P3 backlog item (task pauses in `waiting_for_grant`, resumes on approval) is designed but not implemented.
-- **Production readiness** — see the gap table in [`runmesh-main/AGENTS.md`](./runmesh-main/AGENTS.md). Notably: sequential workflow runner, one active run per workflow, poll-based run UI, no metrics/alerting (structured logging landed in `utils/log.py`), limited tests.
+- **Production readiness** — see the gap table in [`legacy/runmesh-main/AGENTS.md`](./legacy/runmesh-main/AGENTS.md) (historical). Still true today: sequential workflow runner, one active run per workflow, poll-based run UI, no metrics/alerting.
 
 The authoritative roadmap lives in [`BACKLOG.md`](./BACKLOG.md) (Runmesh Connect P0–P4). Treat the P-numbers there as the source of truth for sequencing.
 
@@ -131,27 +136,30 @@ The authoritative roadmap lives in [`BACKLOG.md`](./BACKLOG.md) (Runmesh Connect
 ## 4. Architecture
 
 ```
-runmesh-main/                API server (Python, SQLite, portable)
-  src/entry.py               FastAPI app + route registration (one APIRouter per
-                             domain (system, tasks, workflows,
-                               webhooks, api_keys, connect_*, workspaces, auth,
-                               dashboard); registered in entry.py in file order
-  src/main.py                Entrypoint: applies migrations, builds the runtime
-                             env, starts uvicorn + background workers
-  src/runtime/               Platform shims that let the app run off Cloudflare:
-                               sqlite_db.py (D1-shaped driver), queue.py
-                               (DB-backed TASK_QUEUE/WEBHOOK_QUEUE), runner.py
-                               (queue consumers + scheduler sweep), env.py,
-                               http_fetch.py, migrate.py, asgi_env.py
-  src/routes/*.py            One APIRouter per domain
-  src/services/*.py          Business logic (async functions; Connect is split into
-                               connect_* submodules behind the connect.py facade)
-  src/db/*.py                ORM / table access (orm.py, connect_orm.py + connect_orm_*
-                               submodules, schema.py)
-  src/utils/*.py             auth, responses, errors, rate limit, url safety
+runmesh-ts/                  API server (Bun + Express + Drizzle, SQLite, portable)
+  src/main.ts                Composition root: apply migrations, open the DB, start
+                             queue workers + scheduler sweep, listen
+  src/app.ts                 Express app: CORS, body parsers (json / text / urlencoded),
+                             request context, routers, error middleware
+  src/routes.ts              Mounts one router per domain, in the legacy entry.py order
+  src/core/                  Lower layer — must not import from src/modules/
+    config.ts                zod-validated environment, camelCase singleton
+    db/                      client (bun:sqlite + Drizzle), schema.ts, orm.ts models
+    auth/                    JWT (jose, HS256), API-key hashing
+    http/                    response envelope, error mapping, request context
+    middleware/              context, auth (JWT + API key), error handler, zod validation
+    runtime/                 migrate, DB-backed queue, worker + scheduler loops
+    types/                   shared helpers and string-union enums
+  src/modules/<domain>/      routes.ts + service.ts (+ domain files) per domain:
+                             system, auth, workspace, agents, api-keys, policies,
+                             webhooks, tasks, workflows, connect, tools, collection,
+                             triggers, dashboard
+  scripts/                   smoke.ts, e2e.ts, frontend-contract.ts, vector generators
+  tests/                     bun test suites (unit, HTTP, schema drift, fixtures)
   migrations/*.sql           SQL migrations (numbered, append-only)
-  schema.sql                 Reference schema snapshot (bootstrap source)
-  TASK_API_DOCUMENTATION.md  Full API reference
+  schema.sql                 Bootstrap snapshot (0001–0042); do not hand-edit
+
+legacy/runmesh-main/         Retired FastAPI server — parity oracle, read-only
 
 frontend/                    React 19 + Vite + react-router + zustand
   src/app/router.tsx           Nested routes (createBrowserRouter: RequireAuth → AppShell)
@@ -169,35 +177,41 @@ frontend/                    React 19 + Vite + react-router + zustand
 
 ### Runtime entrypoints
 
-`src/main.py` starts one process that does three jobs the Workers version split
-across `fetch` / `queue` / `scheduled`:
+`src/main.ts` starts one process that does three jobs:
 
-- HTTP — the FastAPI app from `entry.py`, served by uvicorn (`src/runtime/asgi_env.py`
-  injects `scope["env"]`, which routes read as `request.scope["env"]`).
-- Queue consumers — `src/runtime/runner.py` drains the `queue_messages` table for
-  `runmesh-tasks` (→ `process_task_message`) and `runmesh-webhooks`
-  (→ `handle_webhook_queue_batch`).
-- Scheduler sweep — `src/runtime/runner.py` runs `enqueue_due_tasks()` →
-  `run_due_scheduled_workflows()` → `run_due_schedule_triggers()` →
-  `recover_stale_workflow_runs()` every 5s, each step isolated so one failure
-  cannot starve the others.
+- HTTP — the Express app from `app.ts`, listening on `PORT` (default 8787).
+- Queue consumers — `core/runtime/queue.ts` + `runner.ts` drain the `queue_messages`
+  table for `runmesh-tasks` (→ `processTaskMessage`) and `runmesh-webhooks`.
+- Scheduler sweep — every 5s: `enqueueDueTasks` → `runDueScheduledWorkflows` →
+  `runDueScheduleTriggers` → `recoverStaleWorkflowRuns`, each step isolated so one
+  failure cannot starve the others.
 
-> Cloudflare Workers is no longer the runtime: the worker cron hit an unfixed
-> Pyodide bug (`NoGilError`, cloudflare/workerd#6624) that killed every scheduled
-> tick. `src/entry.py` no longer defines `Default`, so `pywrangler dev`/`deploy`
-> will not serve traffic — see `runmesh-main/DEPLOY.md`.
-> `src/scheduler.py` was removed. **Do not reintroduce a separate scheduler module**
-> — the sweep lives in `runtime/runner.py`.
+Bun's `bun:sqlite` connection is synchronous, so a long query blocks the event loop.
+That is an accepted tradeoff for a single-node server; keep queries indexed and
+bounded (paginate with `LIMIT`).
 
 ### Conventions
 
-- **Routing:** routes live in `src/routes/<domain>.py` as `APIRouter`s, registered in `src/entry.py` via `app.include_router(...)` in file order (order matters for matching — keep it). `entry.py` keeps only app creation, middleware, exception handlers, and the `Default` entrypoints. Handlers stay thin: parse params, resolve workspace, delegate to `services/`.
-- **Responses:** always use the shared envelope in `src/utils/responses.py`. Do not hand-roll JSON shapes.
-- **Auth:** `src/utils/dual_auth.py` — JWT (`Authorization: Bearer`) for the dashboard, API key (`X-API-Key: rk_...`) for integrations. Connect public endpoints use app credentials.
-- **DB access:** go through the ORM modules in `src/db/`. New columns/tables require a new numbered migration in `migrations/` **and** an update to `schema.sql`.
-- **Naming:** snake_case in Python/DB, camelCase in the frontend types. Keep UI labels aligned with the vocabulary in §2 ("Actions", not "Tasks", in user-facing copy).
-- **Shared types** live in `src/utils/types.py` (facade over `types_{helpers,enums,requests,connect}`); import from the facade, not the submodules.
+- **Routing:** one router per domain in `src/modules/<domain>/routes.ts`, mounted in
+  `src/routes.ts` in the same order as the legacy `entry.py` (order matters for
+  matching — keep it). Handlers stay thin: parse params, resolve workspace, delegate
+  to `service.ts`.
+- **Responses:** always use the shared envelope in `core/http/responses.ts`
+  (`success`, `error`, `errorFromStatus`). Connect/tools routes that the legacy server
+  answered as HTTP 200 + numeric code use `numericError`/`numericFromCaught`.
+- **Auth:** `core/middleware/auth.ts` — `requireAuth("read"|"write")` accepts a JWT
+  (`Authorization: Bearer`) or an API key (`X-API-Key: rk_...`); `requireJwt()` is for
+  dashboard-only routes. Connect public endpoints use app credentials.
+- **DB access:** go through the Drizzle models in `core/db/orm.ts`. New columns/tables
+  require a new numbered migration in `migrations/` **and** updates to `schema.sql`
+  and `core/db/schema.ts` (a drift test fails otherwise).
+- **Naming:** snake_case in the DB and on the wire, camelCase in TypeScript.
+  Keep UI labels aligned with the vocabulary in §2 ("Actions", not "Tasks").
+- **No Python-isms.** No `env.DB` bindings, no D1-shaped `prepare().bind()`, no
+  hand-rolled JSON shapes.
 - **No comments unless necessary**; match surrounding style.
+- **Tests:** `bun test`; `tests/helpers/test-app.ts` boots an app on a migrated
+  ephemeral DB with `startTestApp` / `createTestUser` / `getJson` / `postJson`.
 
 ### Frontend conventions
 
@@ -213,10 +227,10 @@ across `fetch` / `queue` / `scheduled`:
 
 ```bash
 # Backend (port 8787, SQLite)
-cd runmesh-main
-uv sync --all-groups
+cd runmesh-ts
+pnpm install
 cp .env.example .env        # set JWT_SECRET at minimum
-uv run python src/main.py   # applies pending migrations on boot
+pnpm dev                    # bun --watch src/main.ts; migrations on boot
 
 # Frontend (port 5173)
 cd frontend
@@ -225,21 +239,26 @@ printf 'VITE_API_URL=http://localhost:8787\n' > .env.local
 pnpm dev
 ```
 
-Or the way production runs it — one container, volume holds the SQLite file:
+Production is the same process, long-lived, with `DB_PATH` on a persistent volume:
 
 ```bash
-cd runmesh-main
+cd runmesh-ts
 cp .env.example .env
-docker compose up -d --build
+bun src/main.ts
 ```
 
-Deploy / migrate off Cloudflare D1: [`runmesh-main/DEPLOY.md`](./runmesh-main/DEPLOY.md).
+Backend verification:
 
-There is no backend test command configured yet (a gap). Backend verification is
-`python -m compileall src/` plus `uv run python scripts/smoke_vps.py <base-url>
-<jwt-secret> <db-path>` (13 end-to-end checks, including that the scheduler
-sweep only dispatches a task after its due time). Frontend verification is
-`pnpm typecheck` + `pnpm lint` + `pnpm build`.
+- `pnpm typecheck` — `tsc --noEmit`
+- `pnpm test` — 237 tests
+- `pnpm smoke` / `pnpm e2e` / `pnpm contract` — live checks against a running server
+  (13 / 30 / 27 respectively). `contract` asserts the exact HTTP shapes the
+  dashboard stores read; run it after touching any serializer.
+
+Frontend verification: `pnpm typecheck` + `pnpm lint` + `pnpm build`.
+
+`legacy/runmesh-main/DEPLOY.md` documents the historical deployment, including
+migrating production data off Cloudflare D1.
 
 ---
 
@@ -367,4 +386,5 @@ Runmesh is a **side project**, not the owner's primary company. Keep changes sel
 5. **No new design system.** Extend `landing-page/` tokens and `components/ui/`.
 6. **Verify frontend:** `pnpm typecheck && pnpm lint`.
 7. **Update this file** when you implement a major piece from §3 or §6, so the next agent starts from truth.
-8. **Cloudflare knowledge may be stale.** Fetch current docs (see `runmesh-main/AGENTS.md`) before Workers/D1/Queues changes.
+8. **`legacy/runmesh-main/` is read-only history.** Do not port new features there;
+   if you need a behaviour to match, read it, then implement it in `runmesh-ts/`.

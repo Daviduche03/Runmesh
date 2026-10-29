@@ -19,7 +19,7 @@ import { workflowsRouter } from "./modules/workflows/index.js";
 import { workspaceRouter } from "./modules/workspace/index.js";
 
 /**
- * Registration order mirrors runmesh-main/src/entry.py: FastAPI matched routers in the order
+ * Registration order mirrors legacy/runmesh-main/src/entry.py: FastAPI matched routers in the order
  * they were included, and Express matches in mount order, so the list is not alphabetical.
  * Mounted so far: system, api keys, agents, policies, workspaces, auth, webhooks,
  * tasks, workflows, connect (grants, sessions, oauth), tools, triggers, collection,

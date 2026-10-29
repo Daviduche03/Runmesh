@@ -1,7 +1,7 @@
 """Generate Rego-artifact parity vectors from the Python reference implementation.
 
 The function bodies below are copied verbatim from
-runmesh-main/src/services/policies.py (rule_rego / _parse_json_list); regenerate with:
+legacy/runmesh-main/src/services/policies.py (rule_rego / _parse_json_list); regenerate with:
 
     python3 scripts/gen-rego-vectors.py
 """

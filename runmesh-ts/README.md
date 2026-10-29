@@ -1,10 +1,11 @@
 # runmesh-ts
 
-TypeScript implementation of the Runmesh API. Same HTTP contract as `../runmesh-main`
-(the FastAPI server it replaces), same SQLite schema and migrations, idiomatic
+The Runmesh API server. Same HTTP contract as the FastAPI implementation it
+replaced (`../legacy/runmesh-main/`), same SQLite schema and migrations, idiomatic
 Express + Drizzle on the inside.
 
-`runmesh-main/` stays runnable as the parity oracle until cutover.
+`legacy/runmesh-main/` is kept read-only as the parity oracle: when in doubt about
+a wire-level behaviour, that is the reference.
 
 ## Stack
 
@@ -20,10 +21,13 @@ Express + Drizzle on the inside.
 ## Run
 
 ```bash
-bun install
+pnpm install
 cp .env.example .env      # set JWT_SECRET at minimum
-bun run dev               # http://localhost:8787
+pnpm dev                  # bun --watch src/main.ts, http://localhost:8787
 ```
+
+The frontend points at this server with `VITE_API_URL=http://localhost:8787`
+(see `../frontend/.env.example`).
 
 Migrations apply on boot: a blank database is bootstrapped from `schema.sql`
 (snapshot of migrations 0001–0042) and the remaining files in `migrations/` run
@@ -84,35 +88,57 @@ Deliberately idiomatic (not byte-compatible with the Python server):
   binding map.
 - **No Cloudflare shims** — no D1-shaped `prepare().bind()`, no `env` object.
 
+## Cutover from the FastAPI server
+
+The frontend needs no code change: same base URL (`http://localhost:8787`), same
+envelope, same snake_case payloads. What to expect when switching the process:
+
+1. **Everyone signs in again.** The legacy server minted `base64(payload).signature`
+   tokens; this server issues standard HS256 JWTs, so old tokens fail verification.
+   The dashboard clears its stored token on any `401` and redirects to `/login`.
+2. **Token claims are part of the contract.** `frontend/src/lib/stores/auth-store.ts`
+   decodes the session payload, so session and CLI tokens carry
+   `{ sub, id, email, name }` — `id` duplicates `sub` on purpose.
+3. **Same database file.** `DB_PATH` can point at an existing SQLite file: this server
+   applies the same migrations and reads the `v2.` vault ciphertext as-is.
+4. **Background work moves in-process.** Queue consumption and the 5s scheduler sweep
+   run inside the server; do not run the legacy process against the same file.
+
+Checklist:
+
+```bash
+cd runmesh-ts && pnpm test && pnpm typecheck   # unit + types
+bun src/main.ts                                 # boot on the shared DB
+pnpm contract                                   # dashboard contract
+pnpm e2e                                        # every module end to end
+pnpm smoke                                      # scheduler/queue behaviour
+```
+
+## Verification
+
+```bash
+pnpm typecheck   # tsc --noEmit
+pnpm test        # bun test — 237 tests across 21 files
+```
+
+Three scripts run against a live server (start it first, or pass a URL):
+
+```bash
+pnpm smoke     # 13 checks, incl. the scheduler only firing after the due time
+pnpm e2e       # 30 checks across every module, incl. live queue + HMAC callbacks
+pnpm contract  # 27 checks over exactly the HTTP paths the dashboard calls
+```
+
+`scripts/frontend-contract.ts` is the cutover guard: it seeds fixtures and asserts
+the response shapes each zustand store in `frontend/` depends on (field names,
+list-vs-object, `meta.total`). Reach for it before changing a serializer.
+
 ## Status
 
-Done:
-
-- core layer (config, schema mirror, table models, auth, envelope/errors,
-  middleware, migrations, queue, runner), `/`, `/health`, `/api/me`
-- **policy evaluation engine** (`src/modules/policies/engine.ts`) — pure, no DB,
-  verified against 47 vectors generated from the Python engine by
-  `scripts/gen-policy-vectors.py`
-- **workspace tenancy** (`src/modules/workspace/`) — membership gate, personal
-  workspace provisioning, onboard/list/invites, project links
-- **auth** (`src/modules/auth/`) — GitHub OAuth login/callback/exchange, CLI
-  device-code flow, verification page
-- **agents** (`src/modules/agents/`) — create/list/archive identities (public
-  key kept private, fingerprint exposed)
-- **API keys** (`src/modules/api-keys/`) — mint/list/deactivate, workspace-scoped
-- **policies service + routes** (`src/modules/policies/`) — rule CRUD/reorder,
-  dry-run, coverage gaps, capability matrix, issuance enforcement and the
-  decision ledger (`policy_decisions` + `policy.decision` audit rows)
-- **audit ledger** (`src/modules/connect/audit.ts`) — the shared append-only
-  writer connect will build on
-
-Pending: the remaining domain modules (tasks, workflows, webhooks, api keys,
-connect, dashboard), their route registration in `routes.ts`, and the
-task/webhook handlers injected into the runner in `main.ts`. Until those land the
-queue consumers and scheduler sweep are wired but have no handlers.
-
-Port order (dependencies, not preference): `tasks`/`webhooks`/`api-keys` →
-`workflows` → `connect` → `dashboard`.
+Feature-complete against the FastAPI server: all 16 route modules are ported
+(system, auth, workspace, agents, api-keys, policies, webhooks, tasks, workflows,
+connect, tools, collection, triggers, dashboard), with 99 route handlers matching
+the Python route table.
 
 ## Policy
 
@@ -131,5 +157,5 @@ oracle before being wired up:
   never from a label the calling agent supplies
 
 `scripts/gen-policy-vectors.py` regenerates the vectors from
-`runmesh-main/src/services/policy_engine.py`; the TypeScript must reproduce them
-exactly.
+`legacy/runmesh-main/src/services/policy_engine.py`; the TypeScript must reproduce
+them exactly.

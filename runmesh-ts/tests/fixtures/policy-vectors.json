@@ -1,5 +1,5 @@
 {
-  "engine": "runmesh-main/src/services/policy_engine.py",
+  "engine": "legacy/runmesh-main/src/services/policy_engine.py",
   "cases": [
     {
       "name": "no rules falls to default deny",

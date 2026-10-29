@@ -1,5 +1,10 @@
 # Runmesh
 
+> **Retired.** This is the FastAPI implementation that `runmesh-ts/` replaced.
+> It is kept read-only as the parity oracle: when the TypeScript server and this
+> one disagree about a wire-level behaviour, this tree is the reference. Paths
+> below are relative to `legacy/runmesh-main/`. Do not add features here.
+
 Runmesh is a platform for async infrastructure — task execution, workflow automation, and Connect identity. Queue webhooks, schedule jobs, orchestrate multi-step workflows, and give users portable identity across your apps.
 
 Built on [Cloudflare Workers](https://developers.cloudflare.com/workers/) (Python) with [D1](https://developers.cloudflare.com/d1/) for storage and [Queues](https://developers.cloudflare.com/queues/) for task and webhook dispatch (`runmesh-tasks`, `runmesh-webhooks`).

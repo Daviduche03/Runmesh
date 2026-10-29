@@ -17,7 +17,7 @@ import sys
 
 HERE = pathlib.Path(__file__).resolve()
 REPO_ROOT = HERE.parents[2]
-sys.path.insert(0, str(REPO_ROOT / "runmesh-main" / "src" / "services"))
+sys.path.insert(0, str(REPO_ROOT / "legacy" / "runmesh-main" / "src" / "services"))
 
 import policy_engine as engine  # noqa: E402
 
@@ -249,7 +249,7 @@ def main() -> None:
         for item in GRANT_CONTEXTS
     ]
 
-    payload = {"engine": "runmesh-main/src/services/policy_engine.py", "cases": cases, "grantContexts": grant_contexts}
+    payload = {"engine": "legacy/runmesh-main/src/services/policy_engine.py", "cases": cases, "grantContexts": grant_contexts}
     OUT.parent.mkdir(parents=True, exist_ok=True)
     OUT.write_text(json.dumps(payload, indent=2, sort_keys=False) + "\n")
     print(f"wrote {len(cases)} cases and {len(grant_contexts)} grant contexts to {OUT}")

@@ -33,7 +33,7 @@ const fixture = JSON.parse(
 
 describe("policy engine parity with the Python oracle", () => {
   test("vectors were generated from the Python engine", () => {
-    expect(fixture.engine).toBe("runmesh-main/src/services/policy_engine.py");
+    expect(fixture.engine).toBe("legacy/runmesh-main/src/services/policy_engine.py");
     expect(fixture.cases.length).toBeGreaterThan(40);
   });
 

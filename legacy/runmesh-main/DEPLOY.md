@@ -1,5 +1,10 @@
 # Deploying Runmesh on a VM (VPS)
 
+> **Retired.** This is the FastAPI implementation that `runmesh-ts/` replaced.
+> It is kept read-only as the parity oracle: when the TypeScript server and this
+> one disagree about a wire-level behaviour, this tree is the reference. Paths
+> below are relative to `legacy/runmesh-main/`. Do not add features here.
+
 Runmesh now runs as a plain Python process backed by SQLite. Cloudflare Workers
 is no longer part of the runtime.
 

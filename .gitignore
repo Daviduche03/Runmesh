@@ -32,7 +32,7 @@ __pycache__/
 .runmesh/
 
 # CLI binary (build with: go build ./cmd/runmesh)
-runmesh-main/workspace/runmesh
+legacy/runmesh-main/workspace/runmesh
 
 # Agent/IDE tooling — local only, never commit
 .agents/

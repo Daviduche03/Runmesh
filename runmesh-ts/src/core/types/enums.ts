@@ -1,5 +1,5 @@
 /**
- * String-union enums, ported from runmesh-main/src/utils/types_enums.py.
+ * String-union enums, ported from legacy/runmesh-main/src/utils/types_enums.py.
  * Python used `str`-valued Enum members (`ConnectGrantStatus.ACTIVE == "active"`), which maps
  * naturally onto a const object plus a derived union type — call sites keep the same shape.
  */

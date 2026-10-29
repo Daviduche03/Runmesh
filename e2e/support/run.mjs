@@ -9,7 +9,7 @@ import path from "node:path";
 
 const HERE = path.dirname(fileURLToPath(import.meta.url));
 const ROOT = path.resolve(HERE, "..", "..");
-const RM = path.join(ROOT, "runmesh-main");
+const RM = path.join(ROOT, "legacy", "runmesh-main");
 const API = process.env.RUNMESH_URL ?? "http://localhost:8787";
 const SUPPORT = process.env.SUPPORT_URL ?? "http://localhost:8791";
 const FRONTEND = process.env.FRONTEND_URL ?? "http://localhost:5173";

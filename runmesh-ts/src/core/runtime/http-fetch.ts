@@ -1,6 +1,6 @@
 /**
  * Outbound HTTP for server-side calls (webhooks, task steps, OAuth exchanges, tool proxying).
- * Port of runmesh-main/src/runtime/http_fetch.py, which adapted the Workers `fetch` to the
+ * Port of legacy/runmesh-main/src/runtime/http_fetch.py, which adapted the Workers `fetch` to the
  * call shape the app already used: `await fetch(url, method=, headers=, body=)` then
  * `.status` / `await .text()`.
  */
