@@ -39,9 +39,9 @@ export function Hero() {
 				</div>
 
 				<div className={`${container} mt-16 lg:mt-20`}>
-					<div className="relative overflow-hidden rounded-2xl bg-[#05070d] p-[18px] sm:p-[26px] lg:p-[35px]">
+					<div className="relative overflow-hidden rounded-2xl bg-[#f3ece2] p-[18px] ring-1 ring-black/5 sm:p-[26px] lg:p-[35px]">
 						<img
-							src="/river.webp"
+							src="/hero-backdrop.webp"
 							alt=""
 							aria-hidden="true"
 							className="absolute inset-0 size-full object-cover"
@@ -49,7 +49,7 @@ export function Hero() {
 						<img
 							src="/shots/control-room.webp"
 							alt="The Runmesh control room: pending consent, active agents, action throughput, action outcomes, and a live audit feed."
-							className="relative block w-full rounded-[10px] shadow-[0_30px_70px_-24px_rgba(0,0,0,0.85)] ring-1 ring-white/10"
+							className="relative block w-full rounded-[10px] shadow-[0_28px_60px_-28px_rgba(62,42,24,0.45)] ring-1 ring-black/10"
 						/>
 					</div>
 				</div>
