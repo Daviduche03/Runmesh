@@ -12,6 +12,7 @@ import {
 import { createApp } from "./app.js";
 import { processWebhookQueueMessage } from "./modules/webhooks/index.js";
 import { enqueueDueTasks, processTaskMessage } from "./modules/tasks/index.js";
+import { runDueScheduleTriggers } from "./modules/triggers/index.js";
 import {
   recoverStaleWorkflowRuns,
   runDueScheduledWorkflows,
@@ -52,6 +53,10 @@ const runner = startRunner(
       {
         name: "run_due_scheduled_workflows",
         run: async () => runDueScheduledWorkflows(ctx.db, ctx.taskQueue),
+      },
+      {
+        name: "run_due_schedule_triggers",
+        run: async () => runDueScheduleTriggers(ctx.db),
       },
       {
         name: "recover_stale_workflow_runs",
