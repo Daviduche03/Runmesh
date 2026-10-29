@@ -1,0 +1,2550 @@
+{
+  "engine": "legacy/runmesh-main/src/services/policy_engine.py",
+  "cases": [
+    {
+      "name": "no rules falls to default deny",
+      "rules": [],
+      "context": {
+        "action": "github",
+        "scope": "repo:read, issues:write",
+        "resource": "org/repo",
+        "agent": "agent_1",
+        "user": "u_1",
+        "amount": "",
+        "time": ""
+      },
+      "result": {
+        "decision": "deny",
+        "rule": null,
+        "settled": false,
+        "default_applied": true,
+        "steps": [],
+        "shadowed": []
+      }
+    },
+    {
+      "name": "allow-all rule",
+      "rules": [
+        {
+          "id": "r1",
+          "priority": 1,
+          "name": "r1",
+          "action": "allow",
+          "mode": "enforce",
+          "enabled": true,
+          "conditions": []
+        }
+      ],
+      "context": {
+        "action": "github",
+        "scope": "repo:read, issues:write",
+        "resource": "org/repo",
+        "agent": "agent_1",
+        "user": "u_1",
+        "amount": "",
+        "time": ""
+      },
+      "result": {
+        "decision": "allow",
+        "rule": {
+          "id": "r1",
+          "priority": 1,
+          "name": "r1",
+          "action": "allow",
+          "mode": "enforce",
+          "enabled": true,
+          "conditions": []
+        },
+        "settled": true,
+        "default_applied": false,
+        "steps": [
+          {
+            "id": "r1",
+            "priority": 1,
+            "name": "r1",
+            "action": "allow",
+            "status": "matched",
+            "detail": "All conditions matched."
+          }
+        ],
+        "shadowed": []
+      }
+    },
+    {
+      "name": "first match wins, later rules are not reached",
+      "rules": [
+        {
+          "id": "r1",
+          "priority": 1,
+          "name": "r1",
+          "action": "allow",
+          "mode": "enforce",
+          "enabled": true,
+          "conditions": [
+            {
+              "field": "action",
+              "operator": "is",
+              "value": "github"
+            }
+          ]
+        },
+        {
+          "id": "r2",
+          "priority": 2,
+          "name": "r2",
+          "action": "deny",
+          "mode": "enforce",
+          "enabled": true,
+          "conditions": []
+        },
+        {
+          "id": "r3",
+          "priority": 3,
+          "name": "r3",
+          "action": "deny",
+          "mode": "enforce",
+          "enabled": false,
+          "conditions": []
+        }
+      ],
+      "context": {
+        "action": "github",
+        "scope": "repo:read, issues:write",
+        "resource": "org/repo",
+        "agent": "agent_1",
+        "user": "u_1",
+        "amount": "",
+        "time": ""
+      },
+      "result": {
+        "decision": "allow",
+        "rule": {
+          "id": "r1",
+          "priority": 1,
+          "name": "r1",
+          "action": "allow",
+          "mode": "enforce",
+          "enabled": true,
+          "conditions": [
+            {
+              "field": "action",
+              "operator": "is",
+              "value": "github"
+            }
+          ]
+        },
+        "settled": true,
+        "default_applied": false,
+        "steps": [
+          {
+            "id": "r1",
+            "priority": 1,
+            "name": "r1",
+            "action": "allow",
+            "status": "matched",
+            "detail": "All conditions matched."
+          },
+          {
+            "id": "r2",
+            "priority": 2,
+            "name": "r2",
+            "action": "deny",
+            "status": "not-reached",
+            "detail": "First match already decided."
+          },
+          {
+            "id": "r3",
+            "priority": 3,
+            "name": "r3",
+            "action": "deny",
+            "status": "not-reached",
+            "detail": "First match already decided."
+          }
+        ],
+        "shadowed": []
+      }
+    },
+    {
+      "name": "disabled rule is skipped",
+      "rules": [
+        {
+          "id": "r1",
+          "priority": 1,
+          "name": "r1",
+          "action": "deny",
+          "mode": "enforce",
+          "enabled": false,
+          "conditions": []
+        },
+        {
+          "id": "r2",
+          "priority": 2,
+          "name": "r2",
+          "action": "allow",
+          "mode": "enforce",
+          "enabled": true,
+          "conditions": []
+        }
+      ],
+      "context": {
+        "action": "github",
+        "scope": "repo:read, issues:write",
+        "resource": "org/repo",
+        "agent": "agent_1",
+        "user": "u_1",
+        "amount": "",
+        "time": ""
+      },
+      "result": {
+        "decision": "allow",
+        "rule": {
+          "id": "r2",
+          "priority": 2,
+          "name": "r2",
+          "action": "allow",
+          "mode": "enforce",
+          "enabled": true,
+          "conditions": []
+        },
+        "settled": true,
+        "default_applied": false,
+        "steps": [
+          {
+            "id": "r1",
+            "priority": 1,
+            "name": "r1",
+            "action": "deny",
+            "status": "disabled",
+            "detail": "Disabled. Not evaluating."
+          },
+          {
+            "id": "r2",
+            "priority": 2,
+            "name": "r2",
+            "action": "allow",
+            "status": "matched",
+            "detail": "All conditions matched."
+          }
+        ],
+        "shadowed": []
+      }
+    },
+    {
+      "name": "log-only rule is shadowed, a later rule decides",
+      "rules": [
+        {
+          "id": "r1",
+          "priority": 1,
+          "name": "r1",
+          "action": "deny",
+          "mode": "log-only",
+          "enabled": true,
+          "conditions": []
+        },
+        {
+          "id": "r2",
+          "priority": 2,
+          "name": "r2",
+          "action": "allow",
+          "mode": "enforce",
+          "enabled": true,
+          "conditions": []
+        }
+      ],
+      "context": {
+        "action": "github",
+        "scope": "repo:read, issues:write",
+        "resource": "org/repo",
+        "agent": "agent_1",
+        "user": "u_1",
+        "amount": "",
+        "time": ""
+      },
+      "result": {
+        "decision": "allow",
+        "rule": {
+          "id": "r2",
+          "priority": 2,
+          "name": "r2",
+          "action": "allow",
+          "mode": "enforce",
+          "enabled": true,
+          "conditions": []
+        },
+        "settled": true,
+        "default_applied": false,
+        "steps": [
+          {
+            "id": "r1",
+            "priority": 1,
+            "name": "r1",
+            "action": "deny",
+            "status": "shadow",
+            "detail": "Log-only. Recorded, not enforced."
+          },
+          {
+            "id": "r2",
+            "priority": 2,
+            "name": "r2",
+            "action": "allow",
+            "status": "matched",
+            "detail": "All conditions matched."
+          }
+        ],
+        "shadowed": [
+          {
+            "id": "r1",
+            "priority": 1,
+            "name": "r1",
+            "action": "deny"
+          }
+        ]
+      }
+    },
+    {
+      "name": "only a log-only rule still falls to the default",
+      "rules": [
+        {
+          "id": "r1",
+          "priority": 1,
+          "name": "r1",
+          "action": "deny",
+          "mode": "log-only",
+          "enabled": true,
+          "conditions": []
+        }
+      ],
+      "context": {
+        "action": "github",
+        "scope": "repo:read, issues:write",
+        "resource": "org/repo",
+        "agent": "agent_1",
+        "user": "u_1",
+        "amount": "",
+        "time": ""
+      },
+      "result": {
+        "decision": "deny",
+        "rule": null,
+        "settled": false,
+        "default_applied": true,
+        "steps": [
+          {
+            "id": "r1",
+            "priority": 1,
+            "name": "r1",
+            "action": "deny",
+            "status": "shadow",
+            "detail": "Log-only. Recorded, not enforced."
+          }
+        ],
+        "shadowed": [
+          {
+            "id": "r1",
+            "priority": 1,
+            "name": "r1",
+            "action": "deny"
+          }
+        ]
+      }
+    },
+    {
+      "name": "failing condition reports the actual value",
+      "rules": [
+        {
+          "id": "r1",
+          "priority": 1,
+          "name": "r1",
+          "action": "allow",
+          "mode": "enforce",
+          "enabled": true,
+          "conditions": [
+            {
+              "field": "agent",
+              "operator": "is",
+              "value": "other_agent"
+            }
+          ]
+        }
+      ],
+      "context": {
+        "action": "github",
+        "scope": "repo:read, issues:write",
+        "resource": "org/repo",
+        "agent": "agent_1",
+        "user": "u_1",
+        "amount": "",
+        "time": ""
+      },
+      "result": {
+        "decision": "deny",
+        "rule": null,
+        "settled": false,
+        "default_applied": true,
+        "steps": [
+          {
+            "id": "r1",
+            "priority": 1,
+            "name": "r1",
+            "action": "allow",
+            "status": "skipped",
+            "detail": "agent_1 does not satisfy agent is other_agent"
+          }
+        ],
+        "shadowed": []
+      }
+    },
+    {
+      "name": "missing field defaults to the action",
+      "rules": [
+        {
+          "id": "r1",
+          "priority": 1,
+          "name": "r1",
+          "action": "allow",
+          "mode": "enforce",
+          "enabled": true,
+          "conditions": [
+            {
+              "operator": "is",
+              "value": "github"
+            }
+          ]
+        }
+      ],
+      "context": {
+        "action": "github",
+        "scope": "repo:read, issues:write",
+        "resource": "org/repo",
+        "agent": "agent_1",
+        "user": "u_1",
+        "amount": "",
+        "time": ""
+      },
+      "result": {
+        "decision": "allow",
+        "rule": {
+          "id": "r1",
+          "priority": 1,
+          "name": "r1",
+          "action": "allow",
+          "mode": "enforce",
+          "enabled": true,
+          "conditions": [
+            {
+              "operator": "is",
+              "value": "github"
+            }
+          ]
+        },
+        "settled": true,
+        "default_applied": false,
+        "steps": [
+          {
+            "id": "r1",
+            "priority": 1,
+            "name": "r1",
+            "action": "allow",
+            "status": "matched",
+            "detail": "All conditions matched."
+          }
+        ],
+        "shadowed": []
+      }
+    },
+    {
+      "name": "missing operator defaults to is",
+      "rules": [
+        {
+          "id": "r1",
+          "priority": 1,
+          "name": "r1",
+          "action": "allow",
+          "mode": "enforce",
+          "enabled": true,
+          "conditions": [
+            {
+              "field": "action",
+              "value": "github"
+            }
+          ]
+        }
+      ],
+      "context": {
+        "action": "github",
+        "scope": "repo:read, issues:write",
+        "resource": "org/repo",
+        "agent": "agent_1",
+        "user": "u_1",
+        "amount": "",
+        "time": ""
+      },
+      "result": {
+        "decision": "allow",
+        "rule": {
+          "id": "r1",
+          "priority": 1,
+          "name": "r1",
+          "action": "allow",
+          "mode": "enforce",
+          "enabled": true,
+          "conditions": [
+            {
+              "field": "action",
+              "value": "github"
+            }
+          ]
+        },
+        "settled": true,
+        "default_applied": false,
+        "steps": [
+          {
+            "id": "r1",
+            "priority": 1,
+            "name": "r1",
+            "action": "allow",
+            "status": "matched",
+            "detail": "All conditions matched."
+          }
+        ],
+        "shadowed": []
+      }
+    },
+    {
+      "name": "missing enabled means disabled",
+      "rules": [
+        {
+          "id": "r1",
+          "priority": 1,
+          "name": "r1",
+          "action": "allow",
+          "conditions": []
+        }
+      ],
+      "context": {
+        "action": "github",
+        "scope": "repo:read, issues:write",
+        "resource": "org/repo",
+        "agent": "agent_1",
+        "user": "u_1",
+        "amount": "",
+        "time": ""
+      },
+      "result": {
+        "decision": "deny",
+        "rule": null,
+        "settled": false,
+        "default_applied": true,
+        "steps": [
+          {
+            "id": "r1",
+            "priority": 1,
+            "name": "r1",
+            "action": "allow",
+            "status": "disabled",
+            "detail": "Disabled. Not evaluating."
+          }
+        ],
+        "shadowed": []
+      }
+    },
+    {
+      "name": "missing mode means enforce",
+      "rules": [
+        {
+          "id": "r1",
+          "priority": 1,
+          "name": "r1",
+          "action": "allow",
+          "enabled": true,
+          "conditions": []
+        }
+      ],
+      "context": {
+        "action": "github",
+        "scope": "repo:read, issues:write",
+        "resource": "org/repo",
+        "agent": "agent_1",
+        "user": "u_1",
+        "amount": "",
+        "time": ""
+      },
+      "result": {
+        "decision": "allow",
+        "rule": {
+          "id": "r1",
+          "priority": 1,
+          "name": "r1",
+          "action": "allow",
+          "enabled": true,
+          "conditions": []
+        },
+        "settled": true,
+        "default_applied": false,
+        "steps": [
+          {
+            "id": "r1",
+            "priority": 1,
+            "name": "r1",
+            "action": "allow",
+            "status": "matched",
+            "detail": "All conditions matched."
+          }
+        ],
+        "shadowed": []
+      }
+    },
+    {
+      "name": "two conditions must both match",
+      "rules": [
+        {
+          "id": "r1",
+          "priority": 1,
+          "name": "r1",
+          "action": "allow",
+          "mode": "enforce",
+          "enabled": true,
+          "conditions": [
+            {
+              "field": "action",
+              "operator": "is",
+              "value": "github"
+            },
+            {
+              "field": "resource",
+              "operator": "is",
+              "value": "org/repo"
+            }
+          ]
+        }
+      ],
+      "context": {
+        "action": "github",
+        "scope": "repo:read, issues:write",
+        "resource": "org/repo",
+        "agent": "agent_1",
+        "user": "u_1",
+        "amount": "",
+        "time": ""
+      },
+      "result": {
+        "decision": "allow",
+        "rule": {
+          "id": "r1",
+          "priority": 1,
+          "name": "r1",
+          "action": "allow",
+          "mode": "enforce",
+          "enabled": true,
+          "conditions": [
+            {
+              "field": "action",
+              "operator": "is",
+              "value": "github"
+            },
+            {
+              "field": "resource",
+              "operator": "is",
+              "value": "org/repo"
+            }
+          ]
+        },
+        "settled": true,
+        "default_applied": false,
+        "steps": [
+          {
+            "id": "r1",
+            "priority": 1,
+            "name": "r1",
+            "action": "allow",
+            "status": "matched",
+            "detail": "All conditions matched."
+          }
+        ],
+        "shadowed": []
+      }
+    },
+    {
+      "name": "two conditions with one failing",
+      "rules": [
+        {
+          "id": "r1",
+          "priority": 1,
+          "name": "r1",
+          "action": "allow",
+          "mode": "enforce",
+          "enabled": true,
+          "conditions": [
+            {
+              "field": "action",
+              "operator": "is",
+              "value": "github"
+            },
+            {
+              "field": "resource",
+              "operator": "is",
+              "value": "other/repo"
+            }
+          ]
+        }
+      ],
+      "context": {
+        "action": "github",
+        "scope": "repo:read, issues:write",
+        "resource": "org/repo",
+        "agent": "agent_1",
+        "user": "u_1",
+        "amount": "",
+        "time": ""
+      },
+      "result": {
+        "decision": "deny",
+        "rule": null,
+        "settled": false,
+        "default_applied": true,
+        "steps": [
+          {
+            "id": "r1",
+            "priority": 1,
+            "name": "r1",
+            "action": "allow",
+            "status": "skipped",
+            "detail": "org/repo does not satisfy resource is other/repo"
+          }
+        ],
+        "shadowed": []
+      }
+    },
+    {
+      "name": "matched enforce rule without an action still defaults",
+      "rules": [
+        {
+          "id": "r1",
+          "priority": 1,
+          "name": "r1",
+          "mode": "enforce",
+          "enabled": true,
+          "conditions": []
+        }
+      ],
+      "context": {
+        "action": "github",
+        "scope": "repo:read, issues:write",
+        "resource": "org/repo",
+        "agent": "agent_1",
+        "user": "u_1",
+        "amount": "",
+        "time": ""
+      },
+      "result": {
+        "decision": "deny",
+        "rule": null,
+        "settled": false,
+        "default_applied": true,
+        "steps": [
+          {
+            "id": "r1",
+            "priority": 1,
+            "name": "r1",
+            "action": null,
+            "status": "matched",
+            "detail": "All conditions matched."
+          }
+        ],
+        "shadowed": []
+      }
+    },
+    {
+      "name": "consent action",
+      "rules": [
+        {
+          "id": "r1",
+          "priority": 1,
+          "name": "r1",
+          "action": "consent",
+          "mode": "enforce",
+          "enabled": true,
+          "conditions": []
+        }
+      ],
+      "context": {
+        "action": "github",
+        "scope": "repo:read, issues:write",
+        "resource": "org/repo",
+        "agent": "agent_1",
+        "user": "u_1",
+        "amount": "",
+        "time": ""
+      },
+      "result": {
+        "decision": "consent",
+        "rule": {
+          "id": "r1",
+          "priority": 1,
+          "name": "r1",
+          "action": "consent",
+          "mode": "enforce",
+          "enabled": true,
+          "conditions": []
+        },
+        "settled": true,
+        "default_applied": false,
+        "steps": [
+          {
+            "id": "r1",
+            "priority": 1,
+            "name": "r1",
+            "action": "consent",
+            "status": "matched",
+            "detail": "All conditions matched."
+          }
+        ],
+        "shadowed": []
+      }
+    },
+    {
+      "name": "escalate action",
+      "rules": [
+        {
+          "id": "r1",
+          "priority": 1,
+          "name": "r1",
+          "action": "escalate",
+          "mode": "enforce",
+          "enabled": true,
+          "conditions": []
+        }
+      ],
+      "context": {
+        "action": "github",
+        "scope": "repo:read, issues:write",
+        "resource": "org/repo",
+        "agent": "agent_1",
+        "user": "u_1",
+        "amount": "",
+        "time": ""
+      },
+      "result": {
+        "decision": "escalate",
+        "rule": {
+          "id": "r1",
+          "priority": 1,
+          "name": "r1",
+          "action": "escalate",
+          "mode": "enforce",
+          "enabled": true,
+          "conditions": []
+        },
+        "settled": true,
+        "default_applied": false,
+        "steps": [
+          {
+            "id": "r1",
+            "priority": 1,
+            "name": "r1",
+            "action": "escalate",
+            "status": "matched",
+            "detail": "All conditions matched."
+          }
+        ],
+        "shadowed": []
+      }
+    },
+    {
+      "name": "operator 'is' matches",
+      "rules": [
+        {
+          "id": "r1",
+          "priority": 1,
+          "name": "r1",
+          "action": "allow",
+          "mode": "enforce",
+          "enabled": true,
+          "conditions": [
+            {
+              "field": "action",
+              "operator": "is",
+              "value": "github"
+            }
+          ]
+        }
+      ],
+      "context": {
+        "action": "github",
+        "scope": "repo:read, issues:write",
+        "resource": "org/repo",
+        "agent": "agent_1",
+        "user": "u_1",
+        "amount": "",
+        "time": ""
+      },
+      "result": {
+        "decision": "allow",
+        "rule": {
+          "id": "r1",
+          "priority": 1,
+          "name": "r1",
+          "action": "allow",
+          "mode": "enforce",
+          "enabled": true,
+          "conditions": [
+            {
+              "field": "action",
+              "operator": "is",
+              "value": "github"
+            }
+          ]
+        },
+        "settled": true,
+        "default_applied": false,
+        "steps": [
+          {
+            "id": "r1",
+            "priority": 1,
+            "name": "r1",
+            "action": "allow",
+            "status": "matched",
+            "detail": "All conditions matched."
+          }
+        ],
+        "shadowed": []
+      }
+    },
+    {
+      "name": "operator 'is' does not match",
+      "rules": [
+        {
+          "id": "r1",
+          "priority": 1,
+          "name": "r1",
+          "action": "allow",
+          "mode": "enforce",
+          "enabled": true,
+          "conditions": [
+            {
+              "field": "action",
+              "operator": "is",
+              "value": "gitlab"
+            }
+          ]
+        }
+      ],
+      "context": {
+        "action": "github",
+        "scope": "repo:read, issues:write",
+        "resource": "org/repo",
+        "agent": "agent_1",
+        "user": "u_1",
+        "amount": "",
+        "time": ""
+      },
+      "result": {
+        "decision": "deny",
+        "rule": null,
+        "settled": false,
+        "default_applied": true,
+        "steps": [
+          {
+            "id": "r1",
+            "priority": 1,
+            "name": "r1",
+            "action": "allow",
+            "status": "skipped",
+            "detail": "github does not satisfy action is gitlab"
+          }
+        ],
+        "shadowed": []
+      }
+    },
+    {
+      "name": "operator 'is not' matches",
+      "rules": [
+        {
+          "id": "r1",
+          "priority": 1,
+          "name": "r1",
+          "action": "allow",
+          "mode": "enforce",
+          "enabled": true,
+          "conditions": [
+            {
+              "field": "action",
+              "operator": "is not",
+              "value": "gitlab"
+            }
+          ]
+        }
+      ],
+      "context": {
+        "action": "github",
+        "scope": "repo:read, issues:write",
+        "resource": "org/repo",
+        "agent": "agent_1",
+        "user": "u_1",
+        "amount": "",
+        "time": ""
+      },
+      "result": {
+        "decision": "allow",
+        "rule": {
+          "id": "r1",
+          "priority": 1,
+          "name": "r1",
+          "action": "allow",
+          "mode": "enforce",
+          "enabled": true,
+          "conditions": [
+            {
+              "field": "action",
+              "operator": "is not",
+              "value": "gitlab"
+            }
+          ]
+        },
+        "settled": true,
+        "default_applied": false,
+        "steps": [
+          {
+            "id": "r1",
+            "priority": 1,
+            "name": "r1",
+            "action": "allow",
+            "status": "matched",
+            "detail": "All conditions matched."
+          }
+        ],
+        "shadowed": []
+      }
+    },
+    {
+      "name": "operator 'is not' does not match",
+      "rules": [
+        {
+          "id": "r1",
+          "priority": 1,
+          "name": "r1",
+          "action": "allow",
+          "mode": "enforce",
+          "enabled": true,
+          "conditions": [
+            {
+              "field": "action",
+              "operator": "is not",
+              "value": "github"
+            }
+          ]
+        }
+      ],
+      "context": {
+        "action": "github",
+        "scope": "repo:read, issues:write",
+        "resource": "org/repo",
+        "agent": "agent_1",
+        "user": "u_1",
+        "amount": "",
+        "time": ""
+      },
+      "result": {
+        "decision": "deny",
+        "rule": null,
+        "settled": false,
+        "default_applied": true,
+        "steps": [
+          {
+            "id": "r1",
+            "priority": 1,
+            "name": "r1",
+            "action": "allow",
+            "status": "skipped",
+            "detail": "github does not satisfy action is not github"
+          }
+        ],
+        "shadowed": []
+      }
+    },
+    {
+      "name": "operator 'contains' matches",
+      "rules": [
+        {
+          "id": "r1",
+          "priority": 1,
+          "name": "r1",
+          "action": "allow",
+          "mode": "enforce",
+          "enabled": true,
+          "conditions": [
+            {
+              "field": "scope",
+              "operator": "contains",
+              "value": "issues"
+            }
+          ]
+        }
+      ],
+      "context": {
+        "action": "github",
+        "scope": "repo:read, issues:write",
+        "resource": "org/repo",
+        "agent": "agent_1",
+        "user": "u_1",
+        "amount": "",
+        "time": ""
+      },
+      "result": {
+        "decision": "allow",
+        "rule": {
+          "id": "r1",
+          "priority": 1,
+          "name": "r1",
+          "action": "allow",
+          "mode": "enforce",
+          "enabled": true,
+          "conditions": [
+            {
+              "field": "scope",
+              "operator": "contains",
+              "value": "issues"
+            }
+          ]
+        },
+        "settled": true,
+        "default_applied": false,
+        "steps": [
+          {
+            "id": "r1",
+            "priority": 1,
+            "name": "r1",
+            "action": "allow",
+            "status": "matched",
+            "detail": "All conditions matched."
+          }
+        ],
+        "shadowed": []
+      }
+    },
+    {
+      "name": "operator 'contains' does not match",
+      "rules": [
+        {
+          "id": "r1",
+          "priority": 1,
+          "name": "r1",
+          "action": "allow",
+          "mode": "enforce",
+          "enabled": true,
+          "conditions": [
+            {
+              "field": "scope",
+              "operator": "contains",
+              "value": "admin"
+            }
+          ]
+        }
+      ],
+      "context": {
+        "action": "github",
+        "scope": "repo:read, issues:write",
+        "resource": "org/repo",
+        "agent": "agent_1",
+        "user": "u_1",
+        "amount": "",
+        "time": ""
+      },
+      "result": {
+        "decision": "deny",
+        "rule": null,
+        "settled": false,
+        "default_applied": true,
+        "steps": [
+          {
+            "id": "r1",
+            "priority": 1,
+            "name": "r1",
+            "action": "allow",
+            "status": "skipped",
+            "detail": "repo:read, issues:write does not satisfy scope contains admin"
+          }
+        ],
+        "shadowed": []
+      }
+    },
+    {
+      "name": "operator 'not contains' matches",
+      "rules": [
+        {
+          "id": "r1",
+          "priority": 1,
+          "name": "r1",
+          "action": "allow",
+          "mode": "enforce",
+          "enabled": true,
+          "conditions": [
+            {
+              "field": "scope",
+              "operator": "not contains",
+              "value": "admin"
+            }
+          ]
+        }
+      ],
+      "context": {
+        "action": "github",
+        "scope": "repo:read, issues:write",
+        "resource": "org/repo",
+        "agent": "agent_1",
+        "user": "u_1",
+        "amount": "",
+        "time": ""
+      },
+      "result": {
+        "decision": "allow",
+        "rule": {
+          "id": "r1",
+          "priority": 1,
+          "name": "r1",
+          "action": "allow",
+          "mode": "enforce",
+          "enabled": true,
+          "conditions": [
+            {
+              "field": "scope",
+              "operator": "not contains",
+              "value": "admin"
+            }
+          ]
+        },
+        "settled": true,
+        "default_applied": false,
+        "steps": [
+          {
+            "id": "r1",
+            "priority": 1,
+            "name": "r1",
+            "action": "allow",
+            "status": "matched",
+            "detail": "All conditions matched."
+          }
+        ],
+        "shadowed": []
+      }
+    },
+    {
+      "name": "operator 'not contains' does not match",
+      "rules": [
+        {
+          "id": "r1",
+          "priority": 1,
+          "name": "r1",
+          "action": "allow",
+          "mode": "enforce",
+          "enabled": true,
+          "conditions": [
+            {
+              "field": "scope",
+              "operator": "not contains",
+              "value": "issues"
+            }
+          ]
+        }
+      ],
+      "context": {
+        "action": "github",
+        "scope": "repo:read, issues:write",
+        "resource": "org/repo",
+        "agent": "agent_1",
+        "user": "u_1",
+        "amount": "",
+        "time": ""
+      },
+      "result": {
+        "decision": "deny",
+        "rule": null,
+        "settled": false,
+        "default_applied": true,
+        "steps": [
+          {
+            "id": "r1",
+            "priority": 1,
+            "name": "r1",
+            "action": "allow",
+            "status": "skipped",
+            "detail": "repo:read, issues:write does not satisfy scope not contains issues"
+          }
+        ],
+        "shadowed": []
+      }
+    },
+    {
+      "name": "operator 'matches' matches",
+      "rules": [
+        {
+          "id": "r1",
+          "priority": 1,
+          "name": "r1",
+          "action": "allow",
+          "mode": "enforce",
+          "enabled": true,
+          "conditions": [
+            {
+              "field": "action",
+              "operator": "matches",
+              "value": "^git"
+            }
+          ]
+        }
+      ],
+      "context": {
+        "action": "github",
+        "scope": "repo:read, issues:write",
+        "resource": "org/repo",
+        "agent": "agent_1",
+        "user": "u_1",
+        "amount": "",
+        "time": ""
+      },
+      "result": {
+        "decision": "allow",
+        "rule": {
+          "id": "r1",
+          "priority": 1,
+          "name": "r1",
+          "action": "allow",
+          "mode": "enforce",
+          "enabled": true,
+          "conditions": [
+            {
+              "field": "action",
+              "operator": "matches",
+              "value": "^git"
+            }
+          ]
+        },
+        "settled": true,
+        "default_applied": false,
+        "steps": [
+          {
+            "id": "r1",
+            "priority": 1,
+            "name": "r1",
+            "action": "allow",
+            "status": "matched",
+            "detail": "All conditions matched."
+          }
+        ],
+        "shadowed": []
+      }
+    },
+    {
+      "name": "operator 'matches' does not match",
+      "rules": [
+        {
+          "id": "r1",
+          "priority": 1,
+          "name": "r1",
+          "action": "allow",
+          "mode": "enforce",
+          "enabled": true,
+          "conditions": [
+            {
+              "field": "action",
+              "operator": "matches",
+              "value": "^hub"
+            }
+          ]
+        }
+      ],
+      "context": {
+        "action": "github",
+        "scope": "repo:read, issues:write",
+        "resource": "org/repo",
+        "agent": "agent_1",
+        "user": "u_1",
+        "amount": "",
+        "time": ""
+      },
+      "result": {
+        "decision": "deny",
+        "rule": null,
+        "settled": false,
+        "default_applied": true,
+        "steps": [
+          {
+            "id": "r1",
+            "priority": 1,
+            "name": "r1",
+            "action": "allow",
+            "status": "skipped",
+            "detail": "github does not satisfy action matches ^hub"
+          }
+        ],
+        "shadowed": []
+      }
+    },
+    {
+      "name": "operator 'in' matches",
+      "rules": [
+        {
+          "id": "r1",
+          "priority": 1,
+          "name": "r1",
+          "action": "allow",
+          "mode": "enforce",
+          "enabled": true,
+          "conditions": [
+            {
+              "field": "action",
+              "operator": "in",
+              "value": "gitlab, github, stripe"
+            }
+          ]
+        }
+      ],
+      "context": {
+        "action": "github",
+        "scope": "repo:read, issues:write",
+        "resource": "org/repo",
+        "agent": "agent_1",
+        "user": "u_1",
+        "amount": "",
+        "time": ""
+      },
+      "result": {
+        "decision": "allow",
+        "rule": {
+          "id": "r1",
+          "priority": 1,
+          "name": "r1",
+          "action": "allow",
+          "mode": "enforce",
+          "enabled": true,
+          "conditions": [
+            {
+              "field": "action",
+              "operator": "in",
+              "value": "gitlab, github, stripe"
+            }
+          ]
+        },
+        "settled": true,
+        "default_applied": false,
+        "steps": [
+          {
+            "id": "r1",
+            "priority": 1,
+            "name": "r1",
+            "action": "allow",
+            "status": "matched",
+            "detail": "All conditions matched."
+          }
+        ],
+        "shadowed": []
+      }
+    },
+    {
+      "name": "operator 'in' does not match",
+      "rules": [
+        {
+          "id": "r1",
+          "priority": 1,
+          "name": "r1",
+          "action": "allow",
+          "mode": "enforce",
+          "enabled": true,
+          "conditions": [
+            {
+              "field": "action",
+              "operator": "in",
+              "value": "bitbucket, gitea"
+            }
+          ]
+        }
+      ],
+      "context": {
+        "action": "github",
+        "scope": "repo:read, issues:write",
+        "resource": "org/repo",
+        "agent": "agent_1",
+        "user": "u_1",
+        "amount": "",
+        "time": ""
+      },
+      "result": {
+        "decision": "deny",
+        "rule": null,
+        "settled": false,
+        "default_applied": true,
+        "steps": [
+          {
+            "id": "r1",
+            "priority": 1,
+            "name": "r1",
+            "action": "allow",
+            "status": "skipped",
+            "detail": "github does not satisfy action in bitbucket, gitea"
+          }
+        ],
+        "shadowed": []
+      }
+    },
+    {
+      "name": "operator 'not in' matches",
+      "rules": [
+        {
+          "id": "r1",
+          "priority": 1,
+          "name": "r1",
+          "action": "allow",
+          "mode": "enforce",
+          "enabled": true,
+          "conditions": [
+            {
+              "field": "action",
+              "operator": "not in",
+              "value": "gitlab, stripe"
+            }
+          ]
+        }
+      ],
+      "context": {
+        "action": "github",
+        "scope": "repo:read, issues:write",
+        "resource": "org/repo",
+        "agent": "agent_1",
+        "user": "u_1",
+        "amount": "",
+        "time": ""
+      },
+      "result": {
+        "decision": "allow",
+        "rule": {
+          "id": "r1",
+          "priority": 1,
+          "name": "r1",
+          "action": "allow",
+          "mode": "enforce",
+          "enabled": true,
+          "conditions": [
+            {
+              "field": "action",
+              "operator": "not in",
+              "value": "gitlab, stripe"
+            }
+          ]
+        },
+        "settled": true,
+        "default_applied": false,
+        "steps": [
+          {
+            "id": "r1",
+            "priority": 1,
+            "name": "r1",
+            "action": "allow",
+            "status": "matched",
+            "detail": "All conditions matched."
+          }
+        ],
+        "shadowed": []
+      }
+    },
+    {
+      "name": "operator 'not in' does not match",
+      "rules": [
+        {
+          "id": "r1",
+          "priority": 1,
+          "name": "r1",
+          "action": "allow",
+          "mode": "enforce",
+          "enabled": true,
+          "conditions": [
+            {
+              "field": "action",
+              "operator": "not in",
+              "value": "github, stripe"
+            }
+          ]
+        }
+      ],
+      "context": {
+        "action": "github",
+        "scope": "repo:read, issues:write",
+        "resource": "org/repo",
+        "agent": "agent_1",
+        "user": "u_1",
+        "amount": "",
+        "time": ""
+      },
+      "result": {
+        "decision": "deny",
+        "rule": null,
+        "settled": false,
+        "default_applied": true,
+        "steps": [
+          {
+            "id": "r1",
+            "priority": 1,
+            "name": "r1",
+            "action": "allow",
+            "status": "skipped",
+            "detail": "github does not satisfy action not in github, stripe"
+          }
+        ],
+        "shadowed": []
+      }
+    },
+    {
+      "name": "operator 'starts with' matches",
+      "rules": [
+        {
+          "id": "r1",
+          "priority": 1,
+          "name": "r1",
+          "action": "allow",
+          "mode": "enforce",
+          "enabled": true,
+          "conditions": [
+            {
+              "field": "action",
+              "operator": "starts with",
+              "value": "git"
+            }
+          ]
+        }
+      ],
+      "context": {
+        "action": "github",
+        "scope": "repo:read, issues:write",
+        "resource": "org/repo",
+        "agent": "agent_1",
+        "user": "u_1",
+        "amount": "",
+        "time": ""
+      },
+      "result": {
+        "decision": "allow",
+        "rule": {
+          "id": "r1",
+          "priority": 1,
+          "name": "r1",
+          "action": "allow",
+          "mode": "enforce",
+          "enabled": true,
+          "conditions": [
+            {
+              "field": "action",
+              "operator": "starts with",
+              "value": "git"
+            }
+          ]
+        },
+        "settled": true,
+        "default_applied": false,
+        "steps": [
+          {
+            "id": "r1",
+            "priority": 1,
+            "name": "r1",
+            "action": "allow",
+            "status": "matched",
+            "detail": "All conditions matched."
+          }
+        ],
+        "shadowed": []
+      }
+    },
+    {
+      "name": "operator 'starts with' does not match",
+      "rules": [
+        {
+          "id": "r1",
+          "priority": 1,
+          "name": "r1",
+          "action": "allow",
+          "mode": "enforce",
+          "enabled": true,
+          "conditions": [
+            {
+              "field": "action",
+              "operator": "starts with",
+              "value": "hub"
+            }
+          ]
+        }
+      ],
+      "context": {
+        "action": "github",
+        "scope": "repo:read, issues:write",
+        "resource": "org/repo",
+        "agent": "agent_1",
+        "user": "u_1",
+        "amount": "",
+        "time": ""
+      },
+      "result": {
+        "decision": "deny",
+        "rule": null,
+        "settled": false,
+        "default_applied": true,
+        "steps": [
+          {
+            "id": "r1",
+            "priority": 1,
+            "name": "r1",
+            "action": "allow",
+            "status": "skipped",
+            "detail": "github does not satisfy action starts with hub"
+          }
+        ],
+        "shadowed": []
+      }
+    },
+    {
+      "name": "operator 'ends with' matches",
+      "rules": [
+        {
+          "id": "r1",
+          "priority": 1,
+          "name": "r1",
+          "action": "allow",
+          "mode": "enforce",
+          "enabled": true,
+          "conditions": [
+            {
+              "field": "action",
+              "operator": "ends with",
+              "value": "hub"
+            }
+          ]
+        }
+      ],
+      "context": {
+        "action": "github",
+        "scope": "repo:read, issues:write",
+        "resource": "org/repo",
+        "agent": "agent_1",
+        "user": "u_1",
+        "amount": "",
+        "time": ""
+      },
+      "result": {
+        "decision": "allow",
+        "rule": {
+          "id": "r1",
+          "priority": 1,
+          "name": "r1",
+          "action": "allow",
+          "mode": "enforce",
+          "enabled": true,
+          "conditions": [
+            {
+              "field": "action",
+              "operator": "ends with",
+              "value": "hub"
+            }
+          ]
+        },
+        "settled": true,
+        "default_applied": false,
+        "steps": [
+          {
+            "id": "r1",
+            "priority": 1,
+            "name": "r1",
+            "action": "allow",
+            "status": "matched",
+            "detail": "All conditions matched."
+          }
+        ],
+        "shadowed": []
+      }
+    },
+    {
+      "name": "operator 'ends with' does not match",
+      "rules": [
+        {
+          "id": "r1",
+          "priority": 1,
+          "name": "r1",
+          "action": "allow",
+          "mode": "enforce",
+          "enabled": true,
+          "conditions": [
+            {
+              "field": "action",
+              "operator": "ends with",
+              "value": "lab"
+            }
+          ]
+        }
+      ],
+      "context": {
+        "action": "github",
+        "scope": "repo:read, issues:write",
+        "resource": "org/repo",
+        "agent": "agent_1",
+        "user": "u_1",
+        "amount": "",
+        "time": ""
+      },
+      "result": {
+        "decision": "deny",
+        "rule": null,
+        "settled": false,
+        "default_applied": true,
+        "steps": [
+          {
+            "id": "r1",
+            "priority": 1,
+            "name": "r1",
+            "action": "allow",
+            "status": "skipped",
+            "detail": "github does not satisfy action ends with lab"
+          }
+        ],
+        "shadowed": []
+      }
+    },
+    {
+      "name": "operator 'length >' matches",
+      "rules": [
+        {
+          "id": "r1",
+          "priority": 1,
+          "name": "r1",
+          "action": "allow",
+          "mode": "enforce",
+          "enabled": true,
+          "conditions": [
+            {
+              "field": "action",
+              "operator": "length >",
+              "value": "3"
+            }
+          ]
+        }
+      ],
+      "context": {
+        "action": "github",
+        "scope": "repo:read, issues:write",
+        "resource": "org/repo",
+        "agent": "agent_1",
+        "user": "u_1",
+        "amount": "",
+        "time": ""
+      },
+      "result": {
+        "decision": "allow",
+        "rule": {
+          "id": "r1",
+          "priority": 1,
+          "name": "r1",
+          "action": "allow",
+          "mode": "enforce",
+          "enabled": true,
+          "conditions": [
+            {
+              "field": "action",
+              "operator": "length >",
+              "value": "3"
+            }
+          ]
+        },
+        "settled": true,
+        "default_applied": false,
+        "steps": [
+          {
+            "id": "r1",
+            "priority": 1,
+            "name": "r1",
+            "action": "allow",
+            "status": "matched",
+            "detail": "All conditions matched."
+          }
+        ],
+        "shadowed": []
+      }
+    },
+    {
+      "name": "operator 'length >' does not match",
+      "rules": [
+        {
+          "id": "r1",
+          "priority": 1,
+          "name": "r1",
+          "action": "allow",
+          "mode": "enforce",
+          "enabled": true,
+          "conditions": [
+            {
+              "field": "action",
+              "operator": "length >",
+              "value": "10"
+            }
+          ]
+        }
+      ],
+      "context": {
+        "action": "github",
+        "scope": "repo:read, issues:write",
+        "resource": "org/repo",
+        "agent": "agent_1",
+        "user": "u_1",
+        "amount": "",
+        "time": ""
+      },
+      "result": {
+        "decision": "deny",
+        "rule": null,
+        "settled": false,
+        "default_applied": true,
+        "steps": [
+          {
+            "id": "r1",
+            "priority": 1,
+            "name": "r1",
+            "action": "allow",
+            "status": "skipped",
+            "detail": "github does not satisfy action length > 10"
+          }
+        ],
+        "shadowed": []
+      }
+    },
+    {
+      "name": "operator 'length <' matches",
+      "rules": [
+        {
+          "id": "r1",
+          "priority": 1,
+          "name": "r1",
+          "action": "allow",
+          "mode": "enforce",
+          "enabled": true,
+          "conditions": [
+            {
+              "field": "action",
+              "operator": "length <",
+              "value": "10"
+            }
+          ]
+        }
+      ],
+      "context": {
+        "action": "github",
+        "scope": "repo:read, issues:write",
+        "resource": "org/repo",
+        "agent": "agent_1",
+        "user": "u_1",
+        "amount": "",
+        "time": ""
+      },
+      "result": {
+        "decision": "allow",
+        "rule": {
+          "id": "r1",
+          "priority": 1,
+          "name": "r1",
+          "action": "allow",
+          "mode": "enforce",
+          "enabled": true,
+          "conditions": [
+            {
+              "field": "action",
+              "operator": "length <",
+              "value": "10"
+            }
+          ]
+        },
+        "settled": true,
+        "default_applied": false,
+        "steps": [
+          {
+            "id": "r1",
+            "priority": 1,
+            "name": "r1",
+            "action": "allow",
+            "status": "matched",
+            "detail": "All conditions matched."
+          }
+        ],
+        "shadowed": []
+      }
+    },
+    {
+      "name": "operator 'length <' does not match",
+      "rules": [
+        {
+          "id": "r1",
+          "priority": 1,
+          "name": "r1",
+          "action": "allow",
+          "mode": "enforce",
+          "enabled": true,
+          "conditions": [
+            {
+              "field": "action",
+              "operator": "length <",
+              "value": "3"
+            }
+          ]
+        }
+      ],
+      "context": {
+        "action": "github",
+        "scope": "repo:read, issues:write",
+        "resource": "org/repo",
+        "agent": "agent_1",
+        "user": "u_1",
+        "amount": "",
+        "time": ""
+      },
+      "result": {
+        "decision": "deny",
+        "rule": null,
+        "settled": false,
+        "default_applied": true,
+        "steps": [
+          {
+            "id": "r1",
+            "priority": 1,
+            "name": "r1",
+            "action": "allow",
+            "status": "skipped",
+            "detail": "github does not satisfy action length < 3"
+          }
+        ],
+        "shadowed": []
+      }
+    },
+    {
+      "name": "operator '>' matches",
+      "rules": [
+        {
+          "id": "r1",
+          "priority": 1,
+          "name": "r1",
+          "action": "allow",
+          "mode": "enforce",
+          "enabled": true,
+          "conditions": [
+            {
+              "field": "amount",
+              "operator": ">",
+              "value": "500"
+            }
+          ]
+        }
+      ],
+      "context": {
+        "action": "github",
+        "scope": "repo:read, issues:write",
+        "resource": "org/repo",
+        "agent": "agent_1",
+        "user": "u_1",
+        "amount": "1200",
+        "time": ""
+      },
+      "result": {
+        "decision": "allow",
+        "rule": {
+          "id": "r1",
+          "priority": 1,
+          "name": "r1",
+          "action": "allow",
+          "mode": "enforce",
+          "enabled": true,
+          "conditions": [
+            {
+              "field": "amount",
+              "operator": ">",
+              "value": "500"
+            }
+          ]
+        },
+        "settled": true,
+        "default_applied": false,
+        "steps": [
+          {
+            "id": "r1",
+            "priority": 1,
+            "name": "r1",
+            "action": "allow",
+            "status": "matched",
+            "detail": "All conditions matched."
+          }
+        ],
+        "shadowed": []
+      }
+    },
+    {
+      "name": "operator '>' does not match",
+      "rules": [
+        {
+          "id": "r1",
+          "priority": 1,
+          "name": "r1",
+          "action": "allow",
+          "mode": "enforce",
+          "enabled": true,
+          "conditions": [
+            {
+              "field": "amount",
+              "operator": ">",
+              "value": "5000"
+            }
+          ]
+        }
+      ],
+      "context": {
+        "action": "github",
+        "scope": "repo:read, issues:write",
+        "resource": "org/repo",
+        "agent": "agent_1",
+        "user": "u_1",
+        "amount": "1200",
+        "time": ""
+      },
+      "result": {
+        "decision": "deny",
+        "rule": null,
+        "settled": false,
+        "default_applied": true,
+        "steps": [
+          {
+            "id": "r1",
+            "priority": 1,
+            "name": "r1",
+            "action": "allow",
+            "status": "skipped",
+            "detail": "1200 does not satisfy amount > 5000"
+          }
+        ],
+        "shadowed": []
+      }
+    },
+    {
+      "name": "operator '<' matches",
+      "rules": [
+        {
+          "id": "r1",
+          "priority": 1,
+          "name": "r1",
+          "action": "allow",
+          "mode": "enforce",
+          "enabled": true,
+          "conditions": [
+            {
+              "field": "amount",
+              "operator": "<",
+              "value": "5000"
+            }
+          ]
+        }
+      ],
+      "context": {
+        "action": "github",
+        "scope": "repo:read, issues:write",
+        "resource": "org/repo",
+        "agent": "agent_1",
+        "user": "u_1",
+        "amount": "1200",
+        "time": ""
+      },
+      "result": {
+        "decision": "allow",
+        "rule": {
+          "id": "r1",
+          "priority": 1,
+          "name": "r1",
+          "action": "allow",
+          "mode": "enforce",
+          "enabled": true,
+          "conditions": [
+            {
+              "field": "amount",
+              "operator": "<",
+              "value": "5000"
+            }
+          ]
+        },
+        "settled": true,
+        "default_applied": false,
+        "steps": [
+          {
+            "id": "r1",
+            "priority": 1,
+            "name": "r1",
+            "action": "allow",
+            "status": "matched",
+            "detail": "All conditions matched."
+          }
+        ],
+        "shadowed": []
+      }
+    },
+    {
+      "name": "operator '<' does not match",
+      "rules": [
+        {
+          "id": "r1",
+          "priority": 1,
+          "name": "r1",
+          "action": "allow",
+          "mode": "enforce",
+          "enabled": true,
+          "conditions": [
+            {
+              "field": "amount",
+              "operator": "<",
+              "value": "500"
+            }
+          ]
+        }
+      ],
+      "context": {
+        "action": "github",
+        "scope": "repo:read, issues:write",
+        "resource": "org/repo",
+        "agent": "agent_1",
+        "user": "u_1",
+        "amount": "1200",
+        "time": ""
+      },
+      "result": {
+        "decision": "deny",
+        "rule": null,
+        "settled": false,
+        "default_applied": true,
+        "steps": [
+          {
+            "id": "r1",
+            "priority": 1,
+            "name": "r1",
+            "action": "allow",
+            "status": "skipped",
+            "detail": "1200 does not satisfy amount < 500"
+          }
+        ],
+        "shadowed": []
+      }
+    },
+    {
+      "name": "operator 'within' matches",
+      "rules": [
+        {
+          "id": "r1",
+          "priority": 1,
+          "name": "r1",
+          "action": "allow",
+          "mode": "enforce",
+          "enabled": true,
+          "conditions": [
+            {
+              "field": "scope",
+              "operator": "within",
+              "value": "repo"
+            }
+          ]
+        }
+      ],
+      "context": {
+        "action": "github",
+        "scope": "repo:read, issues:write",
+        "resource": "org/repo",
+        "agent": "agent_1",
+        "user": "u_1",
+        "amount": "",
+        "time": ""
+      },
+      "result": {
+        "decision": "allow",
+        "rule": {
+          "id": "r1",
+          "priority": 1,
+          "name": "r1",
+          "action": "allow",
+          "mode": "enforce",
+          "enabled": true,
+          "conditions": [
+            {
+              "field": "scope",
+              "operator": "within",
+              "value": "repo"
+            }
+          ]
+        },
+        "settled": true,
+        "default_applied": false,
+        "steps": [
+          {
+            "id": "r1",
+            "priority": 1,
+            "name": "r1",
+            "action": "allow",
+            "status": "matched",
+            "detail": "All conditions matched."
+          }
+        ],
+        "shadowed": []
+      }
+    },
+    {
+      "name": "operator 'within' does not match",
+      "rules": [
+        {
+          "id": "r1",
+          "priority": 1,
+          "name": "r1",
+          "action": "allow",
+          "mode": "enforce",
+          "enabled": true,
+          "conditions": [
+            {
+              "field": "scope",
+              "operator": "within",
+              "value": "admin"
+            }
+          ]
+        }
+      ],
+      "context": {
+        "action": "github",
+        "scope": "repo:read, issues:write",
+        "resource": "org/repo",
+        "agent": "agent_1",
+        "user": "u_1",
+        "amount": "",
+        "time": ""
+      },
+      "result": {
+        "decision": "deny",
+        "rule": null,
+        "settled": false,
+        "default_applied": true,
+        "steps": [
+          {
+            "id": "r1",
+            "priority": 1,
+            "name": "r1",
+            "action": "allow",
+            "status": "skipped",
+            "detail": "repo:read, issues:write does not satisfy scope within admin"
+          }
+        ],
+        "shadowed": []
+      }
+    },
+    {
+      "name": "invalid regex never matches",
+      "rules": [
+        {
+          "id": "r1",
+          "priority": 1,
+          "name": "r1",
+          "action": "allow",
+          "mode": "enforce",
+          "enabled": true,
+          "conditions": [
+            {
+              "field": "action",
+              "operator": "matches",
+              "value": "(["
+            }
+          ]
+        }
+      ],
+      "context": {
+        "action": "github",
+        "scope": "repo:read, issues:write",
+        "resource": "org/repo",
+        "agent": "agent_1",
+        "user": "u_1",
+        "amount": "",
+        "time": ""
+      },
+      "result": {
+        "decision": "deny",
+        "rule": null,
+        "settled": false,
+        "default_applied": true,
+        "steps": [
+          {
+            "id": "r1",
+            "priority": 1,
+            "name": "r1",
+            "action": "allow",
+            "status": "skipped",
+            "detail": "github does not satisfy action matches (["
+          }
+        ],
+        "shadowed": []
+      }
+    },
+    {
+      "name": "length bound must be an integer",
+      "rules": [
+        {
+          "id": "r1",
+          "priority": 1,
+          "name": "r1",
+          "action": "allow",
+          "mode": "enforce",
+          "enabled": true,
+          "conditions": [
+            {
+              "field": "action",
+              "operator": "length >",
+              "value": "3.5"
+            }
+          ]
+        }
+      ],
+      "context": {
+        "action": "github",
+        "scope": "repo:read, issues:write",
+        "resource": "org/repo",
+        "agent": "agent_1",
+        "user": "u_1",
+        "amount": "",
+        "time": ""
+      },
+      "result": {
+        "decision": "deny",
+        "rule": null,
+        "settled": false,
+        "default_applied": true,
+        "steps": [
+          {
+            "id": "r1",
+            "priority": 1,
+            "name": "r1",
+            "action": "allow",
+            "status": "skipped",
+            "detail": "github does not satisfy action length > 3.5"
+          }
+        ],
+        "shadowed": []
+      }
+    },
+    {
+      "name": "numeric comparison ignores currency formatting",
+      "rules": [
+        {
+          "id": "r1",
+          "priority": 1,
+          "name": "r1",
+          "action": "allow",
+          "mode": "enforce",
+          "enabled": true,
+          "conditions": [
+            {
+              "field": "amount",
+              "operator": ">",
+              "value": "$500"
+            }
+          ]
+        }
+      ],
+      "context": {
+        "action": "github",
+        "scope": "repo:read, issues:write",
+        "resource": "org/repo",
+        "agent": "agent_1",
+        "user": "u_1",
+        "amount": "$1,200",
+        "time": ""
+      },
+      "result": {
+        "decision": "allow",
+        "rule": {
+          "id": "r1",
+          "priority": 1,
+          "name": "r1",
+          "action": "allow",
+          "mode": "enforce",
+          "enabled": true,
+          "conditions": [
+            {
+              "field": "amount",
+              "operator": ">",
+              "value": "$500"
+            }
+          ]
+        },
+        "settled": true,
+        "default_applied": false,
+        "steps": [
+          {
+            "id": "r1",
+            "priority": 1,
+            "name": "r1",
+            "action": "allow",
+            "status": "matched",
+            "detail": "All conditions matched."
+          }
+        ],
+        "shadowed": []
+      }
+    }
+  ],
+  "grantContexts": [
+    {
+      "name": "scopes are lowercased, trimmed, deduped and sorted",
+      "input": {
+        "provider": "GitHub",
+        "scopes": [
+          "repo:read",
+          " Issues:Write ",
+          "repo:read",
+          ""
+        ],
+        "resource": "org/repo",
+        "agent": "agent_1",
+        "user": "u_1"
+      },
+      "result": {
+        "action": "github",
+        "scope": "issues:write, repo:read",
+        "resource": "org/repo",
+        "agent": "agent_1",
+        "user": "u_1",
+        "amount": "",
+        "time": ""
+      }
+    },
+    {
+      "name": "missing provider and scopes",
+      "input": {
+        "provider": null,
+        "scopes": null
+      },
+      "result": {
+        "action": "",
+        "scope": "",
+        "resource": "",
+        "agent": "",
+        "user": "",
+        "amount": "",
+        "time": ""
+      }
+    },
+    {
+      "name": "provider whitespace is trimmed",
+      "input": {
+        "provider": "  Stripe  ",
+        "scopes": [
+          "charges:write"
+        ]
+      },
+      "result": {
+        "action": "stripe",
+        "scope": "charges:write",
+        "resource": "",
+        "agent": "",
+        "user": "",
+        "amount": "",
+        "time": ""
+      }
+    }
+  ]
+}

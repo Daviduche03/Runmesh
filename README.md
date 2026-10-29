@@ -26,23 +26,23 @@ The missing layer is not another tracing dashboard. It is control:
 - **Dashboard** — runs, workflow execution, analytics, API keys, and outbound webhooks in one place.
 - **Dual auth** — JWT for the dashboard, API keys for integrations, on `/api/v1` routes.
 
-A single Python process (FastAPI) backed by SQLite — no external services, runs on
-any VM or container host.
+A single Bun process (Express + Drizzle) backed by SQLite — no external services,
+runs on any VM or container host.
 
 ## Repository layout
 
 ```
 Runmesh/
-├── runmesh-main/     Backend — FastAPI + SQLite
-└── frontend/         Dashboard + landing — React + Vite
+├── runmesh-ts/           Backend — Bun + Express + Drizzle, SQLite
+├── frontend/             Dashboard + landing — React + Vite
+└── legacy/runmesh-main/  Retired Python/FastAPI server, kept as the parity oracle
 ```
 
 ## Prerequisites
 
-- [Node.js](https://nodejs.org/) 20+
-- [pnpm](https://pnpm.io/) (frontend)
-- [uv](https://docs.astral.sh/uv/) 0.8.10+ (backend)
-- Docker, if you want to run it the way production does
+- [Bun](https://bun.sh/) 1.4+ (backend runtime, includes the SQLite driver)
+- [Node.js](https://nodejs.org/) 20+ (frontend tooling)
+- [pnpm](https://pnpm.io/) (package manager for both)
 
 ## Quick start
 
@@ -51,18 +51,31 @@ Runmesh/
 Migrations apply automatically when the server starts, so there is nothing to run
 first. On a blank database the schema is created from `schema.sql`.
 
-To start from production data instead, see [runmesh-main/DEPLOY.md](./runmesh-main/DEPLOY.md).
+To start from production data instead, see the migration notes in
+[legacy/runmesh-main/DEPLOY.md](./legacy/runmesh-main/DEPLOY.md).
 
 ### 2. Backend
 
 ```bash
-cd runmesh-main
-uv sync --all-groups
+cd runmesh-ts
+pnpm install
 cp .env.example .env      # set JWT_SECRET at minimum
-uv run python src/main.py
+pnpm dev                  # or: bun src/main.ts
 ```
 
-The API listens on `http://localhost:8787` by default.
+The API listens on `http://localhost:8787` by default. Migrations apply on boot:
+a blank database is bootstrapped from `schema.sql`, then the files in
+`migrations/` run in order.
+
+Verify the backend:
+
+```bash
+pnpm typecheck            # tsc --noEmit
+pnpm test                 # bun test (237 tests)
+pnpm smoke                # 13 live checks against a running server
+pnpm e2e                  # 30 live end-to-end checks
+pnpm contract             # 27 checks over the dashboard's HTTP contract
+```
 
 ### 3. Frontend
 
@@ -83,7 +96,7 @@ Open `http://localhost:5173`.
 
 ## Environment variables
 
-Configure in `runmesh-main/.env` (see [runmesh-main/.env.example](./runmesh-main/.env.example)).
+Configure in `runmesh-ts/.env` (see [runmesh-ts/.env.example](./runmesh-ts/.env.example)).
 
 | Variable | Description |
 |----------|-------------|
@@ -98,7 +111,8 @@ Storage is a single SQLite file; dispatch is a queue table the runtime polls.
 
 ## API overview
 
-All JSON endpoints share a [consistent response envelope](./runmesh-main/TASK_API_DOCUMENTATION.md#response-format). Identity and access run through Connect; execution runs through tasks and workflows.
+All JSON endpoints share a consistent response envelope (`{ ok, data, meta?, message?, error? }`).
+Identity and access run through Connect; execution runs through tasks and workflows.
 
 | Route | Auth | Purpose |
 |-------|------|---------|
@@ -109,7 +123,8 @@ All JSON endpoints share a [consistent response envelope](./runmesh-main/TASK_AP
 | `PUT /api/v1/workflows/{id}/graph` | JWT or API key | Save workflow graph |
 | `POST /api/v1/workflows/{id}/trigger` | JWT or API key | Trigger a workflow run |
 | `GET /api/v1/workflows/{id}/runs` | JWT or API key | List workflow runs |
-| `POST /api/v1/connect/apps` | JWT only | Register a Connect app |
+| `GET /api/v1/grants` | JWT only | List grants with scope/expiry/use limits |
+| `POST /api/v1/connect/grants/{id}/approve` | JWT only | Approve a pending grant |
 | `POST /api/v1/connect/sessions` | Public (app credentials) | Start Connect user session |
 | `POST /api/v1/connect/otp/verify` | Public | Verify OTP and authenticate |
 | `GET /connect/authorize` | Public | OAuth authorization redirect |
@@ -119,7 +134,8 @@ All JSON endpoints share a [consistent response envelope](./runmesh-main/TASK_AP
 | `GET/POST /api-keys` | JWT only | API key management |
 | `GET /auth/github/login` | Public | Start GitHub OAuth |
 
-Full reference: [runmesh-main/TASK_API_DOCUMENTATION.md](./runmesh-main/TASK_API_DOCUMENTATION.md)
+Full reference: [legacy/runmesh-main/TASK_API_DOCUMENTATION.md](./legacy/runmesh-main/TASK_API_DOCUMENTATION.md)
+(the FastAPI implementation this server matches, endpoint for endpoint).
 
 ### Authentication
 
@@ -137,14 +153,16 @@ X-API-Key: rk_...
 
 ## Deploy
 
+One process, one SQLite file on a mounted volume:
+
 ```bash
-cd runmesh-main
+cd runmesh-ts
 cp .env.example .env       # set JWT_SECRET, PUBLIC_URL, FRONTEND_URL
-docker compose up -d --build
+bun src/main.ts            # serves HTTP + queue workers + scheduler sweep
 ```
 
-Full instructions, including migrating production data off Cloudflare D1, are in
-[runmesh-main/DEPLOY.md](./runmesh-main/DEPLOY.md).
+Historical deployment notes (including migrating production data off Cloudflare
+D1) live in [legacy/runmesh-main/DEPLOY.md](./legacy/runmesh-main/DEPLOY.md).
 
 Deploy the frontend separately (Cloudflare Pages, Vercel, etc.) and set
 `VITE_API_URL` to the API origin.
@@ -152,9 +170,9 @@ Deploy the frontend separately (Cloudflare Pages, Vercel, etc.) and set
 ## Development
 
 ```bash
-cd runmesh-main && uv run --reload python src/main.py
+cd runmesh-ts && pnpm dev        # bun --watch src/main.ts
 cd frontend && pnpm dev
-cd frontend && pnpm build
+cd frontend && pnpm typecheck && pnpm build
 ```
 
 ## Contributing

@@ -12,7 +12,7 @@ import {
 /** Live-model integration test. Skipped unless GROQ_API_KEY,
  *  RUNMESH_ENDPOINT, and RUNMESH_JWT are set, so `pnpm test` stays hermetic.
  *
- *    cd runmesh-main
+ *    cd legacy/runmesh-main
  *    JWT=$(PYTHONPATH=src uv run --no-sync python ../e2e/acme/dbrunner.py jwt | tail -1)
  *    cd ../packages/agent
  *    GROQ_API_KEY=gsk_... RUNMESH_ENDPOINT=http://localhost:8787 RUNMESH_JWT="$JWT" \

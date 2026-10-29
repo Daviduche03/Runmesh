@@ -1,0 +1,92 @@
+[
+  {
+    "input": {
+      "priority": 1,
+      "name": "Deny GitHub",
+      "action": "deny",
+      "conditions": "[{\"field\": \"action\", \"operator\": \"is\", \"value\": \"github\"}]"
+    },
+    "rego": "package runmesh.policy\n\nimport rego.v1\n\ndefault decision := {\"decision\": \"deny\", \"reason\": \"no rule matched\"}\n\n# 1 \u00b7 Deny GitHub\ndecision := {\"decision\": \"deny\"} if {\n  input.tool.name == \"github\"\n}\n"
+  },
+  {
+    "input": {
+      "priority": 2,
+      "name": "Spend cap",
+      "action": "escalate",
+      "conditions": "[{\"field\": \"amount\", \"operator\": \">\", \"value\": \"500\"}]"
+    },
+    "rego": "package runmesh.policy\n\nimport rego.v1\n\ndefault decision := {\"decision\": \"deny\", \"reason\": \"no rule matched\"}\n\n# 2 \u00b7 Spend cap\ndecision := {\"decision\": \"escalate\"} if {\n  input.amount > 500\n}\n"
+  },
+  {
+    "input": {
+      "priority": 3,
+      "name": "Fractional",
+      "action": "escalate",
+      "conditions": "[{\"field\": \"amount\", \"operator\": \">\", \"value\": \"12.50\"}, {\"field\": \"amount\", \"operator\": \"<\", \"value\": \"-3\"}]"
+    },
+    "rego": "package runmesh.policy\n\nimport rego.v1\n\ndefault decision := {\"decision\": \"deny\", \"reason\": \"no rule matched\"}\n\n# 3 \u00b7 Fractional\ndecision := {\"decision\": \"escalate\"} if {\n  input.amount > 12.50\n  input.amount < -3\n}\n"
+  },
+  {
+    "input": {
+      "priority": 4,
+      "name": "Mixed",
+      "action": "allow",
+      "conditions": "[{\"field\": \"resource\", \"operator\": \"contains\", \"value\": \"acme\"}, {\"field\": \"agent\", \"operator\": \"is not\", \"value\": \"bot\"}, {\"field\": \"scope\", \"operator\": \"is\", \"value\": \"\\u00e9\"}, {\"field\": \"time\", \"operator\": \"<\", \"value\": \"12.5\"}, {\"field\": \"user\", \"operator\": \"is\", \"value\": \"\"}]"
+    },
+    "rego": "package runmesh.policy\n\nimport rego.v1\n\ndefault decision := {\"decision\": \"deny\", \"reason\": \"no rule matched\"}\n\n# 4 \u00b7 Mixed\ndecision := {\"decision\": \"allow\"} if {\n  contains(input.resource, \"acme\")\n  input.agent != \"bot\"\n  input.scope == \"\\u00e9\"\n  input.time < 12.5\n  input.user == \"\"\n}\n"
+  },
+  {
+    "input": {
+      "priority": 5,
+      "name": "Unknown operator",
+      "action": "consent",
+      "conditions": "[{\"field\": \"action\", \"operator\": \"matches\", \"value\": \"gh.*\"}]"
+    },
+    "rego": "package runmesh.policy\n\nimport rego.v1\n\ndefault decision := {\"decision\": \"deny\", \"reason\": \"no rule matched\"}\n\n# 5 \u00b7 Unknown operator\ndecision := {\"decision\": \"consent\"} if {\n  input.tool.name == \"gh.*\"\n}\n"
+  },
+  {
+    "input": {
+      "priority": 6,
+      "name": "Null value",
+      "action": "deny",
+      "conditions": "[{\"field\": \"action\", \"operator\": \"is\", \"value\": null}]"
+    },
+    "rego": "package runmesh.policy\n\nimport rego.v1\n\ndefault decision := {\"decision\": \"deny\", \"reason\": \"no rule matched\"}\n\n# 6 \u00b7 Null value\ndecision := {\"decision\": \"deny\"} if {\n  input.tool.name == \"\"\n}\n"
+  },
+  {
+    "input": {
+      "priority": 7,
+      "name": "Emoji \ud83e\udd16",
+      "action": "deny",
+      "conditions": "[{\"field\": \"resource\", \"operator\": \"is\", \"value\": \"repo/\\ud83e\\udd16/main\"}]"
+    },
+    "rego": "package runmesh.policy\n\nimport rego.v1\n\ndefault decision := {\"decision\": \"deny\", \"reason\": \"no rule matched\"}\n\n# 7 \u00b7 Emoji \ud83e\udd16\ndecision := {\"decision\": \"deny\"} if {\n  input.resource == \"repo/\\ud83e\\udd16/main\"\n}\n"
+  },
+  {
+    "input": {
+      "priority": 8,
+      "name": "No conditions",
+      "action": "allow",
+      "conditions": "[]"
+    },
+    "rego": "package runmesh.policy\n\nimport rego.v1\n\ndefault decision := {\"decision\": \"deny\", \"reason\": \"no rule matched\"}\n\n# 8 \u00b7 No conditions\ndecision := {\"decision\": \"allow\"} if {\n\n}\n"
+  },
+  {
+    "input": {
+      "priority": 9,
+      "name": "Operator length",
+      "action": "escalate",
+      "conditions": "[{\"field\": \"resource\", \"operator\": \"length >\", \"value\": \"10\"}]"
+    },
+    "rego": "package runmesh.policy\n\nimport rego.v1\n\ndefault decision := {\"decision\": \"deny\", \"reason\": \"no rule matched\"}\n\n# 9 \u00b7 Operator length\ndecision := {\"decision\": \"escalate\"} if {\n  input.resource == 10\n}\n"
+  },
+  {
+    "input": {
+      "priority": 10,
+      "name": "Empty conditions",
+      "action": null,
+      "conditions": "[]"
+    },
+    "rego": "package runmesh.policy\n\nimport rego.v1\n\ndefault decision := {\"decision\": \"deny\", \"reason\": \"no rule matched\"}\n\n# 10 \u00b7 Empty conditions\ndecision := {\"decision\": null} if {\n\n}\n"
+  }
+]

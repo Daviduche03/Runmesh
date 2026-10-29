@@ -38,7 +38,7 @@ runmesh-main/runmesh.db-wal
 runmesh-main/prod.sql
 
 # CLI binary (build with: go build ./cmd/runmesh)
-runmesh-main/workspace/runmesh
+legacy/runmesh-main/workspace/runmesh
 
 # Agent/IDE tooling — local only, never commit
 .agents/

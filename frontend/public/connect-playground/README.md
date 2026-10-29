@@ -45,7 +45,7 @@ Without `RESEND_API_KEY`, OTP codes are printed in wrangler logs:
 
 ## API script
 
-For automated smoke tests, use `runmesh-main/scripts/e2e_connect.sh` alongside this playground.
+For automated smoke tests, use `legacy/runmesh-main/scripts/e2e_connect.sh` alongside this playground.
 
 ## Note
 

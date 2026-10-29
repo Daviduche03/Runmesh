@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """SQL/crypto helper for the support tier-3 E2E.
 
-Run with cwd=runmesh-main and PYTHONPATH=src.
+Run with cwd=legacy/runmesh-main and PYTHONPATH=src.
 Modes:
   t0              -> python-format UTC timestamp taken before any write
   counts          -> residue counts for the demo workspace

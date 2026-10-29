@@ -15,9 +15,12 @@ git checkout -b feat/your-feature-name
 
 ## Development workflow
 
-- Backend changes live in `runmesh-main/`
+- Backend changes live in `runmesh-ts/` (Bun + Express + Drizzle); the retired
+  FastAPI server in `legacy/runmesh-main/` is a read-only parity reference
 - Frontend changes live in `frontend/`
-- Keep API changes backward-compatible within `/api/v1`, or document breaking changes in `runmesh-main/TASK_API_DOCUMENTATION.md`
+- Keep the HTTP contract stable: response envelope, snake_case wire fields, and
+  the SQLite schema. Schema changes are new numbered migrations in
+  `runmesh-ts/migrations/` plus `schema.sql`
 - Do not commit secrets, `.env` files, or local Cloudflare resource IDs
 
 ## Pull requests
@@ -29,7 +32,8 @@ git checkout -b feat/your-feature-name
 
 ## Code style
 
-- Backend: follow existing Python patterns in `runmesh-main/src/`
+- Backend: `pnpm typecheck && pnpm test` in `runmesh-ts/`; migrations must stay
+  append-only and mirrored in `schema.sql`
 - Frontend: run `pnpm lint` and `pnpm format` in `frontend/` before submitting
 
 ## Questions

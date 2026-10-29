@@ -126,12 +126,3 @@ export const footerNavLinks: SidebarNavItem[] = [
 		icon: BookOpen,
 	},
 ];
-
-export const navLinks: SidebarNavItem[] = [
-	...navGroups.flatMap((group) =>
-		group.items.flatMap((item) =>
-			item.subItems?.length ? [item, ...item.subItems] : [item]
-		)
-	),
-	...footerNavLinks,
-];
