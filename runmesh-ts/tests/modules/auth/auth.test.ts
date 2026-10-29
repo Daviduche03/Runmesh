@@ -58,6 +58,9 @@ describe("CLI device flow", () => {
 
     const claims = await verifyToken(polled.body.data.token);
     expect(claims?.sub).toBe(user.id);
+    // The dashboard decodes the payload itself (frontend/src/lib/stores/auth-store.ts).
+    expect(claims?.id).toBe(user.id);
+    expect(claims?.email).toBe("cli@example.com");
 
     const reused = await postJson(app, "/auth/cli/poll", { device_code: deviceCode });
     expect(reused.status).toBe(404);
@@ -102,6 +105,11 @@ describe("session exchange", () => {
     const exchanged = await postJson(app, "/auth/exchange", { code });
     expect(exchanged.status).toBe(200);
     expect(exchanged.body.data.user.id).toBe(user.id);
+
+    const claims = await verifyToken(exchanged.body.data.token);
+    expect(claims?.sub).toBe(user.id);
+    expect(claims?.id).toBe(user.id);
+    expect(claims?.email).toBe("exchange2@example.com");
 
     const me = await getJson(app, "/api/me", exchanged.body.data.token);
     expect(me.status).toBe(200);

@@ -34,6 +34,15 @@ async function handleResponse<T>(res: Response): Promise<ApiResponse<T>> {
 	const body = (await res.json().catch(() => ({}))) as ApiEnvelope<T>;
 
 	if (!res.ok || body.ok === false) {
+		// A 401 means the stored session is gone or predates a backend change
+		// (the token format is opaque to the app). Drop it and force a re-login
+		// instead of leaving every screen silently empty.
+		if (res.status === 401 && typeof window !== "undefined") {
+			localStorage.removeItem("runmesh-token");
+			if (!window.location.pathname.startsWith("/login")) {
+				window.location.assign("/login");
+			}
+		}
 		const message =
 			body.error?.message ??
 			(typeof body.detail === "string" ? body.detail : undefined) ??

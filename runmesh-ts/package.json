@@ -3,7 +3,7 @@
   "version": "0.1.0",
   "private": true,
   "type": "module",
-  "description": "Runmesh API server — Node/TS port of runmesh-main (FastAPI + SQLite)",
+  "description": "Runmesh API server \u2014 Bun + Express + Drizzle + SQLite",
   "scripts": {
     "dev": "bun --watch src/main.ts",
     "start": "bun src/main.ts",
@@ -11,7 +11,8 @@
     "typecheck": "tsc --noEmit",
     "test": "bun test",
     "smoke": "bun scripts/smoke.ts",
-    "e2e": "bun scripts/e2e.ts"
+    "e2e": "bun scripts/e2e.ts",
+    "contract": "bun scripts/frontend-contract.ts"
   },
   "dependencies": {
     "cors": "^2.8.6",

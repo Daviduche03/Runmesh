@@ -239,8 +239,10 @@ export async function pollCliAuth(
     const user = row.userId ? new UserModel(db).findById(row.userId) : null;
     if (!user) throw createError(404, "User not found");
 
+    // `id` mirrors `sub`: the dashboard decodes the session payload directly,
+    // so the claim set is part of the contract with frontend/src/lib/stores/auth-store.ts.
     const token = await signToken(
-      { sub: user.id, email: user.email, name: user.name },
+      { sub: user.id, id: user.id, email: user.email, name: user.name },
       CLI_TOKEN_TTL_SECONDS,
     );
     db.delete(cliAuthCodes).where(eq(cliAuthCodes.deviceCode, deviceCode)).run();
@@ -269,7 +271,7 @@ export async function exchangeAuthCode(
   if (!user) throw createError(401, "User not found");
 
   const token = await signToken(
-    { sub: user.id, email: user.email, name: user.name },
+    { sub: user.id, id: user.id, email: user.email, name: user.name },
     24 * 60 * 60,
   );
 

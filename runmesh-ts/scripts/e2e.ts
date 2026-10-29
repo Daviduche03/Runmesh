@@ -243,8 +243,13 @@ await check("connect session → consent page → approve → token → current 
   const schema = await import("../src/core/db/schema.js");
   const handle = createDb(DB);
   const db: any = handle.db;
-  const ws = db.select().from(schema.workspaces).all()[0]?.id;
-  assert(ws, "no workspace");
+  // Pick this user's workspace: other suites may have already created their own.
+  const ws = db
+    .select()
+    .from(schema.workspaces)
+    .all()
+    .find((w: any) => w.ownerUserId === USER_ID)?.id;
+  assert(ws, "no workspace for the fixture user");
   const userModel = new orm.ConnectUserModel(db);
   const cu = userModel.findByPrimaryEmail("e2e@test.com") ?? userModel.create({ primaryEmail: "e2e@test.com", primaryEmailVerified: true });
   const capp = ensureWorkspaceApp(db, ws, USER_ID);
