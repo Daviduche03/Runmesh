@@ -9,6 +9,8 @@ import { toolsRouter } from "./modules/tools/index.js";
 import { triggersRouter } from "./modules/triggers/index.js";
 import { collectionRouter } from "./modules/collection/index.js";
 import { dashboardRouter } from "./modules/dashboard/index.js";
+import { hooksRouter } from "./modules/hooks/index.js";
+import { mcpRouter } from "./modules/mcp/index.js";
 import {
   connectGrantsRouter,
   connectOAuthRouter,
@@ -23,7 +25,7 @@ import { workspaceRouter } from "./modules/workspace/index.js";
  * they were included, and Express matches in mount order, so the list is not alphabetical.
  * Mounted so far: system, api keys, agents, policies, workspaces, auth, webhooks,
  * tasks, workflows, connect (grants, sessions, oauth), tools, triggers, collection,
- * dashboard.
+ * agent hooks, mcp, dashboard.
  */
 export function registerRoutes(app: Express): void {
   app.use(systemRouter);
@@ -37,6 +39,8 @@ export function registerRoutes(app: Express): void {
   app.use(toolsRouter);
   app.use(triggersRouter);
   app.use(collectionRouter);
+  app.use(hooksRouter);
+  app.use(mcpRouter);
   app.use(dashboardRouter);
   app.use(connectGrantsRouter);
   app.use(connectOAuthRouter);
