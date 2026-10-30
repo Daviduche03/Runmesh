@@ -1,43 +1,43 @@
 import {
-	ArrowsClockwise,
-	ChatCircleDots,
-	CreditCard,
-	FileText,
-	GitPullRequest,
-	ShieldCheck,
+	CurrencyDollar,
+	Fingerprint,
+	RocketLaunch,
+	Scales,
+	Siren,
+	UsersThree,
 } from "@phosphor-icons/react"
 import { container } from "./constants"
 
 const useCases = [
 	{
-		Icon: ChatCircleDots,
-		title: "Answer from a real account",
-		copy: "A support agent reads a customer’s actual billing history through your product, on their behalf, never holding the card.",
+		Icon: Siren,
+		title: "Page the agent first",
+		copy: "The on-call agent restarts the service, rolls back the deploy, and wakes you with the receipt. It can touch production, and nothing else.",
 	},
 	{
-		Icon: CreditCard,
-		title: "Move money, not credentials",
-		copy: "A refund over your threshold waits for a human. Under it, it goes through without the agent ever seeing a secret.",
+		Icon: CurrencyDollar,
+		title: "Let agents spend, with a ceiling",
+		copy: "A procurement agent buys capacity up to your limit. Above it, the purchase waits for a human. The agent never holds the card.",
 	},
 	{
-		Icon: GitPullRequest,
-		title: "Comment on one repo, not all of them",
-		copy: "Scope the grant to a single repository and a single label. Revoke it without touching the rest of the estate.",
+		Icon: UsersThree,
+		title: "Serve every tenant through one agent",
+		copy: "Your agent acts inside each customer account on that customer's behalf, through their consent. One codebase, no shared secrets.",
 	},
 	{
-		Icon: FileText,
-		title: "Write the release notes",
-		copy: "Merged pull requests become a changelog in the channel you chose, written by an agent that only ever had read access.",
+		Icon: RocketLaunch,
+		title: "Ship at 3am, with a witness",
+		copy: "The release agent merges, deploys, and rolls back on signal. Policy decides what ships alone and what waits for morning.",
 	},
 	{
-		Icon: ArrowsClockwise,
-		title: "Keep the index fresh",
-		copy: "A scheduled agent tidies the docs. It can write to one collection, expires in an hour, and leaves a receipt.",
+		Icon: Fingerprint,
+		title: "Touch customer data without holding it",
+		copy: "Support and ops agents read live records through scoped grants that expire. There is nothing to leak because nothing is stored.",
 	},
 	{
-		Icon: ShieldCheck,
-		title: "Prove it, afterwards",
-		copy: "When someone asks what the agent did last Tuesday, there is one answer with the principal, the grant and the result attached.",
+		Icon: Scales,
+		title: "Answer the auditor in one query",
+		copy: "Every action carries its principal, its grant, and its result. An audit stops being archaeology and starts being a filter.",
 	},
 ]
 
@@ -47,7 +47,7 @@ export function UseCases() {
 			<div className={container}>
 				<div className="max-w-[720px]">
 					<h2 className="text-balance font-display-sans text-[clamp(30px,4.2vw,52px)] font-medium leading-[1.06] tracking-[-0.03em] text-[var(--rm-fg)]">
-						Agents that are allowed to do real work
+						Built for the actions you are afraid to automate
 					</h2>
 					<p className="mt-5 max-w-[560px] text-pretty text-[17px] leading-7 text-[var(--rm-muted)]">
 						Every one of these is the same shape: an agent that can act, held to a scope you chose, with
