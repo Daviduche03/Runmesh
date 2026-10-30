@@ -18,7 +18,6 @@ const columns = [
 		items: [
 			{ label: "Use cases", href: "/#use-cases" },
 			{ label: "Integrations", href: "/#integrations" },
-			{ label: "Self-hosted", href: "/#self-host" },
 			{ label: "FAQ", href: "/#faq" },
 		],
 	},
@@ -44,9 +43,6 @@ export function Footer() {
 						</Link>
 						<p className="mt-5 max-w-[300px] text-[14px] leading-6 text-[var(--rm-ink-muted)]">
 							The control plane for AI agents: identity, access, approvals, and audit in one layer.
-						</p>
-						<p className="mt-6 font-mono text-[10.5px] uppercase tracking-[0.14em] text-[var(--rm-ink-muted)]">
-							Self-hosted
 						</p>
 					</div>
 

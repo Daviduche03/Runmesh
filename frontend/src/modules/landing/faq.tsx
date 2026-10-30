@@ -21,10 +21,6 @@ const faqs = [
 		a: "It expires. Every credential carries a lifetime and a use count, so a leaked one is self-limiting. You can revoke it at any time, and the trail shows where it was used.",
 	},
 	{
-		q: "Can I run it myself?",
-		a: "Yes. It is a single process with a single database file, and it runs on any machine you can run a container on. No managed control plane, and no data leaves your box.",
-	},
-	{
 		q: "What does it not do?",
 		a: "It cannot enforce anything on an action it never sees. An agent that copies data out by hand leaves no trace for any control plane to inspect. The model assumes that: least privilege per action, and a human above a threshold.",
 	},

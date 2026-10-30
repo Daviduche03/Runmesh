@@ -7,7 +7,6 @@ import { HowItWorks } from "./how-it-works"
 import { ControlRoom } from "./control-room"
 import { UseCases } from "./use-cases"
 import { Integrations } from "./integrations"
-import { SelfHost } from "./self-host"
 import { Faq } from "./faq"
 import { PreFooter } from "./pre-footer"
 import { Footer } from "./footer"
@@ -41,7 +40,6 @@ export function LinearLanding() {
 			<ControlRoom />
 			<UseCases />
 			<Integrations />
-			<SelfHost />
 			<Faq />
 			<PreFooter />
 			<Footer />
