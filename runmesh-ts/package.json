@@ -12,7 +12,8 @@
     "test": "bun test",
     "smoke": "bun scripts/smoke.ts",
     "e2e": "bun scripts/e2e.ts",
-    "contract": "bun scripts/frontend-contract.ts"
+    "contract": "bun scripts/frontend-contract.ts",
+    "hooks:replay": "bun scripts/hooks-replay.ts"
   },
   "dependencies": {
     "cors": "^2.8.6",

@@ -988,6 +988,71 @@ export function enforceGrantIssuance(
   };
 }
 
+export interface DecideActionInput {
+  /** Server-derived action, e.g. `git.force_push` or `github.issue.create`. */
+  action: string;
+  resource?: string;
+  agentId?: string | null;
+  agentLabel?: string;
+  connectUserId?: string | null;
+  userLabel?: string;
+  runId?: string | null;
+  source?: string;
+}
+
+export interface DecideActionResult {
+  decision: PolicyAction;
+  reason: string;
+  rule: { id: string | null; name: string; priority: number | null } | null;
+  decisionId: string | null;
+  configured: boolean;
+  enforced: boolean;
+  defaultApplied: boolean;
+}
+
+/**
+ * Call-path decision. The action is supplied by the server (from the tool assessment), never
+ * by the caller's label, and every decision is written to `policy_decisions`.
+ *
+ * This is the same evaluator as grant issuance — one rule set, one ledger — exposed under a
+ * name that says what the call path is doing.
+ */
+export function decideAction(
+  db: Db,
+  workspaceId: string,
+  input: DecideActionInput,
+): DecideActionResult {
+  const result = enforceGrantIssuance(db, {
+    workspaceId,
+    actionOverride: input.action,
+    resource: input.resource ?? "",
+    agentId: input.agentId ?? null,
+    agentLabel: input.agentLabel ?? "",
+    connectUserId: input.connectUserId ?? null,
+    userLabel: input.userLabel ?? "",
+    runId: input.runId ?? null,
+    source: input.source ?? "tool-call",
+    enforcement: "cooperative",
+    strictRecord: false,
+  });
+
+  return {
+    decision: result.decision,
+    reason: result.reason,
+    rule: result.rule
+      ? {
+          id: result.rule.id ?? null,
+          name: String(result.rule.name ?? ""),
+          priority: result.rule.priority ?? null,
+        }
+      : null,
+    decisionId: result.decisionId,
+    configured: result.configured,
+    enforced: result.enforced,
+    defaultApplied: result.defaultApplied,
+  };
+}
+
 export interface EvaluateRequestInput {
   action?: string;
   agent?: string;

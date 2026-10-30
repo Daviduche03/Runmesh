@@ -123,6 +123,11 @@ The repositioning is **partially implemented**. Know what already exists before 
 ### Not built / gaps
 
 - ~~**Policies**~~ — landed: `services/policy_engine.py` (now `runmesh-ts/src/modules/policies/engine.ts`) with issuance enforcement, a decision ledger, and eight routes.
+- **Agent hooks** — landed: `runmesh-ts/src/modules/hooks/` exposes `POST /api/v1/agent-hooks/tool`
+  (normalized) and `POST /api/v1/agent-hooks/claude-code` (Claude Code native). Tool calls become
+  server-derived actions (`git.push`, `secrets.read`, …), assessed by deterministic rules in
+  `bash.ts`, decided by the policy engine, and recorded in `policy_decisions` + `agent_events`.
+  See [`docs/agent-hooks.md`](./docs/agent-hooks.md).
 - ~~**Agents as first-class entities**~~ — landed: `agents` table + `/api/v1/agents` create/list/archive.
 - **Dashboard IA** — the app still navigates as a workflow builder (see §6). No control-room home, no dedicated Agents/Grants/Approvals/Policies/Audit screens.
 - **Unified audit** — actions (`tasks`) and access (`connect_audit_events`) are separate streams; there is no single "agent → grant → action → result" timeline.
@@ -153,7 +158,7 @@ runmesh-ts/                  API server (Bun + Express + Drizzle, SQLite, portab
   src/modules/<domain>/      routes.ts + service.ts (+ domain files) per domain:
                              system, auth, workspace, agents, api-keys, policies,
                              webhooks, tasks, workflows, connect, tools, collection,
-                             triggers, dashboard
+                             hooks, triggers, dashboard
   scripts/                   smoke.ts, e2e.ts, frontend-contract.ts, vector generators
   tests/                     bun test suites (unit, HTTP, schema drift, fixtures)
   migrations/*.sql           SQL migrations (numbered, append-only)
@@ -353,12 +358,14 @@ What is already built for this:
 | Decision ledger | `policy_decisions` (+ `policy.decision` audit) |
 | JIT issuance + attenuation | `connect_grants` (`valid_until`, `max_uses`, `resource_filters`, `project_id`/`environment`) |
 | Inline observation | tasks/workflows as the execution path; `waiting_for_grant` |
+| Pre-tool hooks | `POST /api/v1/agent-hooks/*` → `hooks/bash.ts` assessment → `policies.decideAction` |
 | Human backstop | `approval_required`, `approval_status`, Connect consent |
 | Detective layer | `connect_audit_events` (task/workflow/agent context) |
 
-Explicitly missing: **policy evaluation on the tool-call path** (layer 2,
-including the rerouted-execute proxy and suspension for approvals) — today policy
-governs what authority an agent is *granted*, not each call it makes;
+Explicitly missing: **visibility everywhere** — policy now evaluates the tool-call path for
+agents that emit a pre-tool hook (Claude Code, OpenCode, `runmesh exec`), but an agent that
+cannot report a call (Codex today) is still governed only through the managed tool path;
+**the rerouted-execute proxy** for shell actions and suspension for approvals;
 **sender-constrained tokens** (DPoP/key-bound issuance, so stolen tokens can't be
 replayed); and **per-provider fine-grained adapters** (the GitHub-Apps
 installation-token pattern generalized).
