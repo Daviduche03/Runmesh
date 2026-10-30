@@ -4,6 +4,7 @@ import { hashApiKey } from "../auth/api-key.js";
 import { verifyToken } from "../auth/tokens.js";
 import type { TokenClaims } from "../auth/tokens.js";
 import { ApiKeyModel, UserModel, findMembership } from "../db/orm.js";
+import type { Db } from "../db/client.js";
 import type { AuthUser } from "../http/context.js";
 import { parseJsonArray } from "../types/helpers.js";
 
@@ -28,49 +29,14 @@ export async function resolveAuthUser(req: Request, requiredPermissions: string[
   const rawKey = Array.isArray(apiKey) ? apiKey[0] : apiKey;
 
   if (rawKey) {
-    if (!rawKey.startsWith("rk_")) throw createError(401, "Invalid API key format");
-
-    const keyModel = new ApiKeyModel(db);
-    const key = keyModel.findByKeyHash(hashApiKey(rawKey));
-    if (!key) throw createError(401, "Invalid API key");
-
-    if (key.expiresAt) {
-      const expiresAt = new Date(key.expiresAt);
-      if (!Number.isNaN(expiresAt.getTime()) && expiresAt.getTime() <= Date.now()) {
-        throw createError(401, "API key expired");
-      }
-    }
-
-    if (requiredPermissions.length > 0) {
-      const permissions = parseJsonArray(key.permissions);
-      if (!permissions.includes("admin")) {
-        for (const permission of requiredPermissions) {
-          if (!permissions.includes(permission)) {
-            throw createError(403, `Insufficient permissions: ${permission} required`);
-          }
-        }
-      }
-    }
-
-    const user = new UserModel(db).findById(key.userId);
-    if (!user) throw createError(401, "User not found");
-
-    keyModel.updateLastUsed(key.id);
-
-    if (key.workspaceId && !findMembership(db, user.id, key.workspaceId)) {
-      throw createError(401, "API key is not authorized for this workspace");
-    }
-
-    return {
-      id: user.id,
-      email: user.email,
-      name: user.name,
-      apiKeyWorkspaceId: key.workspaceId ?? null,
-    };
+    return resolveApiKeyUser(db, rawKey, requiredPermissions);
   }
 
   const token = bearerToken(req);
   if (token) {
+    // MCP clients (Codex, Claude Code) can only send bearer tokens, so a Runmesh key
+    // travels as `Authorization: Bearer rk_...`. Route it to key validation.
+    if (token.startsWith("rk_")) return resolveApiKeyUser(db, token, requiredPermissions);
     const payload = await verifyToken(token);
     if (!payload) throw createError(401, "Invalid token");
     return toAuthUser(payload);
@@ -80,6 +46,52 @@ export async function resolveAuthUser(req: Request, requiredPermissions: string[
     401,
     "Authentication required. Use Authorization: Bearer <token> or X-API-Key header.",
   );
+}
+
+async function resolveApiKeyUser(
+  db: Db,
+  rawKey: string,
+  requiredPermissions: string[],
+): Promise<AuthUser> {
+  if (!rawKey.startsWith("rk_")) throw createError(401, "Invalid API key format");
+
+  const keyModel = new ApiKeyModel(db);
+  const key = keyModel.findByKeyHash(hashApiKey(rawKey));
+  if (!key) throw createError(401, "Invalid API key");
+
+  if (key.expiresAt) {
+    const expiresAt = new Date(key.expiresAt);
+    if (!Number.isNaN(expiresAt.getTime()) && expiresAt.getTime() <= Date.now()) {
+      throw createError(401, "API key expired");
+    }
+  }
+
+  if (requiredPermissions.length > 0) {
+    const permissions = parseJsonArray(key.permissions);
+    if (!permissions.includes("admin")) {
+      for (const permission of requiredPermissions) {
+        if (!permissions.includes(permission)) {
+          throw createError(403, `Insufficient permissions: ${permission} required`);
+        }
+      }
+    }
+  }
+
+  const user = new UserModel(db).findById(key.userId);
+  if (!user) throw createError(401, "User not found");
+
+  keyModel.updateLastUsed(key.id);
+
+  if (key.workspaceId && !findMembership(db, user.id, key.workspaceId)) {
+    throw createError(401, "API key is not authorized for this workspace");
+  }
+
+  return {
+    id: user.id,
+    email: user.email,
+    name: user.name,
+    apiKeyWorkspaceId: key.workspaceId ?? null,
+  };
 }
 
 /** Middleware requiring any authenticated principal, optionally holding every listed permission. */

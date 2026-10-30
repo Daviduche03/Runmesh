@@ -123,11 +123,12 @@ The repositioning is **partially implemented**. Know what already exists before 
 ### Not built / gaps
 
 - ~~**Policies**~~ — landed: `services/policy_engine.py` (now `runmesh-ts/src/modules/policies/engine.ts`) with issuance enforcement, a decision ledger, and eight routes.
-- **Agent hooks** — landed: `runmesh-ts/src/modules/hooks/` exposes `POST /api/v1/agent-hooks/tool`
-  (normalized) and `POST /api/v1/agent-hooks/claude-code` (Claude Code native). Tool calls become
-  server-derived actions (`git.push`, `secrets.read`, …), assessed by deterministic rules in
-  `bash.ts`, decided by the policy engine, and recorded in `policy_decisions` + `agent_events`.
-  See [`docs/agent-hooks.md`](./docs/agent-hooks.md).
+- **Agent hooks** — landed: `runmesh-ts/src/modules/mcp/` (`POST /mcp`, JSON-RPC — the
+  primary surface every agent connects to) and `runmesh-ts/src/modules/hooks/` (one
+  normalized `POST /api/v1/agent-hooks/tool`, the fallback `runmesh exec` will use for
+  shell commands MCP cannot see). Tool calls execute through the managed-tool path
+  (policy + stored credential + ledger); shell commands are assessed by deterministic
+  rules in `bash.ts` and decided by the policy engine. See [`docs/agent-hooks.md`](./docs/agent-hooks.md).
 - ~~**Agents as first-class entities**~~ — landed: `agents` table + `/api/v1/agents` create/list/archive.
 - **Dashboard IA** — the app still navigates as a workflow builder (see §6). No control-room home, no dedicated Agents/Grants/Approvals/Policies/Audit screens.
 - **Unified audit** — actions (`tasks`) and access (`connect_audit_events`) are separate streams; there is no single "agent → grant → action → result" timeline.
@@ -358,6 +359,7 @@ What is already built for this:
 | Decision ledger | `policy_decisions` (+ `policy.decision` audit) |
 | JIT issuance + attenuation | `connect_grants` (`valid_until`, `max_uses`, `resource_filters`, `project_id`/`environment`) |
 | Inline observation | tasks/workflows as the execution path; `waiting_for_grant` |
+| MCP server | `POST /mcp` → `invokeTool` (policy + proxy + ledger) |
 | Pre-tool hooks | `POST /api/v1/agent-hooks/*` → `hooks/bash.ts` assessment → `policies.decideAction` |
 | Human backstop | `approval_required`, `approval_status`, Connect consent |
 | Detective layer | `connect_audit_events` (task/workflow/agent context) |

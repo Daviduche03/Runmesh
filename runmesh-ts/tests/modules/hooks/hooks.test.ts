@@ -73,7 +73,7 @@ describe("agent hooks", () => {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
-        source: "claude-code",
+        source: "exec",
         event: "tool.before",
         session_id: "s1",
         tool: "Bash",
@@ -89,7 +89,7 @@ describe("agent hooks", () => {
     const result = await postHook(
       "/api/v1/agent-hooks/tool",
       {
-        source: "claude-code",
+        source: "exec",
         event: "tool.before",
         session_id: "s1",
         tool: "Bash",
@@ -119,7 +119,7 @@ describe("agent hooks", () => {
   test("reuses one run for every tool call in a session", async () => {
     const fixture = await setup();
     const body = {
-      source: "opencode",
+      source: "exec",
       event: "tool.before" as const,
       session_id: "session-42",
       tool: "Bash",
@@ -157,7 +157,7 @@ describe("agent hooks", () => {
     const result = await postHook(
       "/api/v1/agent-hooks/tool",
       {
-        source: "claude-code",
+        source: "exec",
         event: "tool.before",
         session_id: "s1",
         tool: "Bash",
@@ -189,7 +189,7 @@ describe("agent hooks", () => {
     const allowed = await postHook(
       "/api/v1/agent-hooks/tool",
       {
-        source: "claude-code",
+        source: "exec",
         event: "tool.before",
         session_id: "s1",
         tool: "Bash",
@@ -203,7 +203,7 @@ describe("agent hooks", () => {
     const unmatched = await postHook(
       "/api/v1/agent-hooks/tool",
       {
-        source: "claude-code",
+        source: "exec",
         event: "tool.before",
         session_id: "s1",
         tool: "Bash",
@@ -220,7 +220,7 @@ describe("agent hooks", () => {
     const before = await postHook(
       "/api/v1/agent-hooks/tool",
       {
-        source: "claude-code",
+        source: "exec",
         event: "tool.before",
         session_id: "s1",
         tool: "Bash",
@@ -232,7 +232,7 @@ describe("agent hooks", () => {
     await postHook(
       "/api/v1/agent-hooks/tool",
       {
-        source: "claude-code",
+        source: "exec",
         event: "tool.after",
         session_id: "s1",
         tool: "Bash",
@@ -249,95 +249,5 @@ describe("agent hooks", () => {
       .all();
     expect(events.map((event) => event.kind)).toEqual(["tool.call", "tool.result"]);
     expect(events[1]?.durationMs).toBe(12);
-  });
-});
-
-describe("claude code adapter", () => {
-  test("returns no decision while policy is unconfigured", async () => {
-    const fixture = await setup();
-    const result = await postHook(
-      "/api/v1/agent-hooks/claude-code",
-      {
-        hook_event_name: "PreToolUse",
-        session_id: "s1",
-        tool_name: "Bash",
-        tool_input: { command: "cat .env" },
-      },
-      fixture.apiKey,
-    );
-    expect(result.status).toBe(200);
-    expect(result.body).toEqual({});
-  });
-
-  test("returns the host's deny shape for an enforced deny", async () => {
-    const fixture = await setup();
-    await postJson(
-      app,
-      "/api/v1/policies/rules",
-      {
-        name: "Deny credential reads",
-        conditions: [{ field: "action", operator: "is", value: "secrets.read" }],
-        action: "deny",
-        mode: "enforce",
-        enabled: true,
-      },
-      fixture.user.token,
-    );
-
-    const result = await postHook(
-      "/api/v1/agent-hooks/claude-code",
-      {
-        hook_event_name: "PreToolUse",
-        session_id: "s1",
-        tool_name: "Bash",
-        tool_input: { command: "cat .env" },
-      },
-      fixture.apiKey,
-    );
-
-    expect(result.body.hookSpecificOutput).toEqual({
-      hookEventName: "PreToolUse",
-      permissionDecision: "deny",
-      permissionDecisionReason: expect.stringContaining("Deny credential reads"),
-    });
-  });
-
-  test("escalates to ask", async () => {
-    const fixture = await setup();
-    await postJson(
-      app,
-      "/api/v1/policies/rules",
-      {
-        name: "Ask before merging",
-        conditions: [{ field: "action", operator: "is", value: "git.pr.merge" }],
-        action: "escalate",
-        mode: "enforce",
-        enabled: true,
-      },
-      fixture.user.token,
-    );
-
-    const result = await postHook(
-      "/api/v1/agent-hooks/claude-code",
-      {
-        hook_event_name: "PreToolUse",
-        session_id: "s1",
-        tool_name: "Bash",
-        tool_input: { command: "gh pr merge 12" },
-      },
-      fixture.apiKey,
-    );
-    expect(result.body.hookSpecificOutput.permissionDecision).toBe("ask");
-  });
-
-  test("ignores events it does not handle", async () => {
-    const fixture = await setup();
-    const result = await postHook(
-      "/api/v1/agent-hooks/claude-code",
-      { hook_event_name: "Notification", session_id: "s1" },
-      fixture.apiKey,
-    );
-    expect(result.status).toBe(200);
-    expect(result.body).toEqual({});
   });
 });

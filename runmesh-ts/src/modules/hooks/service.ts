@@ -10,7 +10,7 @@
  * one ledger, whatever the host.
  */
 import createError from "http-errors";
-import { createHash } from "node:crypto";
+import { createHash, randomUUID } from "node:crypto";
 import { and, desc, eq } from "drizzle-orm";
 import type { Db } from "../../core/db/client.js";
 import { agentRuns } from "../../core/db/schema.js";
@@ -150,6 +150,33 @@ function requireTool(input: HookInput): string {
   if (!tool) throw createError(400, "tool is required for tool events");
   if (tool.length > TOOL_MAX) throw createError(400, "tool is too long (max 128 characters)");
   return tool;
+}
+
+export interface SessionRun {
+  runId: string;
+  threadId: string;
+  agentId: string;
+}
+
+/**
+ * One run per (workspace, source, session). Shared by the hook ingress and the MCP server,
+ * so every transport lands on the same run and the audit trail chains.
+ */
+export function ensureSessionRun(
+  db: Db,
+  userId: string,
+  workspaceId: string,
+  source: string,
+  sessionId: string,
+  agentLabel = "default",
+): SessionRun {
+  const cleanSource = source.trim() || "unknown";
+  const cleanSession = sessionId.trim() || `ephem-${randomUUID().slice(0, 8)}`;
+  const label = agentLabel.trim() || "default";
+  const agentId = ensureAgent(db, userId, workspaceId, cleanSource, label);
+  const threadId = threadFor(workspaceId, cleanSource, cleanSession);
+  const runId = ensureRun(db, userId, workspaceId, agentId, threadId, cleanSource, cleanSession);
+  return { runId, threadId, agentId };
 }
 
 export function handleHook(

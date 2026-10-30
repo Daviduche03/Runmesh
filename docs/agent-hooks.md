@@ -1,28 +1,125 @@
-# Agent hooks
+# Agent access: MCP first, hooks for shell
 
-One seam every coding agent can reach: the agent reports "I am about to run this", and
-Runmesh answers **allow**, **deny**, or **ask**. The answer comes from the workspace's
-policy rules; every question and answer is written to the decision ledger.
+Every coding agent that speaks MCP — Claude Code, Codex, OpenCode — connects to one
+place: the MCP server. Each call runs through the workspace's policy, executes with the
+stored credential, and is recorded. There is one rule set and one ledger, whatever the
+host.
 
-Claude Code calls this natively over HTTP. The OpenCode plugin forwards the same shape.
-`runmesh exec` will call the same service, so the policy and the audit trail do not change
-with the host.
+```
+agent ──▶ POST /mcp ──▶ policy ──▶ stored credential ──▶ upstream ──▶ ledger
+              │              │
+              │              └── deny → isError + reason (nothing executes)
+              └── tools/list → what this workspace exposes
+```
 
-## Endpoints
+One normalized hook covers the single thing MCP cannot see — a raw shell command:
 
-| Route | Body | Response |
+```
+runmesh exec ──▶ POST /api/v1/agent-hooks/tool ──▶ assess ──▶ policy ──▶ ledger
+```
+
+Native tool calls go through MCP. The hook is the fallback `runmesh exec` uses for shell
+actions, and it has exactly one shape in and one shape out. Host-specific serializers do
+not belong in this codebase: the day a second one appears, that is the review to block.
+
+## MCP endpoint
+
+`POST /mcp` speaks JSON-RPC 2.0 (single or batch). `GET` and `DELETE` answer 405.
+
+Authentication is the API key the dashboard issues, sent either way:
+
+```
+X-API-Key: rk_...
+Authorization: Bearer rk_...
+```
+
+The second form exists because MCP clients such as Codex can only send bearer tokens.
+JWT session tokens work in `Authorization` as before.
+
+Listing is a read call; calling is a write call, enforced per key permissions.
+
+### Methods
+
+| Method | Params | Result |
 |---|---|---|
-| `POST /api/v1/agent-hooks/tool` | normalized (below) | Runmesh envelope |
-| `POST /api/v1/agent-hooks/claude-code` | Claude Code's own hook payload | Claude Code's hook output |
+| `initialize` | `protocolVersion`, `clientInfo` | negotiated version, `capabilities.tools`, `serverInfo` |
+| `ping` | — | `{}` |
+| `tools/list` | — | the workspace's managed tools |
+| `tools/call` | `name`, `arguments` | tool result, or `isError` on refusal |
+| `notifications/*` | — | 202, no body |
 
-Both require `X-API-Key: rk_...` (or a bearer token) with `write` permission. The key's
-workspace scopes the decision.
-
-### Normalized body
+Two verbs are served: `runmesh_list_tools` (discovery) and `runmesh_call_tool` (execution).
 
 ```json
 {
-  "source": "opencode",
+  "jsonrpc": "2.0",
+  "id": 1,
+  "method": "tools/call",
+  "params": {
+    "name": "runmesh_call_tool",
+    "arguments": {
+      "tool_ref": "tool_abc",
+      "args": { "repo": "org/proj", "title": "Fix" },
+      "session_id": "codex-1",
+      "idempotency_key": "retry-1"
+    }
+  }
+}
+```
+
+`run_id` attaches to an existing run; otherwise `session_id` (caller-chosen, stable across
+calls) puts every call of a session on one run, so the audit trail chains. The run comes
+back in `_meta`:
+
+```json
+{ "result": { "content": [{ "type": "text", "text": "…" }], "_meta": { "run_id": "run_…" } } }
+```
+
+A refusal never executes and never raises transport-level: it returns `isError: true` with
+the reason as text, so the agent can read it and react.
+
+| Decision | MCP result |
+|---|---|
+| `allow` | `content[0].text` is the tool result |
+| `deny` | `isError`, text is the reason |
+| `escalate` | `isError`, text says a human must decide first |
+| `consent` | `isError`, text names the provider to connect |
+
+Unknown tools and bad arguments are JSON-RPC errors (`-32602`); anything else is `-32603`.
+The server never answers an MCP request with an HTML error page.
+
+### Client configuration
+
+Codex (`~/.codex/config.toml`):
+
+```toml
+[mcp_servers.runmesh]
+url = "https://runmesh.example.com/mcp"
+bearer_token_env_var = "RUNMESH_API_KEY"
+```
+
+Claude Code (`.claude/settings.json` or `claude mcp add --transport http`):
+
+```json
+{
+  "mcpServers": {
+    "runmesh": {
+      "type": "http",
+      "url": "https://runmesh.example.com/mcp",
+      "headers": { "Authorization": "Bearer $RUNMESH_API_KEY" }
+    }
+  }
+}
+```
+
+## The hook fallback
+
+`POST /api/v1/agent-hooks/tool` takes one normalized body and returns the Runmesh
+envelope:
+
+```json
+{
+  "source": "exec",
   "event": "tool.before",
   "session_id": "ses_abc",
   "agent": "build",
@@ -34,7 +131,7 @@ workspace scopes the decision.
 
 `event` is one of `tool.before`, `tool.after`, `session.start`, `session.end`.
 
-Response:
+The response carries the assessment and the decision:
 
 ```json
 {
@@ -43,111 +140,13 @@ Response:
     "run_id": "run_…",
     "thread_id": "th_hook_…",
     "agent_id": "agt_…",
-    "assessment": {
-      "action": "git.pr.merge",
-      "resource": "",
-      "suspicion": "normal",
-      "signals": [],
-      "reason": "merges a pull request"
-    },
-    "decision": {
-      "decision": "escalate",
-      "reason": "Ask before merging matched on action is git.pr.merge.",
-      "rule": { "id": "pol_…", "name": "Ask before merging", "priority": 1 },
-      "configured": true,
-      "enforced": true
-    }
+    "assessment": { "action": "git.pr.merge", "suspicion": "normal", "signals": [] },
+    "decision": { "decision": "escalate", "reason": "…", "configured": true, "enforced": true }
   }
 }
 ```
 
-## Claude Code
-
-Add the hook to `.claude/settings.json` (project) or `~/.claude/settings.json` (user):
-
-```json
-{
-  "hooks": {
-    "PreToolUse": [
-      {
-        "matcher": "Bash|Edit|Write|WebFetch",
-        "hooks": [
-          {
-            "type": "http",
-            "url": "https://runmesh.example.com/api/v1/agent-hooks/claude-code",
-            "headers": { "X-API-Key": "$RUNMESH_API_KEY" },
-            "allowedEnvVars": ["RUNMESH_API_KEY"],
-            "timeout": 10
-          }
-        ]
-      }
-    ],
-    "PostToolUse": [
-      {
-        "matcher": "Bash|Edit|Write|WebFetch",
-        "hooks": [
-          {
-            "type": "http",
-            "url": "https://runmesh.example.com/api/v1/agent-hooks/claude-code",
-            "headers": { "X-API-Key": "$RUNMESH_API_KEY" },
-            "allowedEnvVars": ["RUNMESH_API_KEY"],
-            "timeout": 10
-          }
-        ]
-      }
-    ]
-  }
-}
-```
-
-`PostToolUse` is what turns a decision into a receipt: the result lands on the same run.
-
-If your settings define `allowedHttpHookUrls`, the URL must be on that list.
-
-## Decision mapping
-
-| Runmesh | Claude Code | Meaning |
-|---|---|---|
-| `allow` | `permissionDecision: "allow"` | only when an enforce rule allowed it |
-| `deny` | `permissionDecision: "deny"` | an enforce rule refused it |
-| `escalate` | `permissionDecision: "ask"` | a human decides |
-| `consent` | `permissionDecision: "ask"` | the end user must connect an account |
-
-When policy is **not configured**, or the matching rule is `log-only`, the endpoint returns
-no decision at all (`{}`). That is deliberate: the hook must never make a call looser than
-the host's own permission flow. It can only add friction.
-
-## Turning it on
-
-Policy is off until a workspace has at least one enabled `enforce` rule. Before that, every
-call is assessed and recorded, and nothing is blocked.
-
-Start with `log-only` rules so `policy_decisions` fills with what *would* have happened:
-
-```bash
-curl -X POST "$RUNMESH/api/v1/policies/rules" \
-  -H "Authorization: Bearer $TOKEN" \
-  -H "Content-Type: application/json" \
-  -d '{
-    "name": "Watch credential reads",
-    "conditions": [{"field": "action", "operator": "is", "value": "secrets.read"}],
-    "action": "deny",
-    "mode": "log-only",
-    "enabled": true
-  }'
-```
-
-Then flip that one rule to `"mode": "enforce"`. From that moment **unmatched actions fall to
-default deny**, which is the intended behaviour but a sharp edge — add allow rules for
-routine work first:
-
-```json
-{ "name": "Allow reads",    "conditions": [{ "field": "action", "operator": "is", "value": "fs.read" }],   "action": "allow", "mode": "enforce", "enabled": true }
-{ "name": "Allow searches", "conditions": [{ "field": "action", "operator": "is", "value": "net.search" }], "action": "allow", "mode": "enforce", "enabled": true }
-{ "name": "Allow tests",    "conditions": [{ "field": "action", "operator": "is", "value": "test.run" }],  "action": "allow", "mode": "enforce", "enabled": true }
-```
-
-## What the assessment sees
+## Assessment
 
 `assessTool` maps every tool onto one action vocabulary, so a single rule covers a shell
 command and an MCP call:
@@ -168,19 +167,55 @@ the **worst** action in a chain wins: `npm test && rm -rf /` is `fs.destroy`.
 
 Evasion signals raise suspicion to `high` even when the action looks harmless:
 `pipe_to_shell`, `encoded_payload`, `string_interpreter`, `secret_paths`, `audit_tamper`,
-`egress_bypass`, `write_outside_cwd`, `privilege_escalation`. A command with no matching rule
-is `unknown`, which a rule can match — it is never treated as safe.
+`egress_bypass`, `write_outside_cwd`, `privilege_escalation`. A command with no matching
+rule is `unknown`, which a rule can match — it is never treated as safe.
+
+The hook never decides on its own: the assessment picks which rule gets asked, and policy
+answers. Only an *enforced* allow runs; when policy is unconfigured or log-only, the
+assessment is recorded and nothing is blocked.
+
+## Turning policy on
+
+Policy is off until a workspace has at least one enabled `enforce` rule. Before that,
+everything is assessed and recorded, and nothing is blocked.
+
+Start with `log-only` rules so `policy_decisions` fills with what *would* have happened:
+
+```bash
+curl -X POST "$RUNMESH/api/v1/policies/rules" \
+  -H "Authorization: Bearer $TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "name": "Watch credential reads",
+    "conditions": [{"field": "action", "operator": "is", "value": "secrets.read"}],
+    "action": "deny",
+    "mode": "log-only",
+    "enabled": true
+  }'
+```
+
+Then flip that rule to `"mode": "enforce"`. From that moment **unmatched actions fall to
+default deny**, which is the intended behaviour but a sharp edge — add allow rules for
+routine work first:
+
+```json
+{ "name": "Allow reads",    "conditions": [{ "field": "action", "operator": "is", "value": "fs.read" }],   "action": "allow", "mode": "enforce", "enabled": true }
+{ "name": "Allow searches", "conditions": [{ "field": "action", "operator": "is", "value": "net.search" }], "action": "allow", "mode": "enforce", "enabled": true }
+{ "name": "Allow tests",    "conditions": [{ "field": "action", "operator": "is", "value": "test.run" }],  "action": "allow", "mode": "enforce", "enabled": true }
+```
 
 ## Proving it
 
-`pnpm hooks:replay` seeds three rules on a live server and posts the same payloads Claude Code
-sends, then fails if any decision disagrees with policy:
+`pnpm hooks:replay` drives the MCP server on a live instance — handshake, discovery, a
+real refusal through the policy path, session-to-run chaining, errors, and auth:
 
 ```
-PASS  routine test run                   allow  bun test
-PASS  credential read                    deny   cat ~/.ssh/id_rsa
-PASS  pull request merge                 ask    gh pr merge 12 --squash
-PASS  unmatched action (default deny)    deny   make deploy
+PASS  initialize handshake
+PASS  tool discovery                          runmesh_list_tools, runmesh_call_tool
+PASS  refusal maps onto isError, not a call   Connect test-provider to let this agent act on your behalf.
+PASS  one session shares one run              run_ca213039892d
+PASS  unknown tool is a JSON-RPC error         -32602
+PASS  unauthenticated is 401                  HTTP 401
 ```
 
 ```bash
@@ -191,17 +226,17 @@ pnpm hooks:replay http://localhost:8899 dev /tmp/hooks.db
 
 ## What this is not
 
+- **Not full shell visibility.** An agent that runs shell commands outside `runmesh exec`
+  is not observed by either surface today. The hook is the seam; the shim comes next.
 - **Not a sandbox.** If the real credential is in the environment and the network is open,
-  nothing here stops a determined agent from going around the hook. The hook routes, records,
-  and escalates; it does not contain.
-- **Not full visibility.** Agents that cannot post a pre-tool event (Codex, today) are not
-  observed by this endpoint. They are governed through the managed tool path instead.
+  nothing here stops a determined agent from going around the hook. The server routes,
+  records, and refuses; it does not contain.
 - **Not a classifier yet.** Assessment is deterministic rules. The model-backed classifier
   plugs into the same `assessTool` interface so `unknown` can become a real guess, with the
   same rule: a guess may escalate, never allow.
 
 ## Privacy
 
-Request arguments are redacted and capped by the collection layer (8 KB). File bodies are
-the exception: `Edit`/`Write` inputs are never stored — only the path, the byte length, and
-a short hash.
+Request arguments are redacted and capped by the collection layer (8 KB). `Edit`/`Write`
+bodies are the exception: the hook stores only the path, the byte length, and a short
+hash, never the content.
